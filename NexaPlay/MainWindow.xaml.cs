@@ -23,6 +23,9 @@ public sealed partial class MainWindow : Window
         _licenseService = licenseService;
         InitializeComponent();
         
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
+        
         // Set default window size larger
         var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
@@ -67,7 +70,6 @@ public sealed partial class MainWindow : Window
     private void Sidebar_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
         RootSplitView.IsPaneOpen = true;
-        AppTitlePanel.Visibility = Visibility.Visible;
         MenuHeader.Visibility = Visibility.Visible;
         AccountHeader.Visibility = Visibility.Visible;
         VersionGrid.Visibility = Visibility.Visible;
@@ -78,7 +80,6 @@ public sealed partial class MainWindow : Window
     private void Sidebar_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
         RootSplitView.IsPaneOpen = false;
-        AppTitlePanel.Visibility = Visibility.Collapsed;
         MenuHeader.Visibility = Visibility.Collapsed;
         AccountHeader.Visibility = Visibility.Collapsed;
         VersionGrid.Visibility = Visibility.Collapsed;

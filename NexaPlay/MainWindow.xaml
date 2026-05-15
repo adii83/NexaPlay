@@ -11,7 +11,41 @@
     <!-- Removed MicaBackdrop per user request for solid black -->
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ══════════════════════════════════════════════════════
+             CUSTOM TITLE BAR
+        ══════════════════════════════════════════════════════ -->
+        <Border x:Name="AppTitleBar"
+                Grid.Row="0"
+                Background="{ThemeResource NexaSidebarBrush}"
+                BorderBrush="{ThemeResource NexaBorderBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" Margin="16,0,0,0" VerticalAlignment="Center">
+                    <Image Width="20" Height="20">
+                        <Image.Source>
+                            <SvgImageSource RasterizePixelHeight="40" RasterizePixelWidth="40" UriSource="ms-appx:///Assets/logo.svg"/>
+                        </Image.Source>
+                    </Image>
+                    <Image Height="12" Margin="0,2,0,0">
+                        <Image.Source>
+                            <SvgImageSource RasterizePixelHeight="24" UriSource="ms-appx:///Assets/logo_text.svg"/>
+                        </Image.Source>
+                    </Image>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <SplitView x:Name="RootSplitView"
+                   Grid.Row="1"
                    DisplayMode="CompactInline"
                    CompactPaneLength="68"
                    OpenPaneLength="200"
@@ -36,26 +70,8 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Logo + Branding -->
-                <Border Grid.Row="0" Padding="14,28,14,20">
-                    <StackPanel Spacing="2">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <!-- Logo mark -->
-                            <Image Width="32" Height="32" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Image.Source>
-                                    <SvgImageSource RasterizePixelHeight="64" RasterizePixelWidth="64" UriSource="ms-appx:///Assets/logo.svg"/>
-                                </Image.Source>
-                            </Image>
-                            <StackPanel x:Name="AppTitlePanel" VerticalAlignment="Center" Spacing="0" Visibility="Collapsed">
-                                <Image Height="16" HorizontalAlignment="Left" Margin="4,0,0,0">
-                                    <Image.Source>
-                                        <SvgImageSource RasterizePixelHeight="32" UriSource="ms-appx:///Assets/logo_text.svg"/>
-                                    </Image.Source>
-                                </Image>
-                            </StackPanel>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+                <!-- Top Padding for Nav -->
+                <Border Grid.Row="0" Height="20" />
 
                 <!-- Nav Items -->
                 <ScrollViewer Grid.Row="1"
