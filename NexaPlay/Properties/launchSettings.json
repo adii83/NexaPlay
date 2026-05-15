@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "NexaPlay (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "NexaPlay (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

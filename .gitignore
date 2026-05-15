@@ -1,0 +1,46 @@
+# Ignore copied legacy workspace
+gamehub/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.vscode/
+.idea/
+
+# Build outputs
+**/bin/
+**/obj/
+**/x64/
+**/x86/
+**/ARM64/
+**/Debug/
+**/Release/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs and temp
+*.log
+*.tmp
+*.cache
+crash.txt
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# Test and coverage
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# Publish artifacts
+publish/
+artifacts/
+AppPackages/
+BundleArtifacts/
+
