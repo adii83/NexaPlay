@@ -7,7 +7,7 @@ namespace NexaPlay.Presentation.ViewModels;
 
 public sealed partial class GamesViewModel : ObservableObject
 {
-    private readonly IFixGamesDataService _fixData;
+    private readonly IBypassGamesDataService _fixData;
 
     [ObservableProperty] private string _searchQuery = string.Empty;
     [ObservableProperty] private bool _isLoading;
@@ -16,7 +16,7 @@ public sealed partial class GamesViewModel : ObservableObject
 
     private IReadOnlyList<FixEntry> _allGames = Array.Empty<FixEntry>();
 
-    public GamesViewModel(IFixGamesDataService fixData) => _fixData = fixData;
+    public GamesViewModel(IBypassGamesDataService fixData) => _fixData = fixData;
 
     public async Task LoadAsync()
     {

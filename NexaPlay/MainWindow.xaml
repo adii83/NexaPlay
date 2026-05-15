@@ -8,23 +8,27 @@
     mc:Ignorable="d"
     Title="NexaPlay">
 
-    <Window.SystemBackdrop>
-        <MicaBackdrop Kind="BaseAlt"/>
-    </Window.SystemBackdrop>
+    <!-- Removed MicaBackdrop per user request for solid black -->
 
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="240" MinWidth="240" MaxWidth="240"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <SplitView x:Name="RootSplitView"
+                   DisplayMode="CompactInline"
+                   CompactPaneLength="68"
+                   OpenPaneLength="200"
+                   IsPaneOpen="False"
+                   PaneBackground="Transparent">
+            
+            <SplitView.Pane>
 
         <!-- ══════════════════════════════════════════════════════
              SIDEBAR
         ══════════════════════════════════════════════════════ -->
-        <Border Grid.Column="0"
-                Background="{ThemeResource NexaSidebarBrush}"
+        <Border Background="{ThemeResource NexaSidebarBrush}"
                 BorderBrush="{ThemeResource NexaBorderBrush}"
-                BorderThickness="0,0,1,0">
+                BorderThickness="0,0,1,0"
+                HorizontalAlignment="Stretch"
+                PointerEntered="Sidebar_PointerEntered"
+                PointerExited="Sidebar_PointerExited">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -33,27 +37,21 @@
                 </Grid.RowDefinitions>
 
                 <!-- Logo + Branding -->
-                <Border Grid.Row="0" Padding="20,28,20,20">
+                <Border Grid.Row="0" Padding="14,28,14,20">
                     <StackPanel Spacing="2">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <!-- Logo mark -->
-                            <Border Width="32" Height="32" CornerRadius="8"
-                                    Background="#8B7CF8">
-                                <FontIcon Glyph="&#xE7FC;"
-                                          FontFamily="Segoe Fluent Icons"
-                                          FontSize="16"
-                                          Foreground="White"
-                                          HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"/>
-                            </Border>
-                            <StackPanel VerticalAlignment="Center" Spacing="0">
-                                <TextBlock Text="NexaPlay"
-                                           FontSize="16"
-                                           FontWeight="SemiBold"
-                                           Foreground="{ThemeResource NexaTextPrimaryBrush}"/>
-                                <TextBlock Text="Game Manager"
-                                           FontSize="10"
-                                           Foreground="{ThemeResource NexaTextMutedBrush}"/>
+                            <Image Width="32" Height="32" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Image.Source>
+                                    <SvgImageSource RasterizePixelHeight="64" RasterizePixelWidth="64" UriSource="ms-appx:///Assets/logo.svg"/>
+                                </Image.Source>
+                            </Image>
+                            <StackPanel x:Name="AppTitlePanel" VerticalAlignment="Center" Spacing="0" Visibility="Collapsed">
+                                <Image Height="16" HorizontalAlignment="Left" Margin="4,0,0,0">
+                                    <Image.Source>
+                                        <SvgImageSource RasterizePixelHeight="32" UriSource="ms-appx:///Assets/logo_text.svg"/>
+                                    </Image.Source>
+                                </Image>
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
@@ -63,15 +61,17 @@
                 <ScrollViewer Grid.Row="1"
                               VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Spacing="0" Margin="0,4,0,12">
+                    <StackPanel x:Name="NavItemsPanel" Width="68" HorizontalAlignment="Left" Spacing="0" Margin="0,4,0,12">
 
                         <!-- Section label: MENU -->
-                        <TextBlock Text="MENU"
+                        <TextBlock x:Name="MenuHeader"
+                                   Text="MENU"
                                    FontSize="10"
                                    FontWeight="SemiBold"
                                    Foreground="{ThemeResource NexaTextMutedBrush}"
                                    Margin="24,0,0,8"
-                                   CharacterSpacing="120"/>
+                                   CharacterSpacing="120"
+                                   Visibility="Collapsed"/>
 
                         <!-- Home -->
                         <RadioButton x:Name="NavHome"
@@ -108,25 +108,16 @@
                         </RadioButton>
 
                         <!-- Fix Games -->
-                        <RadioButton x:Name="NavFixGames"
+                        <RadioButton x:Name="NavBypass"
                                      Style="{StaticResource NavItemStyle}"
                                      GroupName="MainNav"
                                      Checked="OnNavChecked"
                                      Tag="&#xE90F;">
                             <StackPanel Orientation="Horizontal" Spacing="8"
                                         VerticalAlignment="Center">
-                                <TextBlock x:Name="LblFixGames"
-                                           Text="Fix Games"
+                                <TextBlock x:Name="LblBypassGames"
+                                           Text="Bypass"
                                            Style="{StaticResource NavLabelStyle}"/>
-                                <Border CornerRadius="4" Padding="5,1"
-                                        Background="#8B7CF828"
-                                        VerticalAlignment="Center">
-                                    <TextBlock Text="NEW"
-                                               FontSize="9"
-                                               FontWeight="Bold"
-                                               Foreground="#8B7CF8"
-                                               CharacterSpacing="60"/>
-                                </Border>
                             </StackPanel>
                         </RadioButton>
 
@@ -136,12 +127,14 @@
                                 Margin="16,12,16,12"/>
 
                         <!-- Section label: ACCOUNT -->
-                        <TextBlock Text="ACCOUNT"
+                        <TextBlock x:Name="AccountHeader"
+                                   Text="ACCOUNT"
                                    FontSize="10"
                                    FontWeight="SemiBold"
                                    Foreground="{ThemeResource NexaTextMutedBrush}"
                                    Margin="24,0,0,8"
-                                   CharacterSpacing="120"/>
+                                   CharacterSpacing="120"
+                                   Visibility="Collapsed"/>
 
                         <!-- Settings -->
                         <RadioButton x:Name="NavSettings"
@@ -162,7 +155,7 @@
                         BorderBrush="{ThemeResource NexaBorderBrush}"
                         BorderThickness="0,1,0,0"
                         Padding="16,14">
-                    <Grid>
+                    <Grid x:Name="VersionGrid" Visibility="Collapsed">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -180,7 +173,7 @@
                         <!-- License Badge -->
                         <Border Grid.Column="1" CornerRadius="6"
                                 Padding="8,4"
-                                Background="#22C55E18">
+                                Background="#1822C55E">
                             <TextBlock Text="PRO"
                                        FontSize="10"
                                        FontWeight="Bold"
@@ -192,11 +185,14 @@
 
             </Grid>
         </Border>
+            </SplitView.Pane>
+
+            <SplitView.Content>
 
         <!-- ══════════════════════════════════════════════════════
              MAIN CONTENT AREA
         ══════════════════════════════════════════════════════ -->
-        <Grid Grid.Column="1">
+        <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="60"/>
                 <RowDefinition Height="*"/>
@@ -233,13 +229,13 @@
                                 VerticalAlignment="Center">
 
                         <!-- Search box -->
-                        <Border CornerRadius="8"
-                                Background="#FFFFFF08"
+                        <Border CornerRadius="4"
+                                Background="{ThemeResource NexaSurfaceElevatedBrush}"
                                 BorderBrush="{ThemeResource NexaBorderBrush}"
                                 BorderThickness="1"
                                 Padding="10,0"
                                 Width="220"
-                                Height="36">
+                                Height="32">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -252,7 +248,7 @@
                                           Foreground="{ThemeResource NexaTextMutedBrush}"
                                           Margin="0,0,8,0"/>
                                 <TextBox Grid.Column="1"
-                                         PlaceholderText="Search games..."
+                                         PlaceholderText="Search..."
                                          BorderThickness="0"
                                          Background="Transparent"
                                          Foreground="{ThemeResource NexaTextPrimaryBrush}"
@@ -262,42 +258,7 @@
                             </Grid>
                         </Border>
 
-                        <!-- Update button -->
-                        <Button x:Name="UpdateButton"
-                                Width="36" Height="36"
-                                Padding="0"
-                                CornerRadius="8"
-                                Background="#FFFFFF08"
-                                BorderBrush="{ThemeResource NexaBorderBrush}"
-                                BorderThickness="1"
-                                ToolTipService.ToolTip="Check for updates">
-                            <FontIcon Glyph="&#xE72C;"
-                                      FontFamily="Segoe Fluent Icons"
-                                      FontSize="14"
-                                      Foreground="{ThemeResource NexaTextSecondaryBrush}"/>
-                        </Button>
 
-                        <!-- Notification dot button -->
-                        <Button x:Name="NotifButton"
-                                Width="36" Height="36"
-                                Padding="0"
-                                CornerRadius="8"
-                                Background="#FFFFFF08"
-                                BorderBrush="{ThemeResource NexaBorderBrush}"
-                                BorderThickness="1">
-                            <Grid>
-                                <FontIcon Glyph="&#xEA8F;"
-                                          FontFamily="Segoe Fluent Icons"
-                                          FontSize="14"
-                                          Foreground="{ThemeResource NexaTextSecondaryBrush}"/>
-                                <!-- Notif dot -->
-                                <Ellipse Width="7" Height="7"
-                                         Fill="#8B7CF8"
-                                         HorizontalAlignment="Right"
-                                         VerticalAlignment="Top"
-                                         Margin="0,2,2,0"/>
-                            </Grid>
-                        </Button>
 
                     </StackPanel>
                 </Grid>
@@ -308,6 +269,8 @@
                    Grid.Row="1"/>
 
         </Grid>
+            </SplitView.Content>
+        </SplitView>
     </Grid>
 </Window>
 

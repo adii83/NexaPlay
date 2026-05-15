@@ -6,6 +6,6 @@ public interface IAddGameService
 {
     bool IsGameInstalled(string appId);
     IReadOnlyList<string> ListLibraryGames();
-    Task AddGameAsync(string appId, IProgress<FixProgressState> progress, CancellationToken ct = default);
+    Task AddGameAsync(string appId, IProgress<BypassProgressState> progress, CancellationToken ct = default);
     Task RemoveGameAsync(string appId);
 }

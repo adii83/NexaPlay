@@ -2,10 +2,10 @@ using NexaPlay.Core.Enums;
 
 namespace NexaPlay.Core.Models;
 
-public sealed class FixProgressState
+public sealed class BypassProgressState
 {
     public int AppId { get; init; }
-    public FixStatus Status { get; init; }
+    public BypassStatus Status { get; init; }
     public string Phase { get; init; } = string.Empty;
     public int Percent { get; init; }
     public long BytesRead { get; init; }

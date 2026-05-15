@@ -63,7 +63,7 @@ Contracts/
  Services/
   IAddGameService.cs
   IAppLogService.cs
-  IFixGamesDataService.cs
+  IBypassGamesDataService.cs
   ILicenseService.cs
   IMetadataService.cs
   IOnlineFixService.cs
@@ -73,12 +73,12 @@ Core/
  Constants/AppConstants.cs
  Enums/
   AntivirusVendor.cs
-  FixStatus.cs
+  BypassStatus.cs
   GameCategory.cs
   LicensePlan.cs
  Models/
+  BypassProgressState.cs
   FixEntry.cs
-  FixProgressState.cs
   GameEntry.cs
   LicenseInfo.cs
   NavigationItem.cs
@@ -93,7 +93,7 @@ Infrastructure/
   WindowsDefenderService.cs
  Services/
   AddGameService.cs
-  FixGamesDataService.cs
+  BypassGamesDataService.cs
   LicenseService.cs
   MetadataService.cs
   OnlineFixService.cs
@@ -106,7 +106,7 @@ Presentation/
  Converters/BoolToVisibilityConverter.cs
  Navigation/NavigationService.cs
  ViewModels/
-  FixGamesViewModel.cs
+  BypassGamesViewModel.cs
   GamesViewModel.cs
   HomeViewModel.cs
   LibraryViewModel.cs
@@ -115,7 +115,7 @@ Presentation/
  Views/
   Dialogs/LicenseActivationDialog.xaml.cs
   Pages/
-   FixGamesPage.xaml.cs
+   BypassGamesPage.xaml.cs
    GamesPage.xaml.cs
    HomePage.xaml.cs
    LibraryPage.xaml.cs

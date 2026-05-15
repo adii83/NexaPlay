@@ -1,6 +1,6 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Page
-    x:Class="NexaPlay.Presentation.Views.Pages.FixGamesPage"
+    x:Class="NexaPlay.Presentation.Views.Pages.BypassGamesPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -9,6 +9,6 @@
     Background="Transparent">
 
     <Grid>
-        <TextBlock Text="Fix Games Page" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <TextBlock Text="Bypass Games Page" HorizontalAlignment="Center" VerticalAlignment="Center"/>
     </Grid>
 </Page>

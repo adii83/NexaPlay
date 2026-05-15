@@ -55,7 +55,7 @@ public sealed class OnlineFixService : IOnlineFixService
         return false;
     }
 
-    public async Task ApplyAsync(int appId, IProgress<FixProgressState> progress, CancellationToken ct = default)
+    public async Task ApplyAsync(int appId, IProgress<BypassProgressState> progress, CancellationToken ct = default)
     {
         _log.Log("OnlineFix", $"Starting apply for appId={appId}");
         var url = $"{AppConstants.OnlineFixBaseUrl}{appId}.zip";
@@ -63,11 +63,11 @@ public sealed class OnlineFixService : IOnlineFixService
         var installPath = _steam.ResolveGameInstallPath(appId);
         if (string.IsNullOrEmpty(installPath) || !Directory.Exists(installPath))
         {
-            progress.Report(new FixProgressState { AppId = appId, Status = FixStatus.Failed, Error = "Game not installed or path not found" });
+            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Failed, Error = "Game not installed or path not found" });
             return;
         }
 
-        progress.Report(new FixProgressState { AppId = appId, Status = FixStatus.Downloading, Phase = "download", Percent = 0 });
+        progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Downloading, Phase = "download", Percent = 0 });
         var tempDir = Path.Combine(Path.GetTempPath(), "nexaplay-onlinefix");
         Directory.CreateDirectory(tempDir);
         var zipPath = Path.Combine(tempDir, $"fix_{appId}.zip");
@@ -79,7 +79,7 @@ public sealed class OnlineFixService : IOnlineFixService
             using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!resp.IsSuccessStatusCode)
             {
-                progress.Report(new FixProgressState { AppId = appId, Status = FixStatus.Failed, Error = "Fix file not available" });
+                progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Failed, Error = "Fix file not available" });
                 return;
             }
 
@@ -99,12 +99,12 @@ public sealed class OnlineFixService : IOnlineFixService
                 if (pct >= lastSentPct + 1)
                 {
                     lastSentPct = pct;
-                    progress.Report(new FixProgressState { AppId = appId, Status = FixStatus.Downloading, Phase = "download", Percent = pct, BytesRead = read, TotalBytes = total });
+                    progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Downloading, Phase = "download", Percent = pct, BytesRead = read, TotalBytes = total });
                 }
             }
 
             // Extract
-            progress.Report(new FixProgressState { AppId = appId, Status = FixStatus.Extracting, Phase = "extract", Percent = 0 });
+            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Extracting, Phase = "extract", Percent = 0 });
             _log.Log("OnlineFix", "Extracting...");
             var extracted = await ExtractAsync(zipPath, installPath, appId, ct);
 
@@ -114,17 +114,17 @@ public sealed class OnlineFixService : IOnlineFixService
 
             // Update state
             await _appliedStore.SetAppliedAsync(appId, true);
-            progress.Report(new FixProgressState { AppId = appId, Status = FixStatus.Applied, Phase = "done", Percent = 100, Message = "Fix applied successfully" });
+            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Applied, Phase = "done", Percent = 100, Message = "Fix applied successfully" });
             _log.Log("OnlineFix", $"Apply done for appId={appId}, {extracted.Count} files extracted");
         }
         catch (OperationCanceledException)
         {
-            progress.Report(new FixProgressState { AppId = appId, Status = FixStatus.Cancelled });
+            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Cancelled });
             _log.Log("OnlineFix", $"Apply cancelled for appId={appId}");
         }
         catch (Exception ex)
         {
-            progress.Report(new FixProgressState { AppId = appId, Status = FixStatus.Failed, Error = ex.Message });
+            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Failed, Error = ex.Message });
             _log.Log("OnlineFix", $"Apply failed for appId={appId}: {ex.Message}");
         }
         finally

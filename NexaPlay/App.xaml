@@ -10,28 +10,28 @@
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Dark">
-                    <!-- NexaPlay Brand Colors -->
-                    <SolidColorBrush x:Key="NexaAccentBrush"          Color="#8B7CF8"/>
-                    <SolidColorBrush x:Key="NexaAccentHoverBrush"      Color="#A99DF9"/>
-                    <SolidColorBrush x:Key="NexaAccentDimBrush"        Color="#8B7CF820"/>
-                    <SolidColorBrush x:Key="NexaAccentDim2Brush"       Color="#8B7CF840"/>
-                    <SolidColorBrush x:Key="NexaSidebarBrush"          Color="#0C0C0C"/>
-                    <SolidColorBrush x:Key="NexaSurfaceBrush"          Color="#111111"/>
-                    <SolidColorBrush x:Key="NexaSurfaceElevatedBrush"  Color="#191919"/>
-                    <SolidColorBrush x:Key="NexaSurfaceHoverBrush"     Color="#1E1E1E"/>
-                    <SolidColorBrush x:Key="NexaBorderBrush"           Color="#1E1E1E"/>
-                    <SolidColorBrush x:Key="NexaBorderSubtleBrush"     Color="#161616"/>
-                    <SolidColorBrush x:Key="NexaTextPrimaryBrush"      Color="#F5F5F5"/>
-                    <SolidColorBrush x:Key="NexaTextSecondaryBrush"    Color="#8A8A8A"/>
-                    <SolidColorBrush x:Key="NexaTextMutedBrush"        Color="#4A4A4A"/>
+                    <!-- NexaPlay Brand Colors (Enterprise Clean & Neutral) -->
+                    <SolidColorBrush x:Key="NexaAccentBrush"           Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="NexaAccentHoverBrush"      Color="#E0E0E0"/>
+                    <SolidColorBrush x:Key="NexaAccentDimBrush"        Color="#1AFFFFFF"/>
+                    <SolidColorBrush x:Key="NexaAccentDim2Brush"       Color="#33FFFFFF"/>
+                    <SolidColorBrush x:Key="NexaSidebarBrush"          Color="#080808"/>
+                    <SolidColorBrush x:Key="NexaSurfaceBrush"          Color="#0A0A0A"/>
+                    <SolidColorBrush x:Key="NexaSurfaceElevatedBrush"  Color="#121212"/>
+                    <SolidColorBrush x:Key="NexaSurfaceHoverBrush"     Color="#1A1A1A"/>
+                    <SolidColorBrush x:Key="NexaBorderBrush"           Color="#333333"/>
+                    <SolidColorBrush x:Key="NexaBorderSubtleBrush"     Color="#242424"/>
+                    <SolidColorBrush x:Key="NexaTextPrimaryBrush"      Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="NexaTextSecondaryBrush"    Color="#A0A0A0"/>
+                    <SolidColorBrush x:Key="NexaTextMutedBrush"        Color="#666666"/>
                     <SolidColorBrush x:Key="NexaSuccessBrush"          Color="#22C55E"/>
                     <SolidColorBrush x:Key="NexaWarningBrush"          Color="#F59E0B"/>
                     <SolidColorBrush x:Key="NexaDangerBrush"           Color="#EF4444"/>
                     <SolidColorBrush x:Key="NexaBlueBrush"             Color="#3B82F6"/>
 
                     <!-- Override WinUI system colors to match our theme -->
-                    <SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush" Color="#0F0F0F"/>
-                    <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumBrush" Color="#111111"/>
+                    <SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush" Color="#080808"/>
+                    <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumBrush" Color="#0A0A0A"/>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
@@ -46,24 +46,39 @@
                 <Setter Property="Background"                 Value="Transparent"/>
                 <Setter Property="BorderThickness"            Value="0"/>
                 <Setter Property="CornerRadius"               Value="8"/>
+                <Setter Property="UseSystemFocusVisuals"      Value="False"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="RadioButton">
                             <Grid x:Name="Root" CornerRadius="8" Height="44">
-                                <!-- Hover / selected background -->
-                                <Border x:Name="BgBorder"
-                                        Background="Transparent"
-                                        CornerRadius="8"/>
-                                <!-- Left accent bar -->
-                                <Rectangle x:Name="AccentBar"
-                                           Width="3" HorizontalAlignment="Left"
-                                           RadiusX="2" RadiusY="2"
-                                           Fill="#8B7CF8" Opacity="0"/>
+                                <!-- Hover background -->
+                                <Border x:Name="HoverBorder"
+                                        Background="#0DFFFFFF"
+                                        CornerRadius="8"
+                                        Opacity="0"/>
+                                <!-- Checked background (Glowing White) -->
+                                <Border x:Name="CheckedBorder"
+                                        Background="#0AFFFFFF"
+                                        BorderBrush="#1AFFFFFF"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Opacity="0">
+                                    <!-- Left Indicator Pill -->
+                                    <Border Width="3" Height="16" CornerRadius="1.5"
+                                            Background="#FFFFFF"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Center"/>
+                                </Border>
+                                <!-- Pressed background -->
+                                <Border x:Name="PressedBorder"
+                                        Background="#18FFFFFF"
+                                        CornerRadius="8"
+                                        Opacity="0"/>
+                                <!-- Accent bar removed in favor of solid pill background -->
                                 <!-- Content row: icon + label -->
-                                <Grid Margin="16,0,12,0">
+                                <Grid Margin="14,0,0,0">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="22"/>
-                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="24"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <!-- Icon slot — uses Tag -->
@@ -72,25 +87,31 @@
                                              Width="18" Height="18"
                                              HorizontalAlignment="Center"
                                              VerticalAlignment="Center">
-                                        <FontIcon x:Name="IconElement" Glyph="{TemplateBinding Tag}" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#4A4A4A" />
+                                        <FontIcon x:Name="IconElement" Glyph="{TemplateBinding Tag}" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="{ThemeResource NexaTextSecondaryBrush}" />
                                     </Viewbox>
                                     <!-- Label slot — uses Content -->
-                                    <ContentPresenter x:Name="LabelPresenter"
-                                                      Grid.Column="2"
-                                                      Content="{TemplateBinding Content}"
-                                                      VerticalAlignment="Center"/>
+                                    <ScrollViewer Grid.Column="1"
+                                                  Margin="14,0,0,0"
+                                                  HorizontalScrollBarVisibility="Hidden"
+                                                  VerticalScrollBarVisibility="Disabled"
+                                                  HorizontalScrollMode="Disabled"
+                                                  VerticalScrollMode="Disabled">
+                                        <ContentPresenter x:Name="LabelPresenter"
+                                                          Content="{TemplateBinding Content}"
+                                                          VerticalAlignment="Center"/>
+                                    </ScrollViewer>
                                 </Grid>
                                 <VisualStateManager.VisualStateGroups>
                                     <VisualStateGroup x:Name="CommonStates">
                                         <VisualState x:Name="Normal"/>
                                         <VisualState x:Name="PointerOver">
                                             <VisualState.Setters>
-                                                <Setter Target="BgBorder.Background" Value="#FFFFFF0D"/>
+                                                <Setter Target="HoverBorder.Opacity" Value="1"/>
                                             </VisualState.Setters>
                                         </VisualState>
                                         <VisualState x:Name="Pressed">
                                             <VisualState.Setters>
-                                                <Setter Target="BgBorder.Background" Value="#FFFFFF18"/>
+                                                <Setter Target="PressedBorder.Opacity" Value="1"/>
                                             </VisualState.Setters>
                                         </VisualState>
                                         <VisualState x:Name="Disabled"/>
@@ -98,16 +119,15 @@
                                     <VisualStateGroup x:Name="CheckStates">
                                         <VisualState x:Name="Unchecked">
                                             <VisualState.Setters>
-                                                <!-- Icon muted when not active -->
-                                                <Setter Target="IconElement.Foreground" Value="#4A4A4A"/>
+                                                <!-- Default colors handled by static resources -->
+                                                <Setter Target="IconElement.Foreground" Value="{ThemeResource NexaTextSecondaryBrush}"/>
                                             </VisualState.Setters>
                                         </VisualState>
                                         <VisualState x:Name="Checked">
                                             <VisualState.Setters>
-                                                <Setter Target="AccentBar.Opacity"   Value="1"/>
-                                                <Setter Target="BgBorder.Background" Value="#8B7CF818"/>
-                                                <!-- Icon bright when active -->
-                                                <Setter Target="IconElement.Foreground" Value="#8B7CF8"/>
+                                                <Setter Target="CheckedBorder.Opacity" Value="1"/>
+                                                <!-- Icon & text flip to white when active -->
+                                                <Setter Target="IconElement.Foreground" Value="#FFFFFF"/>
                                             </VisualState.Setters>
                                         </VisualState>
                                         <VisualState x:Name="Indeterminate"/>
@@ -119,25 +139,29 @@
                 </Setter>
             </Style>
 
-            <!-- Nav icon FontIcon style — default muted, active state handled by template -->
+            <!-- Nav icon FontIcon style — default secondary, active state handled by template -->
             <Style x:Key="NavIconStyle" TargetType="FontIcon">
                 <Setter Property="FontFamily" Value="Segoe Fluent Icons"/>
                 <Setter Property="FontSize"   Value="16"/>
-                <Setter Property="Foreground"  Value="#4A4A4A"/>
+                <Setter Property="Foreground"  Value="{ThemeResource NexaTextSecondaryBrush}"/>
             </Style>
 
             <!-- Nav label TextBlock style — active color set via code-behind trigger -->
             <Style x:Key="NavLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontSize"   Value="13.5"/>
-                <Setter Property="FontWeight" Value="Normal"/>
-                <Setter Property="Foreground"  Value="#5A5A5A"/>
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="Foreground"  Value="{ThemeResource NexaTextSecondaryBrush}"/>
+                <Setter Property="TextTrimming" Value="Clip"/>
+                <Setter Property="TextWrapping" Value="NoWrap"/>
             </Style>
 
             <!-- Nav label ACTIVE style -->
             <Style x:Key="NavLabelActiveStyle" TargetType="TextBlock">
                 <Setter Property="FontSize"   Value="13.5"/>
-                <Setter Property="FontWeight" Value="Medium"/>
-                <Setter Property="Foreground"  Value="#F5F5F5"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground"  Value="#FFFFFF"/>
+                <Setter Property="TextTrimming" Value="Clip"/>
+                <Setter Property="TextWrapping" Value="NoWrap"/>
             </Style>
 
             <!-- Badge pill style -->

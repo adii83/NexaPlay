@@ -8,7 +8,7 @@ namespace NexaPlay.Presentation.ViewModels;
 
 public sealed partial class HomeViewModel : ObservableObject
 {
-    private readonly IFixGamesDataService _fixData;
+    private readonly IBypassGamesDataService _fixData;
     private readonly IAddGameService _addGame;
 
     [ObservableProperty] private int _totalFixes;
@@ -18,7 +18,7 @@ public sealed partial class HomeViewModel : ObservableObject
     [ObservableProperty] private IReadOnlyList<FixEntry> _popularGames = Array.Empty<FixEntry>();
     [ObservableProperty] private FixEntry? _heroGame;
 
-    public HomeViewModel(IFixGamesDataService fixData, IAddGameService addGame)
+    public HomeViewModel(IBypassGamesDataService fixData, IAddGameService addGame)
     {
         _fixData = fixData;
         _addGame = addGame;

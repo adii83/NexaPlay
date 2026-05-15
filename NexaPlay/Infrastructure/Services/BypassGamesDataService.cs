@@ -8,7 +8,7 @@ using System.Text.Json;
 namespace NexaPlay.Infrastructure.Services;
 
 /// <summary>Downloads and caches fix_games.json catalog with 24h TTL.</summary>
-public sealed class FixGamesDataService : IFixGamesDataService
+public sealed class BypassGamesDataService : IBypassGamesDataService
 {
     private readonly IAppLogService _log;
     private readonly string _cacheFile;
@@ -17,13 +17,13 @@ public sealed class FixGamesDataService : IFixGamesDataService
     private DateTime _lastLoaded = DateTime.MinValue;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
-    public FixGamesDataService(IAppLogService log)
+    public BypassGamesDataService(IAppLogService log)
     {
         _log = log;
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             AppConstants.AppDataFolder);
         Directory.CreateDirectory(dir);
-        _cacheFile = Path.Combine(dir, AppConstants.FixGamesCacheFileName);
+        _cacheFile = Path.Combine(dir, AppConstants.BypassGamesCacheFileName);
         _http = new HttpClient { Timeout = AppConstants.HttpDefaultTimeout };
     }
 
@@ -48,11 +48,11 @@ public sealed class FixGamesDataService : IFixGamesDataService
 
     private async Task EnsureLoadedAsync(CancellationToken ct)
     {
-        if (_cached is not null && DateTime.UtcNow - _lastLoaded < AppConstants.FixGamesCacheTtl) return;
+        if (_cached is not null && DateTime.UtcNow - _lastLoaded < AppConstants.BypassGamesCacheTtl) return;
         await _lock.WaitAsync(ct);
         try
         {
-            if (_cached is not null && DateTime.UtcNow - _lastLoaded < AppConstants.FixGamesCacheTtl) return;
+            if (_cached is not null && DateTime.UtcNow - _lastLoaded < AppConstants.BypassGamesCacheTtl) return;
             await LoadAsync(ct);
         }
         finally { _lock.Release(); }
@@ -61,7 +61,7 @@ public sealed class FixGamesDataService : IFixGamesDataService
     private async Task LoadAsync(CancellationToken ct)
     {
         // Try disk cache
-        if (File.Exists(_cacheFile) && DateTime.UtcNow - File.GetLastWriteTimeUtc(_cacheFile) < AppConstants.FixGamesCacheTtl)
+        if (File.Exists(_cacheFile) && DateTime.UtcNow - File.GetLastWriteTimeUtc(_cacheFile) < AppConstants.BypassGamesCacheTtl)
         {
             _cached = ParseFromFile(_cacheFile);
             _lastLoaded = DateTime.UtcNow;
@@ -72,7 +72,7 @@ public sealed class FixGamesDataService : IFixGamesDataService
         _log.Log("FixData", "Downloading fix_games.json...");
         try
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get, AppConstants.FixGamesUrl);
+            using var req = new HttpRequestMessage(HttpMethod.Get, AppConstants.BypassGamesUrl);
             req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
             using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             resp.EnsureSuccessStatusCode();

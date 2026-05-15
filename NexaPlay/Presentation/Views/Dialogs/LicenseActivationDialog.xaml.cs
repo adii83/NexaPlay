@@ -25,7 +25,7 @@ public sealed partial class LicenseActivationDialog : ContentDialog
             var key = LicenseKeyBox.Text.Trim().ToUpperInvariant();
             if (string.IsNullOrWhiteSpace(key))
             {
-                ShowStatus(false, "&#xE783;", "Please enter your license key.", "#EF4444", "#EF444418");
+                ShowStatus(false, "&#xE783;", "Please enter your license key.", "#EF4444", "#18EF4444");
                 args.Cancel = true;
                 return;
             }
@@ -37,7 +37,7 @@ public sealed partial class LicenseActivationDialog : ContentDialog
 
             if (result.IsValid)
             {
-                ShowStatus(true, "&#xE73E;", $"License activated! Plan: {result.Plan}", "#22C55E", "#22C55E18");
+                ShowStatus(true, "&#xE73E;", $"License activated! Plan: {result.Plan}", "#22C55E", "#1822C55E");
             }
             else
             {
@@ -49,7 +49,7 @@ public sealed partial class LicenseActivationDialog : ContentDialog
                     LicenseStatus.NetworkError   => "Network error. Check your connection and try again.",
                     _                            => result.Message ?? "Invalid license key. Please check and try again."
                 };
-                ShowStatus(false, "&#xEA39;", msg, "#EF4444", "#EF444418");
+                ShowStatus(false, "&#xEA39;", msg, "#EF4444", "#18EF4444");
                 args.Cancel = true;
             }
         }

@@ -13,16 +13,16 @@ using System;
 
 namespace NexaPlay.Presentation.Views.Pages;
 
-public sealed partial class FixGamesPage : Page
+public sealed partial class BypassGamesPage : Page
 {
-    private FixGamesViewModel? _vm;
+    private BypassGamesViewModel? _vm;
 
-    public FixGamesPage() => InitializeComponent();
+    public BypassGamesPage() => InitializeComponent();
 
     protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        _vm = ((App)App.Current).GetRequiredService<FixGamesViewModel>();
+        _vm = ((App)App.Current).GetRequiredService<BypassGamesViewModel>();
 
         // Show loading
         // LoadingIndicator.Visibility = Visibility.Visible;
@@ -70,12 +70,12 @@ public sealed partial class FixGamesPage : Page
         // Show progress UI
         // ShowProgressUI(true);
         // SetStep(1);
-        // UpdateStatus(FixStatus.Downloading, "Checking availability...", 0);
+        // UpdateStatus(BypassStatus.Downloading, "Checking availability...", 0);
 
         using var cts = new CancellationTokenSource();
         // CancelFixBtn.Tag = cts;
 
-        var progress = new Progress<FixProgressState>(state =>
+        var progress = new Progress<BypassProgressState>(state =>
         {
             DispatcherQueue.TryEnqueue(() =>
             {
@@ -95,9 +95,9 @@ public sealed partial class FixGamesPage : Page
         // Reflect final VM state
         DispatcherQueue.TryEnqueue(() =>
         {
-            // UpdateStatus(_vm.CurrentFixStatus, _vm.FixStatusMessage, 100);
+            // UpdateStatus(_vm.CurrentBypassStatus, _vm.BypassStatusMessage, 100);
             // FixProgressRing.IsActive = false;
-            // if (_vm.CurrentFixStatus == FixStatus.Applied) SetAllStepsDone();
+            // if (_vm.CurrentBypassStatus == BypassStatus.Applied) SetAllStepsDone();
         });
 
         // ShowProgressUI(false);
@@ -109,7 +109,7 @@ public sealed partial class FixGamesPage : Page
             cts.Cancel();
         _vm?.CancelFix();
         // ShowProgressUI(false);
-        // UpdateStatus(FixStatus.Cancelled, "Cancelled by user", 0);
+        // UpdateStatus(BypassStatus.Cancelled, "Cancelled by user", 0);
     }
 
     // ─── UI Helpers ────────────────────────────────────────────────
@@ -124,13 +124,13 @@ public sealed partial class FixGamesPage : Page
         */
     }
 
-    private void UpdateStatus(FixStatus status, string message, int pct)
+    private void UpdateStatus(BypassStatus status, string message, int pct)
     {
         /*
-        FixStatusText.Text      = message;
+        BypassStatusText.Text      = message;
         FixProgressBar.Value    = pct;
         FixProgressPct.Text     = $"{pct}%";
-        FixStatusText.Foreground = StatusColor(status);
+        BypassStatusText.Foreground = StatusColor(status);
         */
     }
 
@@ -189,20 +189,20 @@ public sealed partial class FixGamesPage : Page
         */
     }
 
-    private static SolidColorBrush StatusColor(FixStatus status) => status switch
+    private static SolidColorBrush StatusColor(BypassStatus status) => status switch
     {
-        FixStatus.Applied        => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 34,  197, 94)),
-        FixStatus.Failed         => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 239, 68,  68)),
-        FixStatus.Cancelled      => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 245, 158, 11)),
-        FixStatus.NotAvailable   => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 245, 158, 11)),
+        BypassStatus.Applied        => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 34,  197, 94)),
+        BypassStatus.Failed         => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 239, 68,  68)),
+        BypassStatus.Cancelled      => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 245, 158, 11)),
+        BypassStatus.NotAvailable   => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 245, 158, 11)),
         _                        => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 138, 138, 138)),
     };
 
-    private static string GetStatusMessage(FixProgressState state) => state.Phase switch
+    private static string GetStatusMessage(BypassProgressState state) => state.Phase switch
     {
         "download" => $"Downloading... {(state.Percent >= 0 ? state.Percent + "%" : "")}",
         "extract"  => "Extracting files...",
-        "done"     => state.Status == FixStatus.Applied ? "Fix applied successfully!" : state.Error ?? "Failed",
+        "done"     => state.Status == BypassStatus.Applied ? "Fix applied successfully!" : state.Error ?? "Failed",
         _          => state.Message ?? state.Status.ToString()
     };
 }

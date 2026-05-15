@@ -1,6 +1,6 @@
 namespace NexaPlay.Core.Enums;
 
-public enum FixStatus
+public enum BypassStatus
 {
     Unknown,
     Available,

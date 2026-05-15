@@ -22,6 +22,18 @@ public sealed partial class MainWindow : Window
         _nav            = nav;
         _licenseService = licenseService;
         InitializeComponent();
+        
+        // Set default window size larger
+        var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
+        var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
+        var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(windowId, Microsoft.UI.Windowing.DisplayAreaFallback.Primary);
+        int width = (int)(displayArea.WorkArea.Width * 0.95);
+        int height = (int)(displayArea.WorkArea.Height * 0.95);
+        int x = displayArea.WorkArea.X + (displayArea.WorkArea.Width - width) / 2;
+        int y = displayArea.WorkArea.Y + (displayArea.WorkArea.Height - height) / 2;
+        appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, width, height));
+
         _nav.Initialize(ContentFrame);
         this.Activated += OnFirstActivated;
     }
@@ -52,6 +64,50 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void Sidebar_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        RootSplitView.IsPaneOpen = true;
+        AppTitlePanel.Visibility = Visibility.Visible;
+        MenuHeader.Visibility = Visibility.Visible;
+        AccountHeader.Visibility = Visibility.Visible;
+        VersionGrid.Visibility = Visibility.Visible;
+
+        AnimateNavWidth(200);
+    }
+
+    private void Sidebar_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        RootSplitView.IsPaneOpen = false;
+        AppTitlePanel.Visibility = Visibility.Collapsed;
+        MenuHeader.Visibility = Visibility.Collapsed;
+        AccountHeader.Visibility = Visibility.Collapsed;
+        VersionGrid.Visibility = Visibility.Collapsed;
+
+        AnimateNavWidth(68);
+    }
+
+    private void AnimateNavWidth(double toWidth)
+    {
+        var storyboard = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
+        var animation = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
+        {
+            To = toWidth,
+            Duration = new TimeSpan(0, 0, 0, 0, 200),
+            EnableDependentAnimation = true,
+            EasingFunction = new Microsoft.UI.Xaml.Media.Animation.ExponentialEase 
+            { 
+                EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut, 
+                Exponent = 4 
+            }
+        };
+
+        Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(animation, NavItemsPanel);
+        Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(animation, "Width");
+
+        storyboard.Children.Add(animation);
+        storyboard.Begin();
+    }
+
     private void OnNavChecked(object sender, RoutedEventArgs e)
     {
         if (sender is RadioButton rb) NavigateTo(rb);
@@ -65,7 +121,7 @@ public sealed partial class MainWindow : Window
         SetNavStyle(NavHome,     LblHome,     rb == NavHome);
         SetNavStyle(NavGames,    LblGames,    rb == NavGames);
         SetNavStyle(NavLibrary,  LblLibrary,  rb == NavLibrary);
-        SetNavStyle(NavFixGames, LblFixGames, rb == NavFixGames);
+        SetNavStyle(NavBypass, LblBypassGames, rb == NavBypass);
         SetNavStyle(NavSettings, LblSettings, rb == NavSettings);
 
         Type? targetPage = null;
@@ -74,7 +130,7 @@ public sealed partial class MainWindow : Window
         if (rb == NavHome)      { targetPage = typeof(HomePage);     title = "Home"; }
         else if (rb == NavGames)    { targetPage = typeof(GamesPage);    title = "Games"; }
         else if (rb == NavLibrary)  { targetPage = typeof(LibraryPage);  title = "Library"; }
-        else if (rb == NavFixGames) { targetPage = typeof(FixGamesPage); title = "Fix Games"; }
+        else if (rb == NavBypass) { targetPage = typeof(BypassGamesPage); title = "Fix Games"; }
         else if (rb == NavSettings) { targetPage = typeof(SettingsPage); title = "Settings"; }
 
         if (targetPage is not null && PageTitleText is not null)

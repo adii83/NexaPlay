@@ -49,7 +49,7 @@ public partial class App : Application
         services.AddSingleton<ISteamService, SteamPlatformService>();
         services.AddSingleton<IWindowsDefenderService, WindowsDefenderService>();
         services.AddSingleton<IMetadataService, MetadataService>();
-        services.AddSingleton<IFixGamesDataService, FixGamesDataService>();
+        services.AddSingleton<IBypassGamesDataService, BypassGamesDataService>();
         services.AddSingleton<IOnlineFixService, OnlineFixService>();
         services.AddSingleton<IAddGameService, AddGameService>();
         services.AddSingleton<ILicenseService, LicenseService>();
@@ -62,7 +62,7 @@ public partial class App : Application
         services.AddTransient<HomeViewModel>();
         services.AddTransient<GamesViewModel>();
         services.AddTransient<LibraryViewModel>();
-        services.AddTransient<FixGamesViewModel>();
+        services.AddTransient<BypassGamesViewModel>();
         services.AddTransient<SettingsViewModel>();
 
         // ── Window ──────────────────────────────────────────────────

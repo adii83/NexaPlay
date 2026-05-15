@@ -58,14 +58,14 @@ public sealed partial class LibraryViewModel : ObservableObject
         AddStatus   = "Starting...";
         AddProgress = 0;
 
-        var progress = new Progress<FixProgressState>(state =>
+        var progress = new Progress<BypassProgressState>(state =>
         {
             AddProgress = state.Percent;
             AddStatus   = state.Phase switch
             {
                 "download" => $"Downloading... {state.Percent}%",
                 "validate" => "Validating...",
-                "install" or "done" => state.Status == FixStatus.Applied ? "Installed!" : state.Error ?? "Failed",
+                "install" or "done" => state.Status == BypassStatus.Applied ? "Installed!" : state.Error ?? "Failed",
                 _ => state.Message ?? state.Status.ToString()
             };
         });

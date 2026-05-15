@@ -13,7 +13,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ISteamService _steam;
     private readonly IWindowsDefenderService _defender;
     private readonly IMetadataService _metadata;
-    private readonly IFixGamesDataService _fixData;
+    private readonly IBypassGamesDataService _fixData;
     private readonly IAppLogService _log;
 
     // License
@@ -38,7 +38,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     public SettingsViewModel(
         ILicenseService license, ISteamService steam,
         IWindowsDefenderService defender, IMetadataService metadata,
-        IFixGamesDataService fixData, IAppLogService log)
+        IBypassGamesDataService fixData, IAppLogService log)
     {
         _license  = license;
         _steam    = steam;

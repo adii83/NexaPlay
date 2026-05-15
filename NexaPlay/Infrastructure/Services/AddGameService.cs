@@ -60,10 +60,10 @@ public sealed class AddGameService : IAddGameService
         catch { return Array.Empty<string>(); }
     }
 
-    public async Task AddGameAsync(string appId, IProgress<FixProgressState> progress, CancellationToken ct = default)
+    public async Task AddGameAsync(string appId, IProgress<BypassProgressState> progress, CancellationToken ct = default)
     {
         _log.Log("AddGame", $"Starting add for appId={appId}");
-        progress.Report(new FixProgressState { Status = FixStatus.Downloading, Phase = "start", Percent = 0 });
+        progress.Report(new BypassProgressState { Status = BypassStatus.Downloading, Phase = "start", Percent = 0 });
 
         // Primary URL pattern
         var url = $"https://api.luatools.work/v1/{appId}";
@@ -80,7 +80,7 @@ public sealed class AddGameService : IAddGameService
 
             if (!resp.IsSuccessStatusCode)
             {
-                progress.Report(new FixProgressState { Status = FixStatus.Failed, Error = "Game script not available from server" });
+                progress.Report(new BypassProgressState { Status = BypassStatus.Failed, Error = "Game script not available from server" });
                 return;
             }
 
@@ -97,25 +97,25 @@ public sealed class AddGameService : IAddGameService
                 await output.WriteAsync(buffer.AsMemory(0, n), ct);
                 read += n;
                 var pct = total > 0 ? (int)(read * 100.0 / total) : -1;
-                if (pct >= lastPct + 5) { lastPct = pct; progress.Report(new FixProgressState { Status = FixStatus.Downloading, Phase = "download", Percent = pct, BytesRead = read, TotalBytes = total }); }
+                if (pct >= lastPct + 5) { lastPct = pct; progress.Report(new BypassProgressState { Status = BypassStatus.Downloading, Phase = "download", Percent = pct, BytesRead = read, TotalBytes = total }); }
             }
             downloadedPath = outPath;
         }
         catch (Exception ex)
         {
-            progress.Report(new FixProgressState { Status = FixStatus.Failed, Error = ex.Message });
+            progress.Report(new BypassProgressState { Status = BypassStatus.Failed, Error = ex.Message });
             return;
         }
 
         // Validate ZIP magic bytes
-        progress.Report(new FixProgressState { Status = FixStatus.Applying, Phase = "validate", Percent = 100 });
+        progress.Report(new BypassProgressState { Status = BypassStatus.Applying, Phase = "validate", Percent = 100 });
         using (var fh = File.OpenRead(downloadedPath))
         {
             var magic = new byte[4];
             await fh.ReadAsync(magic.AsMemory(0, 4), ct);
             if (magic[0] != 'P' || magic[1] != 'K')
             {
-                progress.Report(new FixProgressState { Status = FixStatus.Failed, Error = "Downloaded file is not a valid ZIP" });
+                progress.Report(new BypassProgressState { Status = BypassStatus.Failed, Error = "Downloaded file is not a valid ZIP" });
                 return;
             }
         }
@@ -124,19 +124,19 @@ public sealed class AddGameService : IAddGameService
         var steamPath = _steam.GetSteamBasePath();
         if (string.IsNullOrEmpty(steamPath))
         {
-            progress.Report(new FixProgressState { Status = FixStatus.Failed, Error = "Steam not found" });
+            progress.Report(new BypassProgressState { Status = BypassStatus.Failed, Error = "Steam not found" });
             return;
         }
 
         try
         {
             var installed = InstallLuaFromZip(appId, downloadedPath, steamPath);
-            progress.Report(new FixProgressState { Status = FixStatus.Applied, Phase = "done", Percent = 100, Message = $"Installed: {Path.GetFileName(installed)}" });
+            progress.Report(new BypassProgressState { Status = BypassStatus.Applied, Phase = "done", Percent = 100, Message = $"Installed: {Path.GetFileName(installed)}" });
             _log.Log("AddGame", $"Installed {Path.GetFileName(installed)} for appId={appId}");
         }
         catch (Exception ex)
         {
-            progress.Report(new FixProgressState { Status = FixStatus.Failed, Error = ex.Message });
+            progress.Report(new BypassProgressState { Status = BypassStatus.Failed, Error = ex.Message });
             _log.Log("AddGame", $"Install error: {ex.Message}");
         }
         finally
