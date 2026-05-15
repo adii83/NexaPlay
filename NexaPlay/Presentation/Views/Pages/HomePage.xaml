@@ -8,7 +8,7 @@
     xmlns:models="using:NexaPlay.Core.Models"
     xmlns:local="using:NexaPlay.Presentation.Views.Pages"
     mc:Ignorable="d"
-    Background="Transparent">
+    Background="#080808">
 
     <Grid>
         <!-- Loading State -->
@@ -20,110 +20,192 @@
         <!-- Main Content -->
         <ScrollViewer VerticalScrollBarVisibility="Auto" 
                       Visibility="{x:Bind local:HomePage.InverseBoolToVis(ViewModel.IsLoading), Mode=OneWay}">
-            <StackPanel Padding="28,16,28,40" Spacing="32">
+            <StackPanel Padding="28,20,28,60" Spacing="40">
                 
-                <!-- HERO BANNER -->
-                <Grid CornerRadius="8" Height="280"
-                      Background="{ThemeResource NexaSurfaceElevatedBrush}"
-                      BorderBrush="{ThemeResource NexaBorderBrush}"
-                      BorderThickness="1">
-                    <!-- Placeholder Background for Hero -->
+                <!-- HEADER TITLE DIHAPUS SESUAI PERMINTAAN -->
+
+                <!-- SECTION 1: NEW BYPASS GAMES (Horizontal Scroll) -->
+                <StackPanel Spacing="16">
                     <Grid>
-                        <Border Background="{ThemeResource NexaSurfaceBrush}" CornerRadius="8" />
-                    </Grid>
-                    
-                    <Grid Padding="32,32">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        
-                        <!-- Info -->
-                        <StackPanel Grid.Column="0" VerticalAlignment="Bottom" Spacing="12">
-                            <Border BorderBrush="{ThemeResource NexaBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6,2" HorizontalAlignment="Left">
-                                <TextBlock Text="FEATURED" FontSize="10" FontWeight="SemiBold" Foreground="{ThemeResource NexaTextSecondaryBrush}" CharacterSpacing="50"/>
-                            </Border>
-                            <TextBlock Text="{x:Bind ViewModel.HeroGame.Title, Mode=OneWay, FallbackValue='Game Title'}" 
-                                       FontSize="36" FontWeight="SemiBold" 
-                                       Foreground="{ThemeResource NexaTextPrimaryBrush}" />
-                            <TextBlock Text="{x:Bind ViewModel.HeroGame.Publisher, Mode=OneWay, FallbackValue='Publisher'}" 
-                                       FontSize="14" Foreground="{ThemeResource NexaTextSecondaryBrush}" />
-                            <Button Margin="0,12,0,0" 
-                                    Height="36" Padding="24,0" 
-                                    CornerRadius="4"
-                                    Background="{ThemeResource NexaTextPrimaryBrush}" 
-                                    Foreground="{ThemeResource NexaSurfaceBrush}"
-                                    BorderThickness="0">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Text="View Details" FontWeight="Medium" />
-                                </StackPanel>
-                            </Button>
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Border Width="6" Height="24" CornerRadius="3" Background="{ThemeResource NexaTextPrimaryBrush}" />
+                            <TextBlock Text="New Bypass Games" FontSize="20" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
                         </StackPanel>
+                        <Button Grid.Column="1" Content="Lihat Semua" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="14" FontWeight="Medium" />
                     </Grid>
-                </Grid>
 
-                <!-- POPULAR GAMES CAROUSEL -->
-                <StackPanel Spacing="16">
-                    <TextBlock Text="Popular Games" FontSize="16" FontWeight="Medium" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
-                    <ScrollViewer HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
-                        <ItemsRepeater ItemsSource="{x:Bind ViewModel.PopularGames, Mode=OneWay}">
-                            <ItemsRepeater.Layout>
-                                <StackLayout Orientation="Horizontal" Spacing="16"/>
-                            </ItemsRepeater.Layout>
-                            <ItemsRepeater.ItemTemplate>
+                    <Grid Height="420" CornerRadius="12" Background="{ThemeResource NexaCardBrush}" BorderBrush="{ThemeResource NexaCardBorderBrush}" BorderThickness="1">
+                        <FlipView x:Name="HeroCarousel" ItemsSource="{x:Bind ViewModel.RecentFixes, Mode=OneWay}" SelectionChanged="HeroCarousel_SelectionChanged" UseTouchAnimationsForAllNavigation="True">
+                            <FlipView.Resources>
+                                <!-- Hack pamungkas: Panah bawaan FlipView adalah komponen Button. Kita sembunyikan semua Button di level ini! -->
+                                <Style TargetType="Button">
+                                    <Setter Property="Opacity" Value="0" />
+                                    <Setter Property="IsHitTestVisible" Value="False" />
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </Style>
+                            </FlipView.Resources>
+                            <FlipView.ItemTemplate>
                                 <DataTemplate x:DataType="models:FixEntry">
-                                    <!-- Card -->
-                                    <Grid Width="160" Height="220" CornerRadius="6" Background="{ThemeResource NexaSurfaceBrush}" BorderBrush="{ThemeResource NexaBorderBrush}" BorderThickness="1">
-                                        <StackPanel>
-                                            <!-- Poster (Placeholder) -->
-                                            <Border Height="140" Background="{ThemeResource NexaSurfaceElevatedBrush}" CornerRadius="6,6,0,0">
-                                                <FontIcon Glyph="&#xE7FC;" FontFamily="Segoe Fluent Icons" FontSize="24" Foreground="{ThemeResource NexaTextMutedBrush}" />
+                                    <Grid>
+                                        <!-- Background Image -->
+                                        <Border CornerRadius="12">
+                                            <Border.Background>
+                                                <ImageBrush ImageSource="{x:Bind PosterUrl}" Stretch="UniformToFill" />
+                                            </Border.Background>
+                                        </Border>
+                                        
+                                        <!-- Gradient Overlay for readability -->
+                                        <Border CornerRadius="12">
+                                            <Border.Background>
+                                                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                                                    <GradientStop Color="#00000000" Offset="0.1" />
+                                                    <GradientStop Color="#E6000000" Offset="1.0" />
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                        </Border>
+                                        
+                                        <!-- Premium / Standard Label (Top-Left) -->
+                                        <Grid HorizontalAlignment="Left" VerticalAlignment="Top" Margin="24">
+                                            <!-- PREMIUM Badge -->
+                                            <Border Visibility="{x:Bind local:HomePage.BoolToVis(IsPremium)}" 
+                                                    Background="{ThemeResource NexaTextPrimaryBrush}" 
+                                                    CornerRadius="4" Padding="12,6">
+                                                <TextBlock Text="PREMIUM" FontSize="12" FontWeight="Bold" Foreground="#000000" />
                                             </Border>
-                                            <StackPanel Padding="12" Spacing="4">
-                                                <TextBlock Text="{x:Bind Title}" FontSize="13" FontWeight="Medium" Foreground="{ThemeResource NexaTextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{x:Bind Publisher}" FontSize="11" Foreground="{ThemeResource NexaTextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                                            
+                                            <!-- STANDARD Badge -->
+                                            <Border Visibility="{x:Bind local:HomePage.InverseBoolToVis(IsPremium)}" 
+                                                    Background="#000000" 
+                                                    BorderBrush="#4DFFFFFF" BorderThickness="1"
+                                                    CornerRadius="4" Padding="12,6">
+                                                <TextBlock Text="STANDARD" FontSize="12" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                                            </Border>
+                                        </Grid>
+                                        
+                                        <!-- Content Info (Bottom-Left) -->
+                                        <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="32" Spacing="16" MaxWidth="700">
+                                            <StackPanel Spacing="4">
+                                                <!-- Title -->
+                                                <TextBlock Text="{x:Bind Title}" FontSize="36" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                
+                                                <!-- Description (Placeholder karena model belum memiliki field Description) -->
+                                                <TextBlock Text="Rasakan pengalaman bermain game yang tak terlupakan dengan performa maksimal. Jelajahi dunia baru, selesaikan misi menantang, dan taklukkan setiap rintangan dengan NexaPlay Bypass." 
+                                                           FontStyle="Italic" FontSize="14" Foreground="#CCCCCC" TextWrapping="Wrap" MaxHeight="60" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            
+                                            <!-- Genres Pill -->
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <Border BorderBrush="{ThemeResource NexaTextPrimaryBrush}" BorderThickness="1" CornerRadius="16" Padding="16,6">
+                                                    <TextBlock Text="{x:Bind Category}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" CharacterSpacing="50" />
+                                                </Border>
+                                                <Border BorderBrush="{ThemeResource NexaTextPrimaryBrush}" BorderThickness="1" CornerRadius="16" Padding="16,6">
+                                                    <TextBlock Text="SINGLEPLAYER" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" CharacterSpacing="50" />
+                                                </Border>
                                             </StackPanel>
                                         </StackPanel>
+                                        
+                                        <!-- Action Button (Bottom-Right) diubah menjadi HyperlinkButton agar tidak terkena efek Collapsed dari style FlipView -->
+                                        <HyperlinkButton Content="View Bypass" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="32" Height="44" Padding="32,0" Background="{ThemeResource NexaTextPrimaryBrush}" Foreground="#000000" FontWeight="Bold" CornerRadius="8" BorderThickness="0" />
                                     </Grid>
                                 </DataTemplate>
-                            </ItemsRepeater.ItemTemplate>
-                        </ItemsRepeater>
-                    </ScrollViewer>
+                            </FlipView.ItemTemplate>
+                        </FlipView>
+
+                        <!-- Custom Pips (Bulatan Melebar) di Tengah Bawah -->
+                        <StackPanel x:Name="CustomPipsContainer" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,24" Spacing="6" />
+                    </Grid>
                 </StackPanel>
 
-                <!-- NEW FIXES GRID -->
+                <!-- SECTION 2: POPULAR GAMES (Grid Layout) -->
                 <StackPanel Spacing="16">
-                    <TextBlock Text="Latest Releases" FontSize="16" FontWeight="Medium" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
-                    <ItemsRepeater ItemsSource="{x:Bind ViewModel.RecentFixes, Mode=OneWay}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Border Width="6" Height="24" CornerRadius="3" Background="{ThemeResource NexaTextPrimaryBrush}" />
+                            <TextBlock Text="Popular Games" FontSize="20" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="Jelajahi Games" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="14" FontWeight="Medium" />
+                    </Grid>
+
+                    <ItemsRepeater ItemsSource="{x:Bind ViewModel.PopularGames, Mode=OneWay}">
                         <ItemsRepeater.Layout>
-                            <UniformGridLayout MinItemWidth="200" MinRowSpacing="16" MinColumnSpacing="16" />
+                            <!-- ItemsStretch="Fill", MinItemWidth="220", dan MaximumRowsOrColumns="4" menjamin: MAKSIMAL 4 card yang merenggang, turun ke 3 card jika layar terlalu sempit -->
+                            <UniformGridLayout MinItemWidth="220" MaximumRowsOrColumns="4" MinRowSpacing="16" MinColumnSpacing="16" ItemsStretch="Fill" />
                         </ItemsRepeater.Layout>
                         <ItemsRepeater.ItemTemplate>
-                            <DataTemplate x:DataType="models:FixEntry">
-                                <!-- Card -->
-                                <Grid Height="280" CornerRadius="6" Background="{ThemeResource NexaSurfaceBrush}" BorderBrush="{ThemeResource NexaBorderBrush}" BorderThickness="1">
-                                    <StackPanel>
-                                        <!-- Poster (Placeholder) -->
-                                        <Border Height="180" Background="{ThemeResource NexaSurfaceElevatedBrush}" CornerRadius="6,6,0,0">
-                                            <FontIcon Glyph="&#xE7FC;" FontFamily="Segoe Fluent Icons" FontSize="32" Foreground="{ThemeResource NexaTextMutedBrush}" />
-                                        </Border>
-                                        <StackPanel Padding="16" Spacing="6">
-                                            <TextBlock Text="{x:Bind Title}" FontSize="14" FontWeight="Medium" Foreground="{ThemeResource NexaTextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{x:Bind Category.ToString()}" FontSize="12" Foreground="{ThemeResource NexaTextSecondaryBrush}" />
-                                        </StackPanel>
-                                    </StackPanel>
+                            <DataTemplate x:DataType="models:GameEntry">
+                                <!-- Card Style (Full Image with Overlay) -->
+                                <Grid Height="160" CornerRadius="12" BorderBrush="{ThemeResource NexaCardBorderBrush}" BorderThickness="1">
                                     
-                                    <!-- Premium Badge -->
-                                    <Border Visibility="{x:Bind local:HomePage.BoolToVis(IsPremium)}" 
-                                            Background="{ThemeResource NexaWarningBrush}" CornerRadius="4" Padding="6,2" 
-                                            HorizontalAlignment="Right" VerticalAlignment="Top" 
-                                            Margin="8,8,8,0">
-                                        <TextBlock Text="PRO" FontSize="9" FontWeight="SemiBold" Foreground="{ThemeResource NexaSurfaceBrush}" />
+                                    <!-- Header Image Area -->
+                                    <Border CornerRadius="12">
+                                        <Border.Background>
+                                            <ImageBrush ImageSource="{x:Bind HeaderImageUrl}" Stretch="UniformToFill" />
+                                        </Border.Background>
                                     </Border>
+                                    
+                                    <!-- Gradient Overlay for readability -->
+                                    <Border CornerRadius="12">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                                                <GradientStop Color="#00000000" Offset="0.2" />
+                                                <GradientStop Color="#E6000000" Offset="1.0" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                    </Border>
+                                    
+                                        <!-- Badges (Top-Left) -->
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Spacing="8">
+                                        <!-- PREMIUM / STANDARD Badge Container -->
+                                        <Grid>
+                                            <!-- PREMIUM Badge -->
+                                            <Border Visibility="{x:Bind local:HomePage.BoolToVis(IsPremium)}" 
+                                                    Background="{ThemeResource NexaTextPrimaryBrush}" 
+                                                    CornerRadius="4" Padding="8,4">
+                                                <TextBlock Text="PREMIUM" FontSize="10" FontWeight="Bold" Foreground="#000000" />
+                                            </Border>
+                                            
+                                            <!-- STANDARD Badge -->
+                                            <Border Visibility="{x:Bind local:HomePage.InverseBoolToVis(IsPremium)}" 
+                                                    Background="#000000" 
+                                                    BorderBrush="#4DFFFFFF" BorderThickness="1"
+                                                    CornerRadius="4" Padding="8,4">
+                                                <TextBlock Text="STANDARD" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                                            </Border>
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <!-- DENUVO Badge (Top-Right with yellow warning style and blink animation) -->
+                                    <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12"
+                                            Visibility="{x:Bind local:HomePage.BoolToVis(HasDenuvo)}" 
+                                            Background="#EAB308" 
+                                            BorderBrush="#FEF08A" BorderThickness="1.5"
+                                            CornerRadius="4" Padding="6,4"
+                                            Loaded="DenuvoBadge_Loaded">
+                                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                            <FontIcon Glyph="&#xE7BA;" FontSize="10" Foreground="#FFFFFF" FontWeight="Bold" />
+                                            <TextBlock Text="DENUVO" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,1,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                    
+                                    <!-- Title (Overlaid at Bottom-Left, normal text not too bold) -->
+                                    <TextBlock Text="{x:Bind Name}" 
+                                               HorizontalAlignment="Left" VerticalAlignment="Bottom" 
+                                               Margin="16" FontSize="16" FontWeight="Medium" 
+                                               Foreground="{ThemeResource NexaTextPrimaryBrush}" 
+                                               TextTrimming="CharacterEllipsis" MaxLines="2" TextWrapping="Wrap" />
                                 </Grid>
                             </DataTemplate>
                         </ItemsRepeater.ItemTemplate>
                     </ItemsRepeater>
+                    <Button Content="Tampilkan Lebih Banyak" Command="{x:Bind ViewModel.LoadMorePopularGamesCommand}" HorizontalAlignment="Center" Margin="0,16,0,0" Height="40" Padding="24,0" Background="Transparent" BorderBrush="{ThemeResource NexaBorderBrush}" BorderThickness="1" CornerRadius="8" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

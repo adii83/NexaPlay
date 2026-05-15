@@ -208,7 +208,8 @@
         <!-- ══════════════════════════════════════════════════════
              MAIN CONTENT AREA
         ══════════════════════════════════════════════════════ -->
-        <Grid>
+        <Grid BorderBrush="#232323"
+              BorderThickness="1,0,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="60"/>
                 <RowDefinition Height="*"/>
@@ -216,6 +217,7 @@
 
             <!-- Top Bar -->
             <Border Grid.Row="0"
+                    Background="#080808"
                     BorderBrush="{ThemeResource NexaBorderBrush}"
                     BorderThickness="0,0,0,1"
                     Padding="28,0,20,0">
@@ -244,14 +246,15 @@
                                 Spacing="8"
                                 VerticalAlignment="Center">
 
-                        <!-- Search box -->
+                        <!-- Search box (Disembunyikan karena tidak digunakan di halaman Home) -->
                         <Border CornerRadius="4"
                                 Background="{ThemeResource NexaSurfaceElevatedBrush}"
                                 BorderBrush="{ThemeResource NexaBorderBrush}"
                                 BorderThickness="1"
                                 Padding="10,0"
                                 Width="220"
-                                Height="32">
+                                Height="32"
+                                Visibility="Collapsed">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -282,7 +285,8 @@
 
             <!-- Page Content Frame -->
             <Frame x:Name="ContentFrame"
-                   Grid.Row="1"/>
+                   Grid.Row="1"
+                   Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"/>
 
         </Grid>
             </SplitView.Content>

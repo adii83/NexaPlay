@@ -9,6 +9,9 @@ public static class AppConstants
     // GitHub data sources
     public const string SteamDataUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/steam_data.json.gz";
     public const string BypassGamesUrl  = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/fix_games.json";
+    public const string SteamGamesUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/steam_games/steam_games.json";
+    public const string PopularGamesUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/appid_populer.json";
+    public const string OverrideDataUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/override_data.json";
 
     // Online fix base URL
     public const string OnlineFixBaseUrl = "https://files.luatools.work/OnlineFix1/";
@@ -20,6 +23,7 @@ public static class AppConstants
     // Cache TTLs
     public static readonly TimeSpan SteamDataCacheTtl  = TimeSpan.FromHours(12);
     public static readonly TimeSpan BypassGamesCacheTtl   = TimeSpan.FromHours(24);
+    public static readonly TimeSpan OverrideDataCacheTtl  = TimeSpan.FromHours(6);
 
     // Timeouts
     public static readonly TimeSpan LicenseOnlineTimeout = TimeSpan.FromSeconds(10);
@@ -30,7 +34,10 @@ public static class AppConstants
     public const string LicenseFileName        = "license.dat";
     public const string SteamDataCacheFileName = "github_raw_full.json";
     public const string BypassGamesCacheFileName  = "fix_games.json";
+    public const string SteamGamesCacheFileName   = "steam_games.json";
     public const string AppliedStateFileName   = "applied_state.json";
     public const string LogFileName            = "nexaplay.log";
     public const string FixLogPrefix           = "nexaplay-fix-log-";
+    public const string OverrideDataCacheFileName = "override_data.json";
+    public const string UserOverrideDataCacheFileName = "user_override_data.json";
 }

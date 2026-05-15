@@ -16,11 +16,15 @@
                     <SolidColorBrush x:Key="NexaAccentDimBrush"        Color="#1AFFFFFF"/>
                     <SolidColorBrush x:Key="NexaAccentDim2Brush"       Color="#33FFFFFF"/>
                     <SolidColorBrush x:Key="NexaSidebarBrush"          Color="#080808"/>
-                    <SolidColorBrush x:Key="NexaSurfaceBrush"          Color="#0A0A0A"/>
+                    <SolidColorBrush x:Key="NexaSurfaceBrush"          Color="#080808"/>
                     <SolidColorBrush x:Key="NexaSurfaceElevatedBrush"  Color="#121212"/>
                     <SolidColorBrush x:Key="NexaSurfaceHoverBrush"     Color="#1A1A1A"/>
-                    <SolidColorBrush x:Key="NexaBorderBrush"           Color="#333333"/>
-                    <SolidColorBrush x:Key="NexaBorderSubtleBrush"     Color="#242424"/>
+                    <!-- Card surfaces -->
+                    <SolidColorBrush x:Key="NexaCardBrush"             Color="#101010"/>
+                    <SolidColorBrush x:Key="NexaCardElevatedBrush"     Color="#161616"/>
+                    <SolidColorBrush x:Key="NexaCardBorderBrush"       Color="#28FFFFFF"/>
+                    <SolidColorBrush x:Key="NexaBorderBrush"           Color="#1FFFFFFF"/>
+                    <SolidColorBrush x:Key="NexaBorderSubtleBrush"     Color="#0FFFFFFF"/>
                     <SolidColorBrush x:Key="NexaTextPrimaryBrush"      Color="#FFFFFF"/>
                     <SolidColorBrush x:Key="NexaTextSecondaryBrush"    Color="#A0A0A0"/>
                     <SolidColorBrush x:Key="NexaTextMutedBrush"        Color="#666666"/>
@@ -171,12 +175,31 @@
                 <Setter Property="VerticalAlignment" Value="Center"/>
             </Style>
 
-            <!-- Card surface style -->
+            <!-- Card surface style — border putih tipis samar sebagai pemisah dari background hitam -->
             <Style x:Key="CardStyle" TargetType="Border">
-                <Setter Property="Background"    Value="#161616"/>
-                <Setter Property="CornerRadius"  Value="12"/>
-                <Setter Property="BorderBrush"   Value="#1E1E1E"/>
+                <Setter Property="Background"      Value="{ThemeResource NexaCardBrush}"/>
+                <Setter Property="CornerRadius"    Value="12"/>
+                <Setter Property="BorderBrush"     Value="{ThemeResource NexaCardBorderBrush}"/>
                 <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding"         Value="16"/>
+            </Style>
+
+            <!-- Card elevated — sedikit lebih terang untuk nested card -->
+            <Style x:Key="CardElevatedStyle" TargetType="Border">
+                <Setter Property="Background"      Value="{ThemeResource NexaCardElevatedBrush}"/>
+                <Setter Property="CornerRadius"    Value="10"/>
+                <Setter Property="BorderBrush"     Value="{ThemeResource NexaCardBorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding"         Value="12"/>
+            </Style>
+
+            <!-- Card flat — untuk item list dalam card -->
+            <Style x:Key="CardItemStyle" TargetType="Border">
+                <Setter Property="Background"      Value="#0CFFFFFF"/>
+                <Setter Property="CornerRadius"    Value="8"/>
+                <Setter Property="BorderBrush"     Value="#12FFFFFF"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding"         Value="12,10"/>
             </Style>
         </ResourceDictionary>
     </Application.Resources>

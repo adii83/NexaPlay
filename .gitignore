@@ -26,6 +26,8 @@ gamehub/
 *.tmp
 *.cache
 crash.txt
+*.txt
+*.exe
 
 # NuGet
 *.nupkg
