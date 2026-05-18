@@ -5,7 +5,7 @@ Target akhirnya: semua fitur penting `gamehub` tersedia di `NexaPlay` dengan UI 
 
 ## 0. Konteks Besar (Wajib)
 
-- Sumber lama: `D:\My Project\gamehub\desktop\GameHubDesktop`
+- Sumber lama (lokal): `D:\My Project\NexaPlay\gamehub`
 - Target baru: `D:\My Project\NexaPlay\NexaPlay`
 - `gamehub` lama: WPF + WebView2 + UI web (`public/*.html/js`)
 - `NexaPlay`: WinUI 3 native + service C#
@@ -13,6 +13,10 @@ Target akhirnya: semua fitur penting `gamehub` tersedia di `NexaPlay` dengan UI 
 Kenapa migrasi:
 - menghilangkan bottleneck WebView + JS bridge + startup load tinggi.
 - menjaga logic backend yang sudah matang, sambil rewrite UI native.
+
+Istilah produk yang dipakai di NexaPlay:
+- halaman utama: `Home` (bukan Dashboard)
+- area `Fix Games` lama: `Bypass Games` pada surface UI
 
 ## 1. Aturan Main Keras
 
@@ -31,6 +35,7 @@ Kenapa migrasi:
    - [README.md](</D:/My Project/NexaPlay/NexaPlay/README.md>)
    - [AGENTS.md](</D:/My Project/NexaPlay/NexaPlay/AGENTS.md>)
    - [MIGRATION_PARITY_MATRIX.md](</D:/My Project/NexaPlay/NexaPlay/MIGRATION_PARITY_MATRIX.md>)
+   - [AI_HANDOFF_PROMPT.md](</D:/My Project/NexaPlay/NexaPlay/AI_HANDOFF_PROMPT.md>)
 2. Validasi build baseline:
    ```powershell
    & 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe' `
@@ -46,10 +51,14 @@ Kenapa migrasi:
 - Shell native `MainWindow` sudah ada (sidebar + frame navigation).
 - DI composition root sudah ada di `App.xaml.cs`.
 - ViewModel utama sudah ada:
-  - `HomeViewModel`, `GamesViewModel`, `LibraryViewModel`, `FixGamesViewModel`, `SettingsViewModel`.
+  - `HomeViewModel`, `GamesViewModel`, `LibraryViewModel`, `BypassGamesViewModel`, `SettingsViewModel`.
 - Service yang sudah termigrasi di `Infrastructure\Services`:
-  - `AddGameService`, `FixGamesDataService`, `LicenseService`, `MetadataService`, `OnlineFixService`.
+  - `AddGameService`, `BypassGamesDataService`, `LicenseService`, `MetadataService`, `OnlineFixService`.
 - Kontrak service sudah tersedia di `Contracts\Services`.
+
+Catatan naming:
+- Bila masih menemukan nama lama `FixGames*` di sebagian file, perlakukan sebagai sisa migrasi penamaan.
+- Untuk UI/teks yang tampil ke pengguna, gunakan istilah `Bypass Games`.
 
 ## 4. Sumber Kebenaran Fitur Lama (GameHub)
 
@@ -73,7 +82,7 @@ Catatan:
 - Home: metrik + list dari `HomeViewModel`.
 - Games: virtualized list + search/filter dari `GamesViewModel`.
 - Library: scan Steam + status fix applied.
-- Fix Games: apply/unfix + progress states.
+- Bypass Games: apply/unfix + progress states.
 - Settings: license + update + system checks.
 
 ### Fase C - Feature Parity
@@ -95,7 +104,8 @@ Catatan:
 3. Build.
 4. Run quick smoke test.
 5. Catat status di matrix parity.
-6. Lanjut subfitur berikutnya.
+6. Catat checkpoint penting di `AI_HANDOFF_PROMPT.md`.
+7. Lanjut subfitur berikutnya.
 
 Jangan:
 - gabung redesign UI + refactor service besar sekaligus.
@@ -127,3 +137,10 @@ Jika muncul error C# lintas layer:
 - no blocker error runtime.
 - UI native final tidak lagi bergantung ke asset/page web lama.
 
+## 9. Checklist Analisis Sebelum Implementasi UI Baru
+Sebelum mengubah UI di halaman mana pun:
+1. Cek dulu halaman setara di `gamehub` untuk pahami behavior.
+2. Tulis ringkas: input, output, state loading/error, aksi user.
+3. Implementasi visual native WinUI untuk behavior yang sama.
+4. Build gate.
+5. Update matrix parity.

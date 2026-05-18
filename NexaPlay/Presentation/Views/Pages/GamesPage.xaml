@@ -5,89 +5,205 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:NexaPlay.Core.Models"
+    xmlns:local="using:NexaPlay.Presentation.Views.Pages"
     mc:Ignorable="d"
     Background="#080808">
 
-    <Grid Padding="28,20,28,28" RowSpacing="12">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
+        <!-- ══════════════════════════════════════════════════════
+             TOOLBAR — search + result count
+        ══════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0" Padding="28,20,28,0">
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Column="0"
-                       Text="Games Catalog"
-                       FontSize="24"
-                       FontWeight="SemiBold"
-                       VerticalAlignment="Center" />
+                <!-- Search box -->
+                <Border Grid.Column="0"
+                        CornerRadius="8"
+                        Background="#0CFFFFFF"
+                        BorderBrush="#18FFFFFF" BorderThickness="1"
+                        Padding="12,0" Height="38">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Grid.Column="0"
+                                  Glyph="&#xE721;"
+                                  FontFamily="Segoe Fluent Icons"
+                                  FontSize="13"
+                                  Foreground="{ThemeResource NexaTextMutedBrush}"
+                                  Margin="0,0,8,0"
+                                  VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1"
+                                 x:Name="SearchBox"
+                                 PlaceholderText="Search games..."
+                                 Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                                 PlaceholderForeground="{ThemeResource NexaTextMutedBrush}"
+                                 FontSize="13"
+                                 VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
 
-            <Border Grid.Column="1"
-                    CornerRadius="8"
-                    Background="#08FFFFFF"
-                    BorderBrush="#242424"
-                    BorderThickness="1"
-                    Padding="10,6">
-                <TextBlock Text="Most Popular"
-                           Foreground="{ThemeResource NexaTextMutedBrush}" />
-            </Border>
-        </Grid>
+                <!-- Result count -->
+                <TextBlock Grid.Column="1"
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           Foreground="{ThemeResource NexaTextMutedBrush}">
+                    <Run Text="{x:Bind ViewModel.TotalCount, Mode=OneWay}"/>
+                    <Run Text=" games"/>
+                </TextBlock>
+            </Grid>
+        </Border>
 
-        <GridView Grid.Row="1"
+        <!-- ══════════════════════════════════════════════════════
+             LOADING STATE
+        ══════════════════════════════════════════════════════ -->
+        <ProgressBar Grid.Row="1"
+                     IsIndeterminate="True"
+                     Visibility="{x:Bind local:GamesPage.BoolToVis(ViewModel.IsLoading), Mode=OneWay}"
+                     Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                     Background="Transparent"
+                     Margin="28,12,28,0"
+                     Height="2"/>
+
+        <!-- ══════════════════════════════════════════════════════
+             GAME GRID — virtualized GridView
+             Each card: header image + title + fix status badge
+             Click → navigate to GameDetailPage
+        ══════════════════════════════════════════════════════ -->
+        <GridView Grid.Row="2"
+                  x:Name="GameGrid"
+                  ItemsSource="{x:Bind ViewModel.Games, Mode=OneWay}"
                   IsItemClickEnabled="True"
+                  ItemClick="OnGameItemClicked"
                   SelectionMode="None"
-                  ItemContainerStyle="{StaticResource DefaultGridViewItemStyle}">
+                  Padding="28,12,28,28"
+                  ScrollViewer.VerticalScrollBarVisibility="Hidden">
+
+            <GridView.ItemContainerStyle>
+                <Style TargetType="GridViewItem">
+                    <Setter Property="Padding"       Value="0"/>
+                    <Setter Property="Margin"        Value="0,0,12,12"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="VerticalContentAlignment"   Value="Stretch"/>
+                    <!-- Remove default WinUI selection/focus chrome -->
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="GridViewItem">
+                                <ContentPresenter/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </GridView.ItemContainerStyle>
+
             <GridView.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <ItemsWrapGrid ItemWidth="210" ItemHeight="250" />
+                    <!-- ItemsWrapGrid provides UI virtualization for large lists -->
+                    <ItemsWrapGrid Orientation="Horizontal"
+                                   ItemWidth="210"
+                                   ItemHeight="248"/>
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
 
-            <GridViewItem>
-                <Border CornerRadius="10"
-                        Background="#161616"
-                        BorderBrush="#222222"
-                        BorderThickness="1"
-                        Padding="12">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Baldur's Gate 3" FontWeight="SemiBold" />
-                        <TextBlock Text="RPG" Foreground="{ThemeResource NexaTextMutedBrush}" />
-                        <TextBlock Text="Fix Available" Foreground="#22C55E" />
-                    </StackPanel>
-                </Border>
-            </GridViewItem>
+            <GridView.ItemTemplate>
+                <DataTemplate x:DataType="models:FixEntry">
+                    <!--
+                        Card: poster image (portrait 600×900) + title + publisher + badge.
+                        Uses FixEntry because GamesViewModel sources from fix_games.json
+                        (games that have a bypass available).
+                        Hover effect handled by PopularGameCardStyle in App.xaml.
+                    -->
+                    <Button Style="{StaticResource PopularGameCardStyle}"
+                            Tag="{x:Bind AppId}">
+                        <Grid Height="248" CornerRadius="10"
+                              BorderBrush="{ThemeResource NexaCardBorderBrush}"
+                              BorderThickness="1">
 
-            <GridViewItem>
-                <Border CornerRadius="10"
-                        Background="#161616"
-                        BorderBrush="#222222"
-                        BorderThickness="1"
-                        Padding="12">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Cyberpunk 2077" FontWeight="SemiBold" />
-                        <TextBlock Text="Action RPG" Foreground="{ThemeResource NexaTextMutedBrush}" />
-                        <TextBlock Text="Fix Available" Foreground="#22C55E" />
-                    </StackPanel>
-                </Border>
-            </GridViewItem>
+                            <!-- Poster image (portrait) — wrapped in Border for corner clipping -->
+                            <Border CornerRadius="10">
+                                <Border.Background>
+                                    <ImageBrush ImageSource="{x:Bind PosterUrl}"
+                                                Stretch="UniformToFill"/>
+                                </Border.Background>
+                            </Border>
 
-            <GridViewItem>
-                <Border CornerRadius="10"
-                        Background="#161616"
-                        BorderBrush="#222222"
-                        BorderThickness="1"
-                        Padding="12">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Elden Ring" FontWeight="SemiBold" />
-                        <TextBlock Text="Soulslike RPG" Foreground="{ThemeResource NexaTextMutedBrush}" />
-                        <TextBlock Text="No Fix Needed" Foreground="#F59E0B" />
-                    </StackPanel>
-                </Border>
-            </GridViewItem>
+                            <!-- Bottom gradient for text legibility -->
+                            <Border CornerRadius="10" VerticalAlignment="Bottom" Height="100">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#00000000" Offset="0"/>
+                                        <GradientStop Color="#F0000000" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+
+                            <!-- PREMIUM / STANDARD badge — top-left -->
+                            <!-- Dua border di-toggle visibility, konsisten dengan pola HomePage -->
+                            <Border HorizontalAlignment="Left" VerticalAlignment="Top"
+                                    Margin="10" CornerRadius="4" Padding="8,3"
+                                    Background="{ThemeResource NexaTextPrimaryBrush}"
+                                    Visibility="{x:Bind local:GamesPage.BoolToVis(IsPremium)}">
+                                <TextBlock Text="PREMIUM"
+                                           FontSize="10" FontWeight="Bold"
+                                           Foreground="#000000"/>
+                            </Border>
+                            <Border HorizontalAlignment="Left" VerticalAlignment="Top"
+                                    Margin="10" CornerRadius="4" Padding="8,3"
+                                    Background="#000000"
+                                    BorderBrush="#4DFFFFFF" BorderThickness="1"
+                                    Visibility="{x:Bind local:GamesPage.InverseBoolToVis(IsPremium)}">
+                                <TextBlock Text="STANDARD"
+                                           FontSize="10" FontWeight="Bold"
+                                           Foreground="{ThemeResource NexaTextPrimaryBrush}"/>
+                            </Border>
+
+                            <!-- Title + publisher — bottom -->
+                            <StackPanel VerticalAlignment="Bottom"
+                                        Margin="12,0,12,12" Spacing="2">
+                                <TextBlock Text="{x:Bind Title}"
+                                           FontSize="13" FontWeight="SemiBold"
+                                           Foreground="#FFFFFF"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxLines="2" TextWrapping="Wrap"/>
+                                <TextBlock Text="{x:Bind Publisher}"
+                                           FontSize="11"
+                                           Foreground="#AAAAAA"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Grid>
+                    </Button>
+                </DataTemplate>
+            </GridView.ItemTemplate>
         </GridView>
+
+        <!-- Empty state -->
+        <StackPanel Grid.Row="2"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Spacing="8"
+                    Visibility="{x:Bind local:GamesPage.BoolToVis(ViewModel.IsEmpty), Mode=OneWay}">
+            <FontIcon Glyph="&#xE7FC;"
+                      FontFamily="Segoe Fluent Icons"
+                      FontSize="40"
+                      Foreground="{ThemeResource NexaTextMutedBrush}"/>
+            <TextBlock Text="No games found"
+                       FontSize="14"
+                       Foreground="{ThemeResource NexaTextMutedBrush}"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
     </Grid>
 </Page>

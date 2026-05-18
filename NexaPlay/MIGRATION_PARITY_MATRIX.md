@@ -38,10 +38,15 @@ Update status setiap selesai implementasi/validasi.
 
 | Area | GameHub (lama) | NexaPlay (baru) | Status |
 |---|---|---|---|
-| Metadata source | steam metadata archive + override | `IMetadataService`/`MetadataService` | Partial |
-| Search/filter | Web JS | `GamesViewModel` ada | Partial |
-| Virtualized grid/list | Web rendering | Perlu finalisasi `GridView` virtualized behavior | Partial |
-| Pagination/infinite strategy | Web-side logic | Belum final | Missing |
+| Metadata source | steam metadata archive + override | `IMetadataService`/`MetadataService` — field lengkap + override pipeline | **Done** |
+| Override data pipeline | `OverrideDataService` global + user | `ApplyOverrideDataAsync` (global + user, semua field) | **Done** |
+| Denuvo auto-flag | fix_games + steam_games list | `ApplyAutoDenuvoFromListsAsync` + override dapat reset | **Done** |
+| PREMIUM threshold | `price_normalized >= 130000` | `GameEntry.IsPremium` — parity exact | **Done** |
+| Search/filter | Web JS | `GamesViewModel` search + `IsEmpty` state | **Done** |
+| Virtualized grid/list | Web rendering | `GridView` + `ItemsWrapGrid` virtualized | **Done** |
+| Game detail page | Modal popup web | `GameDetailPage` native — hero, screenshot strip, sidebar, aksi | **Done** |
+| Rich detail on-demand | Steam API via JS | `ISteamStoreService` + `SteamStoreService` — cache 7 hari per-appid | **Done** |
+| Pagination/infinite strategy | Web-side logic | Load more via `LoadMorePopularGamesCommand` | Partial |
 
 ## E. Library
 
@@ -51,15 +56,18 @@ Update status setiap selesai implementasi/validasi.
 | Show applied fixes | Applied state + UI | `LibraryViewModel` ada | Partial |
 | Add/Remove game flow | `AddGameService` | `IAddGameService` + implementation | Partial |
 
-## F. Fix Games Core
+## F. Bypass Games Core (Formerly Fix Games)
 
 | Area | GameHub (lama) | NexaPlay (baru) | Status |
 |---|---|---|---|
-| Fix catalog load | `FixGamesDataService` | `IFixGamesDataService` + impl | Done |
-| Apply fix flow | `OnlineFixService` + progress | `IOnlineFixService` + `FixGamesViewModel` | Partial |
-| Progress state UI | Web progress updates | Native progress panel | Partial |
-| Unfix flow | Ada | Ada, perlu parity behavior test | Partial |
-| Cancel flow | Ada | Ada, perlu full test | Partial |
+| Fix catalog load | `FixGamesDataService` | `IBypassGamesDataService` + impl | Done |
+| Apply fix flow | `OnlineFixService` + progress | `IOnlineFixService` + `BypassGamesViewModel` + `GameDetailViewModel` | Partial |
+| Progress state UI | Web progress updates | Native progress bar di `GameDetailPage` | **Done** |
+| Unfix flow | Ada | Ada di `GameDetailViewModel.RemoveFixCommand` | Partial |
+| Cancel flow | Ada | Ada di `GameDetailViewModel.CancelFixCommand` | Partial |
+| Add-Game action | `AddGameService` | `GameDetailViewModel.AddGameCommand` | **Done** |
+| Online-Fix action | `OnlineFixService` | `GameDetailViewModel.ApplyFixCommand` | Partial |
+| Restart Steam action | `SteamService.RestartSteam` | `GameDetailViewModel.RestartSteamCommand` | **Done** |
 
 ## G. System / Security Helpers
 
@@ -97,9 +105,8 @@ Update status setiap selesai implementasi/validasi.
 
 1. Finalkan update system parity (`UpdateService` port ke `NexaPlay`).
 2. Finalkan home data parity (`popular` + `new fix` + cache policy).
-3. Lengkapi behavior parity `FixGames` (cancel/error edge cases).
+3. Lengkapi behavior parity `Bypass Games` (cancel/error edge cases).
 4. Lengkapi `Library` parity (scan, add/remove, applied state sync).
 5. Hardening warning:
    - `MVVMTK0045` (AOT-safe property pattern)
    - dependency advisory `SharpCompress`.
-

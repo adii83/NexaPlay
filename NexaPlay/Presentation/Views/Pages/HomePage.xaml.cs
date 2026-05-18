@@ -2,7 +2,9 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml;
 using System;
+using NexaPlay.Contracts.Navigation;
 using NexaPlay.Presentation.ViewModels;
+using NexaPlay.Presentation.Views.Pages;
 
 namespace NexaPlay.Presentation.Views.Pages;
 
@@ -10,11 +12,13 @@ public sealed partial class HomePage : Page
 {
     public HomeViewModel ViewModel => (HomeViewModel)DataContext;
     private DispatcherTimer _carouselTimer;
+    private INavigationService? _nav;
 
     public HomePage() 
     {
         InitializeComponent();
         DataContext = ((App)App.Current).GetRequiredService<HomeViewModel>();
+        _nav = ((App)App.Current).GetRequiredService<INavigationService>();
         SetupCarouselTimer();
     }
 
@@ -135,5 +139,13 @@ public sealed partial class HomePage : Page
             storyboard.Children.Add(animation);
             storyboard.Begin();
         }
+    }
+
+    // ── Navigation ───────────────────────────────────────────────────────────
+
+    private void OnPopularGameCardClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is int appId && _nav is not null)
+            _nav.Navigate<GameDetailPage>(appId);
     }
 }

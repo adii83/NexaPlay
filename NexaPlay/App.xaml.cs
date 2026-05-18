@@ -53,6 +53,7 @@ public partial class App : Application
         services.AddSingleton<IOnlineFixService, OnlineFixService>();
         services.AddSingleton<IAddGameService, AddGameService>();
         services.AddSingleton<ILicenseService, LicenseService>();
+        services.AddSingleton<ISteamStoreService, SteamStoreService>();
 
         // ── Navigation ──────────────────────────────────────────────
         services.AddSingleton<INavigationService, NavigationService>();
@@ -64,6 +65,7 @@ public partial class App : Application
         services.AddTransient<LibraryViewModel>();
         services.AddTransient<BypassGamesViewModel>();
         services.AddTransient<SettingsViewModel>();
+        services.AddTransient<GameDetailViewModel>();
 
         // ── Window ──────────────────────────────────────────────────
         services.AddTransient<MainWindow>();

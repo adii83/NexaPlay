@@ -12,7 +12,7 @@
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="40" />
+            <RowDefinition x:Name="WindowTopRow" Height="40" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -57,7 +57,8 @@
         <!-- ══════════════════════════════════════════════════════
              SIDEBAR
         ══════════════════════════════════════════════════════ -->
-        <Border Background="{ThemeResource NexaSidebarBrush}"
+        <Border x:Name="SidebarShell"
+                Background="{ThemeResource NexaSidebarBrush}"
                 BorderBrush="{ThemeResource NexaBorderBrush}"
                 BorderThickness="0,0,1,0"
                 HorizontalAlignment="Stretch"
@@ -208,15 +209,16 @@
         <!-- ══════════════════════════════════════════════════════
              MAIN CONTENT AREA
         ══════════════════════════════════════════════════════ -->
-        <Grid BorderBrush="#232323"
+            <Grid BorderBrush="#232323"
               BorderThickness="1,0,0,0">
             <Grid.RowDefinitions>
-                <RowDefinition Height="60"/>
+                <RowDefinition x:Name="ContentTopBarRow" Height="60"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
             <!-- Top Bar -->
-            <Border Grid.Row="0"
+            <Border x:Name="PageTopBar"
+                    Grid.Row="0"
                     Background="#080808"
                     BorderBrush="{ThemeResource NexaBorderBrush}"
                     BorderThickness="0,0,0,1"

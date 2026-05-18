@@ -6,9 +6,11 @@ public static class AppConstants
     public const string AppVersion = "1.0.0";
     public const string AppDataFolder = "NexaPlay";
 
-    // GitHub data sources
+    // Legacy GitHub data sources
     public const string SteamDataUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/steam_data.json.gz";
+    public const string SteamDataJsonUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/steam_data.json";
     public const string BypassGamesUrl  = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/fix_games.json";
+    public const string NewFixGamesUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/new_fix_games.json";
     public const string SteamGamesUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/steam_games/steam_games.json";
     public const string PopularGamesUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/appid_populer.json";
     public const string OverrideDataUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/override_data.json";
@@ -34,6 +36,7 @@ public static class AppConstants
     public const string LicenseFileName        = "license.dat";
     public const string SteamDataCacheFileName = "github_raw_full.json";
     public const string BypassGamesCacheFileName  = "fix_games.json";
+    public const string NewFixGamesCacheFileName = "new_fix_games.json";
     public const string SteamGamesCacheFileName   = "steam_games.json";
     public const string AppliedStateFileName   = "applied_state.json";
     public const string LogFileName            = "nexaplay.log";

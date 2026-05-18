@@ -201,9 +201,200 @@
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Padding"         Value="12,10"/>
             </Style>
+
+            <!--
+                PopularGameCardStyle
+                ─────────────────────────────────────────────────────────────
+                Button container untuk card Popular Games di HomePage.
+                Hover: scale naik tipis (1.03) + border putih lebih terang.
+                Pressed: scale turun sedikit (0.98) untuk tactile feedback.
+                Semua transisi pakai EasingFunction agar terasa smooth & premium.
+                Tidak ada warna aksen — murni hitam/putih sesuai design system.
+            -->
+            <Style x:Key="PopularGameCardStyle" TargetType="Button">
+                <Setter Property="Padding"          Value="0"/>
+                <Setter Property="BorderThickness"  Value="0"/>
+                <Setter Property="Background"       Value="Transparent"/>
+                <Setter Property="HorizontalAlignment"        Value="Stretch"/>
+                <Setter Property="VerticalAlignment"          Value="Stretch"/>
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <Setter Property="VerticalContentAlignment"   Value="Stretch"/>
+                <Setter Property="UseSystemFocusVisuals"      Value="False"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <!-- RenderTransformOrigin="0.5,0.5" agar scale dari tengah card -->
+                            <Grid x:Name="RootGrid"
+                                  RenderTransformOrigin="0.5,0.5"
+                                  Height="160"
+                                  CornerRadius="12">
+
+                                <Grid.RenderTransform>
+                                    <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
+                                </Grid.RenderTransform>
+
+                                <!-- Konten card (diteruskan dari ContentPresenter) -->
+                                <ContentPresenter x:Name="ContentPresenter"
+                                                  HorizontalAlignment="Stretch"
+                                                  VerticalAlignment="Stretch"/>
+
+                                <!--
+                                    Hover lighting overlay — border putih lebih terang saat hover.
+                                    Opacity 0 di normal, naik ke 1 saat PointerOver.
+                                    Ini yang memberi efek "glowing edge" premium.
+                                -->
+                                <Border x:Name="HoverBorderOverlay"
+                                        CornerRadius="12"
+                                        BorderThickness="1.5"
+                                        BorderBrush="#70FFFFFF"
+                                        Opacity="0"
+                                        IsHitTestVisible="False"/>
+
+                                <!--
+                                    Pressed overlay — flash putih sangat tipis saat klik.
+                                -->
+                                <Border x:Name="PressedOverlay"
+                                        CornerRadius="12"
+                                        Background="#12FFFFFF"
+                                        Opacity="0"
+                                        IsHitTestVisible="False"/>
+
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+
+                                        <VisualStateGroup.Transitions>
+                                            <!-- Transisi masuk/keluar hover — smooth 180ms -->
+                                            <VisualTransition From="Normal" To="PointerOver">
+                                                <Storyboard>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="CardScale"
+                                                        Storyboard.TargetProperty="ScaleX"
+                                                        To="1.03" Duration="0:0:0.18">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="CardScale"
+                                                        Storyboard.TargetProperty="ScaleY"
+                                                        To="1.03" Duration="0:0:0.18">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="HoverBorderOverlay"
+                                                        Storyboard.TargetProperty="Opacity"
+                                                        To="1" Duration="0:0:0.18">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </VisualTransition>
+                                            <VisualTransition From="PointerOver" To="Normal">
+                                                <Storyboard>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="CardScale"
+                                                        Storyboard.TargetProperty="ScaleX"
+                                                        To="1.0" Duration="0:0:0.22">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="CardScale"
+                                                        Storyboard.TargetProperty="ScaleY"
+                                                        To="1.0" Duration="0:0:0.22">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="HoverBorderOverlay"
+                                                        Storyboard.TargetProperty="Opacity"
+                                                        To="0" Duration="0:0:0.22">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </VisualTransition>
+                                            <VisualTransition From="PointerOver" To="Pressed">
+                                                <Storyboard>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="CardScale"
+                                                        Storyboard.TargetProperty="ScaleX"
+                                                        To="0.98" Duration="0:0:0.08">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseIn"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="CardScale"
+                                                        Storyboard.TargetProperty="ScaleY"
+                                                        To="0.98" Duration="0:0:0.08">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseIn"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="PressedOverlay"
+                                                        Storyboard.TargetProperty="Opacity"
+                                                        To="1" Duration="0:0:0.08"/>
+                                                </Storyboard>
+                                            </VisualTransition>
+                                            <VisualTransition From="Pressed" To="PointerOver">
+                                                <Storyboard>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="CardScale"
+                                                        Storyboard.TargetProperty="ScaleX"
+                                                        To="1.03" Duration="0:0:0.14">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="CardScale"
+                                                        Storyboard.TargetProperty="ScaleY"
+                                                        To="1.03" Duration="0:0:0.14">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="PressedOverlay"
+                                                        Storyboard.TargetProperty="Opacity"
+                                                        To="0" Duration="0:0:0.14"/>
+                                                </Storyboard>
+                                            </VisualTransition>
+                                        </VisualStateGroup.Transitions>
+
+                                        <VisualState x:Name="Normal"/>
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="CardScale.ScaleX"          Value="1.03"/>
+                                                <Setter Target="CardScale.ScaleY"          Value="1.03"/>
+                                                <Setter Target="HoverBorderOverlay.Opacity" Value="1"/>
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="CardScale.ScaleX"    Value="0.98"/>
+                                                <Setter Target="CardScale.ScaleY"    Value="0.98"/>
+                                                <Setter Target="PressedOverlay.Opacity" Value="1"/>
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled"/>
+
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
-
-
 

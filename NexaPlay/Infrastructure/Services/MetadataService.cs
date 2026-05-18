@@ -2,43 +2,53 @@ using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Constants;
 using NexaPlay.Core.Models;
 using System.IO.Compression;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text.Json;
 
 namespace NexaPlay.Infrastructure.Services;
 
-/// <summary>Downloads, caches, and indexes steam_data.json.gz from GitHub.
-/// Uses ETag/LastModified for bandwidth-efficient updates and builds an
-/// in-memory dictionary for O(1) lookups — same strategy as GameHub GitHubRawService.</summary>
+/// <summary>
+/// Lightweight runtime catalog for list surfaces.
+/// Source order: steam_data.json.gz -> steam_data.json -> override_data.json.
+/// Detail metadata is resolved on demand by ISteamStoreService.
+/// </summary>
 public sealed class MetadataService : IMetadataService
 {
     private readonly IAppLogService _log;
-    private readonly string _cacheFile;
-    private readonly string _etagFile;
-    private readonly string _overrideCacheFile;
-    private readonly string _overrideEtagFile;
-    private readonly string _userOverrideCacheFile;
     private readonly HttpClient _http;
-    private Dictionary<int, GameEntry>? _index;
     private readonly SemaphoreSlim _loadLock = new(1, 1);
+
+    private readonly string _catalogDir;
+    private readonly string _steamDataGzFile;
+    private readonly string _steamDataFile;
+    private readonly string _overrideDataFile;
+    private readonly string _fixGamesFile;
+    private readonly string _newFixGamesFile;
+    private readonly string _steamGamesFile;
+
+    private Dictionary<int, GameEntry>? _index;
     private DateTime _lastLoaded = DateTime.MinValue;
+    private IReadOnlyList<int>? _popularAppIdsCache;
+    private DateTime _popularLastLoaded = DateTime.MinValue;
 
     public MetadataService(IAppLogService log)
     {
         _log = log;
-        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppConstants.AppDataFolder);
-        Directory.CreateDirectory(dir);
-        _cacheFile = Path.Combine(dir, AppConstants.SteamDataCacheFileName);
-        _etagFile  = Path.Combine(dir, AppConstants.SteamDataCacheFileName + ".etag");
-        _overrideCacheFile = Path.Combine(dir, AppConstants.OverrideDataCacheFileName);
-        _overrideEtagFile = Path.Combine(dir, AppConstants.OverrideDataCacheFileName + ".etag");
-        _userOverrideCacheFile = Path.Combine(dir, AppConstants.UserOverrideDataCacheFileName);
-        _http = new HttpClient(new HttpClientHandler { AutomaticDecompression = System.Net.DecompressionMethods.GZip })
-        {
-            Timeout = AppConstants.HttpDefaultTimeout
-        };
+        _http = new HttpClient { Timeout = AppConstants.HttpDefaultTimeout };
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("NexaPlay/1.0");
+
+        _catalogDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            AppConstants.AppDataFolder,
+            "runtime_catalog_sources");
+
+        _steamDataGzFile = Path.Combine(_catalogDir, "steam_data.json.gz");
+        _steamDataFile = Path.Combine(_catalogDir, "steam_data.json");
+        _overrideDataFile = Path.Combine(_catalogDir, "override_data.json");
+        _fixGamesFile = Path.Combine(_catalogDir, AppConstants.BypassGamesCacheFileName);
+        _newFixGamesFile = Path.Combine(_catalogDir, AppConstants.NewFixGamesCacheFileName);
+        _steamGamesFile = Path.Combine(_catalogDir, AppConstants.SteamGamesCacheFileName);
+
+        Directory.CreateDirectory(_catalogDir);
     }
 
     public async Task<GameEntry?> GetMetadataAsync(int appId, CancellationToken ct = default)
@@ -52,15 +62,12 @@ public sealed class MetadataService : IMetadataService
     {
         await EnsureIndexedAsync(ct);
         if (string.IsNullOrWhiteSpace(query)) return Array.Empty<GameEntry>();
-        var q = query.ToLowerInvariant();
+
         return _index!.Values
-            .Where(g => g.Name.Contains(q, StringComparison.OrdinalIgnoreCase))
+            .Where(g => g.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
             .Take(maxResults)
             .ToList();
     }
-
-    private IReadOnlyList<int>? _popularAppIdsCache;
-    private DateTime _popularLastLoaded = DateTime.MinValue;
 
     public async Task<IReadOnlyList<int>> GetPopularAppIdsAsync(CancellationToken ct = default)
     {
@@ -69,353 +76,279 @@ public sealed class MetadataService : IMetadataService
 
         try
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get, AppConstants.PopularGamesUrl);
-            req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                var json = await resp.Content.ReadAsStringAsync(ct);
-                var arr = JsonSerializer.Deserialize<int[]>(json) ?? Array.Empty<int>();
-                _popularAppIdsCache = arr;
-                _popularLastLoaded = DateTime.UtcNow;
-                return arr;
-            }
+            var json = await DownloadStringAsync(AppConstants.PopularGamesUrl, ct);
+            var arr = JsonSerializer.Deserialize<int[]>(json) ?? Array.Empty<int>();
+            _popularAppIdsCache = arr;
+            _popularLastLoaded = DateTime.UtcNow;
+            return arr;
         }
         catch (Exception ex)
         {
             _log.Log("Metadata", $"Popular AppIds download error: {ex.Message}");
+            return _popularAppIdsCache ?? Array.Empty<int>();
         }
-
-        return _popularAppIdsCache ?? Array.Empty<int>();
     }
 
     public async Task RefreshAsync(bool forceDownload = false, CancellationToken ct = default)
     {
-        await LoadFromGitHubAsync(force: forceDownload, ct: ct);
+        await SyncSourcesAsync(forceDownload, ct);
+        await BuildIndexAsync(ct);
     }
 
-    public async Task ClearCacheAsync()
+    public Task ClearCacheAsync()
     {
         _index = null;
         _lastLoaded = DateTime.MinValue;
-        try { if (File.Exists(_cacheFile)) File.Delete(_cacheFile); } catch { }
-        try { if (File.Exists(_etagFile))  File.Delete(_etagFile); }  catch { }
-        try { if (File.Exists(_overrideCacheFile)) File.Delete(_overrideCacheFile); } catch { }
-        try { if (File.Exists(_overrideEtagFile))  File.Delete(_overrideEtagFile); }  catch { }
-        _log.Log("Metadata", "Cache cleared");
+
+        try
+        {
+            if (Directory.Exists(_catalogDir))
+                Directory.Delete(_catalogDir, recursive: true);
+        }
+        catch { }
+
+        Directory.CreateDirectory(_catalogDir);
+        _log.Log("Metadata", "Runtime catalog cache cleared");
+        return Task.CompletedTask;
     }
 
     private async Task EnsureIndexedAsync(CancellationToken ct)
     {
-        if (_index is not null && DateTime.UtcNow - _lastLoaded < AppConstants.SteamDataCacheTtl) return;
+        if (_index is not null && DateTime.UtcNow - _lastLoaded < AppConstants.SteamDataCacheTtl)
+            return;
+
         await _loadLock.WaitAsync(ct);
         try
         {
-            if (_index is not null && DateTime.UtcNow - _lastLoaded < AppConstants.SteamDataCacheTtl) return;
-            await LoadFromGitHubAsync(force: false, ct: ct);
-            await LoadOverrideFromGitHubAsync(force: false, ct: ct);
-            await LoadSteamGamesFromGitHubAsync(force: false, ct: ct);
+            if (_index is not null && DateTime.UtcNow - _lastLoaded < AppConstants.SteamDataCacheTtl)
+                return;
+
+            await SyncSourcesAsync(force: false, ct);
+            await BuildIndexAsync(ct);
         }
-        finally { _loadLock.Release(); }
+        finally
+        {
+            _loadLock.Release();
+        }
     }
 
-    private async Task LoadFromGitHubAsync(bool force, CancellationToken ct)
+    private async Task SyncSourcesAsync(bool force, CancellationToken ct)
     {
-        // Try disk cache first
-        if (!force && File.Exists(_cacheFile))
+        await DownloadIfNeededAsync(AppConstants.SteamDataUrl, _steamDataGzFile, force, ct);
+        await DownloadIfNeededAsync(AppConstants.SteamDataJsonUrl, _steamDataFile, force, ct);
+        await DownloadIfNeededAsync(AppConstants.OverrideDataUrl, _overrideDataFile, force, ct);
+        await DownloadIfNeededAsync(AppConstants.BypassGamesUrl, _fixGamesFile, force, ct);
+        await DownloadIfNeededAsync(AppConstants.NewFixGamesUrl, _newFixGamesFile, force, ct);
+        await DownloadIfNeededAsync(AppConstants.SteamGamesUrl, _steamGamesFile, force, ct);
+    }
+
+    private async Task BuildIndexAsync(CancellationToken ct)
+    {
+        var catalog = new Dictionary<int, RuntimeCatalogEntry>(capacity: 160_000);
+
+        await MergeSourceAsync(_steamDataGzFile, isGzip: true, catalog, ct);
+        await MergeSourceAsync(_steamDataFile, isGzip: false, catalog, ct);
+        await MergeSourceAsync(_overrideDataFile, isGzip: false, catalog, ct);
+        var protectedAppIds = await LoadProtectionAppIdsAsync(
+            [_fixGamesFile, _newFixGamesFile, _steamGamesFile],
+            ct);
+
+        _index = catalog.Values
+            .Select(e => new GameEntry
+            {
+                AppId = e.AppId,
+                Name = e.Title ?? $"App {e.AppId}",
+                PriceDisplay = e.PriceDisplay,
+                PriceNormalized = e.PriceNormalized,
+                Protection = e.Protection || protectedAppIds.Contains(e.AppId),
+                HeaderImageUrl = e.HeaderImageUrl ?? string.Empty,
+                Genre = e.Genre
+            })
+            .ToDictionary(e => e.AppId);
+
+        _lastLoaded = DateTime.UtcNow;
+        _log.Log("Metadata", $"Runtime catalog built: {_index.Count:N0} unique appids, protected={protectedAppIds.Count:N0}");
+    }
+
+    private static async Task<HashSet<int>> LoadProtectionAppIdsAsync(
+        IReadOnlyList<string> paths,
+        CancellationToken ct)
+    {
+        var appIds = new HashSet<int>();
+
+        foreach (var path in paths)
         {
-            var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(_cacheFile);
+            if (!File.Exists(path))
+                continue;
+
+            await using var file = File.OpenRead(path);
+            using var doc = await JsonDocument.ParseAsync(file, cancellationToken: ct);
+            CollectAppIds(doc.RootElement, appIds);
+        }
+
+        return appIds;
+    }
+
+    private static void CollectAppIds(JsonElement node, ISet<int> appIds)
+    {
+        switch (node.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var prop in node.EnumerateObject())
+                {
+                    if (int.TryParse(prop.Name, out var keyedAppId))
+                        appIds.Add(keyedAppId);
+
+                    if (prop.NameEquals("appid"))
+                    {
+                        var explicitAppId = ReadIntValue(prop.Value);
+                        if (explicitAppId is not null)
+                            appIds.Add(explicitAppId.Value);
+                    }
+
+                    CollectAppIds(prop.Value, appIds);
+                }
+                break;
+
+            case JsonValueKind.Array:
+                foreach (var item in node.EnumerateArray())
+                {
+                    var appId = ReadIntValue(item);
+                    if (appId is not null)
+                        appIds.Add(appId.Value);
+                    else
+                        CollectAppIds(item, appIds);
+                }
+                break;
+        }
+    }
+
+    private static int? ReadIntValue(JsonElement prop)
+    {
+        if (prop.ValueKind == JsonValueKind.Number && prop.TryGetInt32(out var value))
+            return value;
+
+        if (prop.ValueKind == JsonValueKind.String && int.TryParse(prop.GetString(), out value))
+            return value;
+
+        return null;
+    }
+
+    private static async Task MergeSourceAsync(
+        string path,
+        bool isGzip,
+        Dictionary<int, RuntimeCatalogEntry> catalog,
+        CancellationToken ct)
+    {
+        if (!File.Exists(path))
+            return;
+
+        await using var file = File.OpenRead(path);
+        await using Stream stream = isGzip ? new GZipStream(file, CompressionMode.Decompress) : file;
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            return;
+
+        foreach (var prop in doc.RootElement.EnumerateObject())
+        {
+            if (!int.TryParse(prop.Name, out var appId) || prop.Value.ValueKind != JsonValueKind.Object)
+                continue;
+
+            var node = prop.Value;
+            if (node.TryGetProperty("appid", out var appIdNode) && appIdNode.TryGetInt32(out var explicitAppId))
+                appId = explicitAppId;
+
+            catalog.TryGetValue(appId, out var existing);
+            catalog[appId] = new RuntimeCatalogEntry
+            {
+                AppId = appId,
+                Title = ReadString(node, "title") ?? ReadString(node, "name") ?? existing?.Title,
+                PriceDisplay = ReadString(node, "price_display") ?? existing?.PriceDisplay,
+                PriceNormalized = ReadInt(node, "price_normalized") ?? existing?.PriceNormalized ?? 0,
+                Protection = ReadProtection(node) ?? existing?.Protection ?? false,
+                HeaderImageUrl = ReadString(node, "header") ?? existing?.HeaderImageUrl,
+                Genre = ReadString(node, "genre") ?? existing?.Genre
+            };
+        }
+    }
+
+    private async Task DownloadIfNeededAsync(string url, string outputPath, bool force, CancellationToken ct)
+    {
+        if (!force && File.Exists(outputPath))
+        {
+            var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(outputPath);
             if (age < AppConstants.SteamDataCacheTtl)
-            {
-                await BuildIndexFromCacheAsync(ct);
                 return;
-            }
         }
 
-        _log.Log("Metadata", "Downloading steam_data.json.gz from GitHub...");
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
         try
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get, AppConstants.SteamDataUrl);
-            req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
-
-            // Conditional request with ETag
-            if (!force && File.Exists(_etagFile))
-            {
-                var etag = await File.ReadAllTextAsync(_etagFile, ct);
-                if (!string.IsNullOrWhiteSpace(etag))
-                    req.Headers.IfNoneMatch.Add(new EntityTagHeaderValue(etag, true));
-            }
-
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-
-            if (resp.StatusCode == System.Net.HttpStatusCode.NotModified)
-            {
-                _log.Log("Metadata", "Cache is up-to-date (304 Not Modified)");
-                await BuildIndexFromCacheAsync(ct);
-                return;
-            }
-
-            if (!resp.IsSuccessStatusCode)
-            {
-                _log.Log("Metadata", $"HTTP error {resp.StatusCode}, falling back to disk cache");
-                await BuildIndexFromCacheAsync(ct);
-                return;
-            }
-
-            // Save ETag
-            var responseEtag = resp.Headers.ETag?.Tag;
-            if (!string.IsNullOrEmpty(responseEtag))
-                await File.WriteAllTextAsync(_etagFile, responseEtag, ct);
-
-            // The HTTP client already decompresses gzip via handler
-            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-            await using var fs = File.Create(_cacheFile);
-            await stream.CopyToAsync(fs, ct);
-
-            _log.Log("Metadata", "Download complete, building index...");
-            await BuildIndexFromCacheAsync(ct);
+            await using var source = await _http.GetStreamAsync(url, ct);
+            await using var target = File.Create(outputPath);
+            await source.CopyToAsync(target, ct);
         }
         catch (Exception ex)
         {
-            _log.Log("Metadata", $"Download error: {ex.Message}. Using disk cache if available.");
-            await BuildIndexFromCacheAsync(ct);
+            if (!File.Exists(outputPath))
+                throw;
+
+            _log.Log("Metadata", $"Using stale source for {Path.GetFileName(outputPath)} after download error: {ex.Message}");
         }
     }
 
-    private async Task LoadOverrideFromGitHubAsync(bool force, CancellationToken ct)
+    private async Task<string> DownloadStringAsync(string url, CancellationToken ct)
     {
-        if (!force && File.Exists(_overrideCacheFile))
-        {
-            var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(_overrideCacheFile);
-            if (age < AppConstants.OverrideDataCacheTtl) return;
-        }
-
-        try
-        {
-            using var req = new HttpRequestMessage(HttpMethod.Get, AppConstants.OverrideDataUrl);
-            req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
-
-            if (!force && File.Exists(_overrideEtagFile))
-            {
-                var etag = await File.ReadAllTextAsync(_overrideEtagFile, ct);
-                if (!string.IsNullOrWhiteSpace(etag)) req.Headers.IfNoneMatch.Add(new EntityTagHeaderValue(etag, true));
-            }
-
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-            if (resp.StatusCode == System.Net.HttpStatusCode.NotModified) return;
-
-            if (resp.IsSuccessStatusCode)
-            {
-                var responseEtag = resp.Headers.ETag?.Tag;
-                if (!string.IsNullOrEmpty(responseEtag)) await File.WriteAllTextAsync(_overrideEtagFile, responseEtag, ct);
-
-                var json = await resp.Content.ReadAsStringAsync(ct);
-                await File.WriteAllTextAsync(_overrideCacheFile, json, ct);
-            }
-        }
-        catch (Exception ex)
-        {
-            _log.Log("Metadata", $"Override download error: {ex.Message}");
-        }
+        using var response = await _http.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync(ct);
     }
 
-    private async Task LoadSteamGamesFromGitHubAsync(bool force, CancellationToken ct)
+    private static string? ReadString(JsonElement node, string propertyName)
     {
-        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppConstants.AppDataFolder);
-        var steamGamesCacheFile = Path.Combine(dir, AppConstants.SteamGamesCacheFileName);
-
-        if (!force && File.Exists(steamGamesCacheFile))
-        {
-            var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(steamGamesCacheFile);
-            if (age < AppConstants.OverrideDataCacheTtl) return;
-        }
-
-        try
-        {
-            using var req = new HttpRequestMessage(HttpMethod.Get, AppConstants.SteamGamesUrl);
-            req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
-
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                var json = await resp.Content.ReadAsStringAsync(ct);
-                await File.WriteAllTextAsync(steamGamesCacheFile, json, ct);
-            }
-        }
-        catch (Exception ex)
-        {
-            _log.Log("Metadata", $"Steam Games download error: {ex.Message}");
-        }
+        return node.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.String
+            ? prop.GetString()
+            : null;
     }
 
-    private async Task BuildIndexFromCacheAsync(CancellationToken ct)
+    private static int? ReadInt(JsonElement node, string propertyName)
     {
-        if (!File.Exists(_cacheFile)) { _index = new(); return; }
-        try
-        {
-            await using var fs = File.OpenRead(_cacheFile);
-            await using var gz = new GZipStream(fs, CompressionMode.Decompress);
-            using var doc = await JsonDocument.ParseAsync(gz, cancellationToken: ct);
-            var dict = new Dictionary<int, GameEntry>(capacity: 100_000);
+        if (!node.TryGetProperty(propertyName, out var prop))
+            return null;
 
-            foreach (var property in doc.RootElement.EnumerateObject())
-            {
-                var item = property.Value;
-                if (!item.TryGetProperty("appid", out var appidProp) || !appidProp.TryGetInt32(out var appid)) continue;
-                var name = item.TryGetProperty("title", out var t) ? t.GetString() ?? string.Empty : string.Empty;
-                if (string.IsNullOrEmpty(name)) 
-                    name = item.TryGetProperty("name", out var n) ? n.GetString() ?? string.Empty : string.Empty;
+        if (prop.ValueKind == JsonValueKind.Number && prop.TryGetInt32(out var value))
+            return value;
 
-                var headerUrl = item.TryGetProperty("header", out var h) ? h.GetString() : null;
-                var dev  = item.TryGetProperty("developer", out var d) ? d.GetString() : null;
-                var pub  = item.TryGetProperty("publisher", out var p) ? p.GetString() : null;
+        if (prop.ValueKind == JsonValueKind.String && int.TryParse(prop.GetString(), out value))
+            return value;
 
-                // Price checking logic
-                var priceNorm = item.TryGetProperty("price_normalized", out var pNorm) ? (pNorm.ValueKind == JsonValueKind.Number ? pNorm.GetInt32() : 0) : 0;
-                var priceInit = item.TryGetProperty("price_initial", out var pInit) ? (pInit.ValueKind == JsonValueKind.Number ? pInit.GetInt32() : 0) : 0;
-                var price = Math.Max(priceNorm, priceInit);
-
-                // Protection checking logic (can be true or a string containing 'denuvo')
-                var protection = false;
-                if (item.TryGetProperty("protection", out var prot))
-                {
-                    if (prot.ValueKind == JsonValueKind.True) protection = true;
-                    else if (prot.ValueKind == JsonValueKind.String && prot.GetString()?.Contains("Denuvo", StringComparison.OrdinalIgnoreCase) == true) protection = true;
-                }
-
-                dict[appid] = new GameEntry 
-                { 
-                    AppId = appid, 
-                    Name = name, 
-                    Developer = dev, 
-                    Publisher = pub,
-                    PriceNormalized = price,
-                    Protection = protection,
-                    HeaderImageUrl = headerUrl! // null fallback handled in GameEntry.cs
-                };
-            }
-
-            // 1. Auto-Denuvo from Fix Games & Steam Games
-            await ApplyAutoDenuvoFromListsAsync(dict, ct);
-
-            // 2. Global Override Strategy (menimpa auto-denuvo jika diperlukan)
-            await ApplyOverrideDataAsync(dict, _overrideCacheFile, ct);
-            
-            // 3. User Override Strategy (prioritas tertinggi)
-            await ApplyOverrideDataAsync(dict, _userOverrideCacheFile, ct);
-
-            _index = dict;
-            _lastLoaded = DateTime.UtcNow;
-            _log.Log("Metadata", $"Index built: {_index.Count:N0} games");
-        }
-        catch (Exception ex)
-        {
-            _log.Log("Metadata", $"Index build error: {ex.Message}");
-            _index = new();
-        }
+        return null;
     }
 
-    private async Task ApplyOverrideDataAsync(Dictionary<int, GameEntry> dict, string overrideFile, CancellationToken ct)
+    private static bool? ReadProtection(JsonElement node)
     {
-        if (!File.Exists(overrideFile)) return;
-        try
+        if (!node.TryGetProperty("protection", out var prop))
+            return null;
+
+        return prop.ValueKind switch
         {
-            var overrideJson = await File.ReadAllTextAsync(overrideFile, ct);
-            if (string.IsNullOrWhiteSpace(overrideJson)) return;
-
-            using var doc = JsonDocument.Parse(overrideJson);
-            foreach (var property in doc.RootElement.EnumerateObject())
-            {
-                var item = property.Value;
-                if (!item.TryGetProperty("appid", out var appidProp) || !appidProp.TryGetInt32(out var appid)) continue;
-
-                if (!dict.TryGetValue(appid, out var entry))
-                {
-                    entry = new GameEntry { AppId = appid };
-                    dict[appid] = entry;
-                }
-
-                if (item.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String)
-                    entry.Name = t.GetString() ?? entry.Name;
-                else if (item.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String)
-                    entry.Name = n.GetString() ?? entry.Name;
-
-                if (item.TryGetProperty("header", out var h) && h.ValueKind == JsonValueKind.String)
-                    entry.HeaderImageUrl = h.GetString() ?? entry.HeaderImageUrl;
-
-                if (item.TryGetProperty("protection", out var prot))
-                {
-                    if (prot.ValueKind == JsonValueKind.True) entry.Protection = true;
-                    else if (prot.ValueKind == JsonValueKind.False || prot.ValueKind == JsonValueKind.Null) entry.Protection = false;
-                    else if (prot.ValueKind == JsonValueKind.String && prot.GetString()?.Contains("Denuvo", StringComparison.OrdinalIgnoreCase) == true) entry.Protection = true;
-                }
-
-                var priceNorm = item.TryGetProperty("price_normalized", out var pNorm) ? (pNorm.ValueKind == JsonValueKind.Number ? pNorm.GetInt32() : -1) : -1;
-                var priceInit = item.TryGetProperty("price_initial", out var pInit) ? (pInit.ValueKind == JsonValueKind.Number ? pInit.GetInt32() : -1) : -1;
-                var price = Math.Max(priceNorm, priceInit);
-                if (price >= 0) entry.PriceNormalized = price;
-            }
-            _log.Log("Metadata", $"Applied overrides from {Path.GetFileName(overrideFile)}");
-        }
-        catch (Exception ex)
-        {
-            _log.Log("Metadata", $"Error applying override {Path.GetFileName(overrideFile)}: {ex.Message}");
-        }
+            JsonValueKind.True => true,
+            JsonValueKind.False or JsonValueKind.Null => false,
+            JsonValueKind.String => prop.GetString()?.Equals("true", StringComparison.OrdinalIgnoreCase) == true ||
+                                    prop.GetString()?.Contains("denuvo", StringComparison.OrdinalIgnoreCase) == true,
+            _ => false
+        };
     }
 
-    private async Task ApplyAutoDenuvoFromListsAsync(Dictionary<int, GameEntry> dict, CancellationToken ct)
+    private sealed class RuntimeCatalogEntry
     {
-        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppConstants.AppDataFolder);
-        
-        // 1. Fix Games
-        var fixCacheFile = Path.Combine(dir, AppConstants.BypassGamesCacheFileName);
-        if (File.Exists(fixCacheFile))
-        {
-            try
-            {
-                var json = await File.ReadAllTextAsync(fixCacheFile, ct);
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("games", out var games))
-                {
-                    foreach (var game in games.EnumerateArray())
-                    {
-                        if (game.TryGetProperty("appid", out var appidProp) && appidProp.TryGetInt32(out var appid))
-                        {
-                            if (dict.TryGetValue(appid, out var entry)) entry.Protection = true;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex) { _log.Log("Metadata", $"Error applying Fix Games auto-protection: {ex.Message}"); }
-        }
-
-        // 2. Steam Games
-        var steamGamesCacheFile = Path.Combine(dir, AppConstants.SteamGamesCacheFileName);
-        if (File.Exists(steamGamesCacheFile))
-        {
-            try
-            {
-                var json = await File.ReadAllTextAsync(steamGamesCacheFile, ct);
-                using var doc = JsonDocument.Parse(json);
-                
-                var root = doc.RootElement;
-                var gamesArray = root.ValueKind == JsonValueKind.Array ? root : 
-                                (root.TryGetProperty("games", out var g) ? g : default);
-
-                if (gamesArray.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var game in gamesArray.EnumerateArray())
-                    {
-                        if (game.TryGetProperty("appid", out var appidProp) && appidProp.TryGetInt32(out var appid))
-                        {
-                            if (dict.TryGetValue(appid, out var entry)) entry.Protection = true;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex) { _log.Log("Metadata", $"Error applying Steam Games auto-protection: {ex.Message}"); }
-        }
-        
-        _log.Log("Metadata", "Applied auto-protection flags from Fix Games & Steam Games lists");
+        public int AppId { get; init; }
+        public string? Title { get; init; }
+        public string? PriceDisplay { get; init; }
+        public int PriceNormalized { get; init; }
+        public bool Protection { get; init; }
+        public string? HeaderImageUrl { get; init; }
+        public string? Genre { get; init; }
     }
 }

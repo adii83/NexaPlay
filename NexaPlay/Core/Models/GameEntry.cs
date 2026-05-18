@@ -1,27 +1,54 @@
-using NexaPlay.Core.Enums;
-
 namespace NexaPlay.Core.Models;
 
-/// <summary>Game metadata from steam_data.json.gz</summary>
+/// <summary>
+/// Base game metadata loaded from steam data and overrides.
+/// </summary>
 public sealed class GameEntry
 {
     public int AppId { get; init; }
     public string Name { get; set; } = string.Empty;
+
     public string? Developer { get; set; }
     public string? Publisher { get; set; }
+    public IReadOnlyList<string> Developers { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> Publishers { get; set; } = Array.Empty<string>();
+
     public string? Genre { get; set; }
+    public string? ShortDescription { get; set; }
+    public string? ReleaseDate { get; set; }
+
     public int PriceNormalized { get; set; }
+    public string? PriceDisplay { get; set; }
     public bool Protection { get; set; }
 
-    public bool IsPremium => PriceNormalized >= 130000;
+    public bool IsPremium => PriceNormalized >= 130_000;
     public bool HasDenuvo => Protection;
 
-    public string CapsuleImageUrl => $"https://cdn.cloudflare.steamstatic.com/steam/apps/{AppId}/capsule_231x87.jpg";
-    
+    public string DeveloperDisplay =>
+        Developers.Count > 0 ? string.Join(", ", Developers) : Developer ?? string.Empty;
+
+    public string PublisherDisplay =>
+        Publishers.Count > 0 ? string.Join(", ", Publishers) : Publisher ?? string.Empty;
+
     private string? _headerImageUrl;
-    public string HeaderImageUrl 
-    { 
+    public string HeaderImageUrl
+    {
         get => _headerImageUrl ?? $"https://cdn.cloudflare.steamstatic.com/steam/apps/{AppId}/header.jpg";
         set => _headerImageUrl = value;
     }
+
+    public string CapsuleImageUrl =>
+        $"https://cdn.cloudflare.steamstatic.com/steam/apps/{AppId}/capsule_231x87.jpg";
+
+    // Optional rich assets from prebuilt metadata chunks.
+    public string? IconImageUrl { get; set; }
+    public string? LibraryHero2xUrl { get; set; }
+    public string? BackgroundRawImageUrl { get; set; }
+
+    // Full raw metadata payload for future UI expansion without changing fetch layer.
+    public string? RawMetadataJson { get; set; }
+    public int RawFieldPathCount { get; set; }
+
+    public string BackgroundImageUrl =>
+        $"https://store.akamai.steamstatic.com/images/storepagebackground/app/{AppId}";
 }

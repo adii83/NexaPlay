@@ -1,175 +1,167 @@
 # AGENTS.md - NexaPlay Operational Guide
 
-Dokumen ini adalah panduan kerja untuk AI agent yang mengerjakan `NexaPlay`.
-Tujuan utamanya: mencegah kerusakan project saat iterasi UI dan menjaga arah migrasi dari `gamehub`.
+Dokumen ini adalah aturan operasional wajib untuk AI agent yang melanjutkan `NexaPlay`.
+Tujuan: mencegah kebingungan migrasi dan menjaga progress UI tetap stabil.
 
----
+## 1) Identitas Project
+- Project utama: `D:\My Project\NexaPlay\NexaPlay`
+- Referensi lama (lokal dalam workspace yang sama): `D:\My Project\NexaPlay\gamehub`
+- Platform: Windows only
+- Stack: WinUI 3 + C# + .NET 8
 
-## 1) Project Identity dan Tujuan
+Konsep:
+- `NexaPlay` adalah remake native dari `GameHub`.
+- Fitur utama harus tetap parity dengan GameHub.
+- UI/arsitektur boleh berubah selama behavior inti tetap setara.
 
-### Apa ini?
-`NexaPlay` adalah aplikasi desktop native Windows berbasis WinUI 3 (`.NET 8`) yang dibuat sebagai remake dari project `gamehub` lama.
+## 2) Prioritas Product Saat Ini
+Prioritas aktif adalah UI.
 
-### Kenapa dibuat?
-Project lama terlalu berat karena pendekatan UI web-in-desktop (WebView stack + startup load tinggi).
-`NexaPlay` dibuat untuk:
-- UI native modern dan responsif.
-- Struktur kode service/viewmodel yang lebih maintainable.
-- Mengurangi risiko regressions saat fitur bertambah.
+Ekspektasi UI:
+- modern, ringan, konsisten.
+- bukan gaya visual ramai/acak.
+- nomenklatur utama:
+  - `Home` (bukan Dashboard)
+  - `Bypass Games` (pengganti istilah lama `Fix Games` di surface UI).
 
-### Batasan platform
-- Windows only.
-- Target framework: `net8.0-windows10.0.19041.0`.
+## 3) Boundary Arsitektur (Tidak Boleh Dilanggar)
+- `Contracts/`: hanya interface.
+- `Core/`: model/enum/constant domain.
+- `Infrastructure/`: implementasi teknis.
+- `Presentation/`: XAML pages, viewmodels, converters.
+- `App.xaml.cs`: composition root DI.
 
----
+Aturan keras:
+- ViewModel tidak akses filesystem/network langsung.
+- Semua akses teknis lewat service interface di `Contracts`.
 
-## 2) Prinsip Arsitektur
+## 4) Cara Memahami GameHub Sebelum Migrasi Fitur
+Saat mengerjakan fitur baru di NexaPlay:
+1. Baca dulu implementasi lama di `D:\My Project\NexaPlay\gamehub`.
+2. Ambil intent behavior dan edge case.
+3. Implementasikan ulang di arsitektur native NexaPlay.
+4. Jangan copy pola WebView/JS bridge ke NexaPlay.
 
-Gunakan boundary ini secara ketat:
+Yang boleh dibawa:
+- logic bisnis/service.
+- struktur data domain.
 
-- `Contracts/`:
-  Interface (`INavigationService`, `ILicenseService`, dll).
-- `Core/`:
-  Model + enum + constant domain.
-- `Infrastructure/`:
-  Implementasi teknis (file store, steam, metadata, logging, online fix, dll).
-- `Presentation/`:
-  `Views`, `ViewModels`, converter, navigation UI.
-- `App.xaml.cs`:
-  Composition root/DI registration.
+Yang tidak boleh dibawa:
+- web host UI.
+- JS action bridge sebagai pusat flow aplikasi.
+- ketergantungan startup yang menunggu web state.
 
-Aturan:
-- ViewModel **tidak** akses filesystem/network langsung.
-- ViewModel akses data via interface `Contracts`.
-- Code-behind dipakai secukupnya untuk glue UI event.
-
----
-
-## 3) Konteks Migrasi dari GameHub (Wajib Dipahami)
-
-Asal project:
-- `gamehub` lama berisi logic game metadata/fix/license yang sebagian besar masih relevan.
-
-Yang dipindahkan ke `NexaPlay`:
-- Service C# backend (license, metadata, fix, steam, persistence, logging).
-- Model domain dasar.
-
-Yang **tidak** boleh dibawa kembali:
-- Dependensi UI web lama.
-- Pola bridge WebView/JS message loop.
-- Startup flow yang menunggu terlalu banyak proses sebelum shell tampil.
-
-Strategi migrasi:
-- Keep business logic, replace UI layer.
-- Migrasi bertahap per page/per service.
-- Build harus tetap hijau di setiap batch kecil.
-
----
-
-## 4) Build dan Run Procedure (Source of Truth)
-
-Selalu validasi via MSBuild Visual Studio (lebih informatif untuk XAML):
+## 5) Build Gate Wajib
+Setiap batch perubahan wajib build:
 
 ```powershell
 & 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe' `
   'D:\My Project\NexaPlay\NexaPlay\NexaPlay.csproj' /restore /p:Configuration=Debug /p:Platform=x64
 ```
 
-Poin penting:
-- Gunakan `x64`.
-- Jangan andalkan `Any CPU` untuk validasi akhir.
+Ketentuan:
+- jangan lanjut batch berikutnya sebelum build hijau.
+- setelah build hijau, lakukan smoke test run (`F5`).
 
-Setelah build sukses:
-- lanjut validasi runtime lewat Visual Studio (`F5`).
-
----
-
-## 5) UI/XAML Safety Rules (Hard Rules)
-
+## 6) UI/XAML Hard Rules
 1. Gunakan sintaks WinUI 3, bukan WPF.
-2. Jangan pakai properti yang tidak valid di WinUI 3 pada control terkait.
-   - contoh gagal sebelumnya: `ClipToBounds` pada `Border`.
-3. Jika edit multi-line tag XAML:
-   - pastikan `>` tidak hilang.
-   - pastikan tidak ada `>` nyasar di baris sendiri.
-4. Jangan kosongkan `MainWindow.xaml` jika `MainWindow.xaml.cs` masih referensi nama kontrol tertentu.
-5. Setelah ubah page besar:
-   - langsung build.
-   - jangan menunggu sampai banyak file berubah.
+2. Jangan pakai properti control yang tidak didukung WinUI.
+3. Jika edit tag multiline, pastikan tag XML valid.
+4. Jangan ubah contract `MainWindow` secara separuh (XAML tanpa sinkron code-behind).
+5. Jika XAML error berantai, stop feature dan pulihkan struktur dulu.
 
-Pattern error yang sering muncul jika melanggar:
-- `WMC0011` unknown member
-- `WMC9997` XML parsing error
-- `WMC0035` duplicate assignment
-- `WMC0055` invalid text assigned to UIElement
+Error pattern umum:
+- `WMC0011`
+- `WMC9997`
+- `WMC0035`
+- `WMC0055`
 
----
+## 7) MainWindow Contract Check
+Sebelum commit, pastikan elemen yang dipakai code-behind masih ada.
+Nama elemen wajib mengikuti kondisi aktual file `MainWindow.xaml.cs` terbaru.
 
-## 6) MainWindow Contract (Jangan Dipecah Sembarangan)
+Catatan:
+- jika istilah lama (`NavFixGames`) dan baru (`NavBypass`) masih campur, selesaikan konsistensi bertahap dengan build checkpoint.
+- jangan lakukan rename masif bersamaan dengan redesign besar.
 
-`MainWindow.xaml.cs` mengharapkan elemen penting ini ada di XAML:
-- `ContentFrame`
-- `NavHome`
-- `NavGames`
-- `NavLibrary`
-- `NavFixGames`
-- `NavSettings`
-- `PageTitleText`
+## 8) Workflow Aman (Default)
+1. Pilih 1 perubahan kecil.
+2. Implementasi.
+3. Build gate.
+4. Smoke test.
+5. Update dokumentasi parity bila behavior berubah.
+6. Update `AI_HANDOFF_PROMPT.md` bila ada perubahan konteks, keputusan desain, status fitur, atau build result penting.
 
-Jika mau redesign shell:
-- ubah XAML + code-behind secara sinkron.
-- jangan merge setengah jadi.
+Larangan:
+- ubah banyak page sekaligus tanpa checkpoint.
+- gabung refactor service besar dan redesign visual besar dalam 1 batch.
 
-Catatan backup:
-- file `MainWindow.xaml.bak` boleh dipakai sebagai fallback saat shell rusak.
-
----
-
-## 7) Prioritas Kerja untuk Agent
-
-Urutan aman:
-1. Stabilitas compile.
-2. Stabilitas runtime.
-3. Struktur data binding.
-4. Visual polish.
-5. Optimasi.
-
-Artinya:
-- Jangan kejar detail visual sebelum build/run stabil.
-- Jika XAML rusak parah, pulihkan ke versi valid minimal dulu.
-
----
-
-## 8) Warning Policy
-
-Warning saat ini yang diketahui:
-- `MVVMTK0045`: `[ObservableProperty]` belum AOT-friendly untuk WinRT scenario.
-- `NU1902`: `SharpCompress 0.38.0` punya advisory moderat.
-
-Kebijakan:
-- warning boleh sementara jika tidak blokir build.
-- jangan abaikan permanen; buat task terpisah hardening.
-
----
-
-## 9) Definition of Done per Perubahan
-
-Sebuah perubahan dianggap selesai jika:
+## 9) Definition of Done per Batch
+Batch dianggap selesai jika:
 1. Build `Debug x64` sukses (0 error).
-2. Aplikasi bisa dibuka.
-3. Navigasi utama antar page berjalan.
-4. Tidak ada error XAML parser/compiler.
-5. Tidak ada edit yang memutus contract `MainWindow` atau DI.
+2. App bisa dibuka.
+3. Navigasi halaman utama normal.
+4. Tidak ada parser error XAML.
+5. Tidak memutus boundary arsitektur.
 
----
+## 10) Urutan Baca untuk Agent Baru
+Wajib baca:
+1. `README.md`
+2. `AGENTS.md`
+3. `ONBOARDING_ZERO_TO_PARITY.md`
+4. `MIGRATION_PARITY_MATRIX.md`
+5. `AI_HANDOFF_PROMPT.md`
 
-## 10) Catatan Operasional untuk AI Lain
+Jika konflik antara asumsi agent dan dokumen:
+- dokumen project menang.
 
-- Kerjakan perubahan kecil tapi lengkap.
-- Setiap selesai 1 batch, lakukan build.
-- Jika menemukan error berantai XAML:
-  - berhenti menambah fitur.
-  - stabilkan struktur tag dulu.
-- Hindari refactor besar lintas layer sekaligus (UI + service + model dalam satu batch besar).
-- Saat ragu, pilih opsi paling konservatif yang menjaga project tetap jalan.
+## 11) UI Design Contract
+Aturan utama:
+1. Fitur NexaPlay harus tetap parity dengan GameHub. Jangan mengurangi alur penting.
+2. Ubah hanya tampilan atau struktur UI native. Jangan ubah behavior inti tanpa alasan kuat.
+3. Gaya visual harus profesional, clean, netral, dan konsisten.
+4. UI tidak boleh terasa AI-generated.
 
+Larangan visual:
+- jangan pakai emoji di UI, kecuali memang lebih tepat dari ikon dan tetap satu warna.
+- jangan warna campur/random.
+- jangan gradient berlebihan.
+- jangan style ramai, gimmick, atau dekorasi yang tidak perlu.
+- jangan copywriting hiperbolik.
+- jangan redesign semua halaman sekaligus.
+
+Design system:
+- fokus dark theme hitam dan putih.
+- gunakan netral dark surface yang konsisten.
+- gunakan satu warna aksen utama hanya bila perlu.
+- tombol utama cenderung putih.
+- tipografi harus rapi dengan hierarchy jelas.
+- spacing harus stabil.
+- visual depth secukupnya melalui border/surface level, bukan efek ramai.
+
+Target desain:
+- modern tetapi enterprise-clean.
+- sidebar, topbar, dan content area rapi.
+- teks ringkas, formal, dan tidak dekoratif berlebihan.
+
+## 12) Performance Contract
+- startup harus ringan.
+- gunakan lazy loading untuk data/detail berat.
+- Games list harus virtualized.
+- hindari operasi berat di UI thread.
+- jangan download atau parse data besar saat startup bila tidak diperlukan.
+
+## 13) Engineering Principles
+Terapkan prinsip SOLID untuk pengembangan berikutnya, terutama saat menambah service, ViewModel, metadata flow, dan action game.
+
+Aturan praktis:
+- Single Responsibility: satu class punya satu alasan utama untuk berubah. Jangan campur fetch metadata, formatting UI, dan command action dalam satu class.
+- Open/Closed: tambah behavior lewat service/helper baru atau interface yang jelas, bukan menumpuk `if` besar di ViewModel.
+- Liskov Substitution: implementasi service harus bisa dipakai lewat interface tanpa behavior mengejutkan.
+- Interface Segregation: jangan buat interface besar. Pisahkan service metadata, Steam, Online-Fix, Add Game, dan Bypass bila tanggung jawabnya berbeda.
+- Dependency Inversion: Presentation bergantung ke `Contracts`, bukan langsung ke implementasi `Infrastructure`.
+
+Untuk AI agent:
+- sebelum menambah kode, cari boundary yang paling sesuai.
+- jangan membuat ViewModel menjadi tempat semua logic teknis.
+- jika perubahan mulai membesar, pecah menjadi service kecil dan build checkpoint.

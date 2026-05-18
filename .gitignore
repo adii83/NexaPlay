@@ -46,3 +46,4 @@ artifacts/
 AppPackages/
 BundleArtifacts/
 
+.env

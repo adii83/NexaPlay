@@ -16,6 +16,8 @@ public sealed partial class GamesViewModel : ObservableObject
 
     private IReadOnlyList<FixEntry> _allGames = Array.Empty<FixEntry>();
 
+    public bool IsEmpty => !IsLoading && Games.Count == 0;
+
     public GamesViewModel(IBypassGamesDataService fixData) => _fixData = fixData;
 
     public async Task LoadAsync()
@@ -42,4 +44,7 @@ public sealed partial class GamesViewModel : ObservableObject
     }
 
     partial void OnSearchQueryChanged(string value) => Search();
+
+    partial void OnGamesChanged(IReadOnlyList<FixEntry> value) => OnPropertyChanged(nameof(IsEmpty));
+    partial void OnIsLoadingChanged(bool value) => OnPropertyChanged(nameof(IsEmpty));
 }

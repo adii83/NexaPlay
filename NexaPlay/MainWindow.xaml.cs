@@ -38,6 +38,7 @@ public sealed partial class MainWindow : Window
         appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, width, height));
 
         _nav.Initialize(ContentFrame);
+        ContentFrame.Navigated += ContentFrame_Navigated;
         this.Activated += OnFirstActivated;
     }
 
@@ -112,6 +113,34 @@ public sealed partial class MainWindow : Window
     private void OnNavChecked(object sender, RoutedEventArgs e)
     {
         if (sender is RadioButton rb) NavigateTo(rb);
+    }
+
+    private void ContentFrame_Navigated(object sender, Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+    {
+        bool immersiveDetail = e.SourcePageType == typeof(GameDetailPage);
+        SetShellDetailMode(immersiveDetail);
+    }
+
+    private void SetShellDetailMode(bool enabled)
+    {
+        if (enabled)
+        {
+            WindowTopRow.Height = new GridLength(0);
+            ContentTopBarRow.Height = new GridLength(0);
+            SidebarShell.Visibility = Visibility.Collapsed;
+            PageTopBar.Visibility = Visibility.Collapsed;
+            RootSplitView.CompactPaneLength = 0;
+            RootSplitView.OpenPaneLength = 0;
+            RootSplitView.IsPaneOpen = false;
+            return;
+        }
+
+        WindowTopRow.Height = new GridLength(40);
+        ContentTopBarRow.Height = new GridLength(60);
+        SidebarShell.Visibility = Visibility.Visible;
+        PageTopBar.Visibility = Visibility.Visible;
+        RootSplitView.CompactPaneLength = 68;
+        RootSplitView.OpenPaneLength = 200;
     }
 
     private void NavigateTo(RadioButton rb)
