@@ -64,7 +64,21 @@ public sealed partial class GameDetailViewModel : ObservableObject
     public IReadOnlyList<string> Categories => Detail?.Categories ?? Array.Empty<string>();
     public IReadOnlyList<string> GenreTags => BuildGenreTags(Game?.Genre);
     public string DisplayShortDescription => Detail?.ShortDescription ?? Game?.ShortDescription ?? string.Empty;
-    public string DisplayDetailedDescription => Detail?.DetailedDescription ?? string.Empty;
+    public string OverviewScreenshotUrl1 => Detail?.Screenshots?.ElementAtOrDefault(0)?.FullUrl ?? string.Empty;
+    public string OverviewScreenshotUrl2 => Detail?.Screenshots?.ElementAtOrDefault(1)?.FullUrl ?? string.Empty;
+    public string OverviewScreenshotUrl3 => Detail?.Screenshots?.ElementAtOrDefault(2)?.FullUrl ?? string.Empty;
+    public bool HasOverviewScreenshots => !string.IsNullOrEmpty(OverviewScreenshotUrl1);
+    public string DisplayDetailedDescription 
+    {
+        get 
+        {
+            var detailed = Detail?.DetailedDescription ?? string.Empty;
+            var about = Detail?.AboutTheGame ?? string.Empty;
+            if (string.Equals(detailed.Trim(), about.Trim(), StringComparison.OrdinalIgnoreCase))
+                return string.Empty;
+            return detailed;
+        }
+    }
     public string DisplayDeveloper => Detail?.Developers.Count > 0 ? string.Join(", ", Detail.Developers) : Game?.DeveloperDisplay ?? string.Empty;
     public string DisplayPublisher => Detail?.Publishers.Count > 0 ? string.Join(", ", Detail.Publishers) : Game?.PublisherDisplay ?? string.Empty;
     public string DisplayReleaseDate => Detail?.ReleaseDate ?? Game?.ReleaseDate ?? string.Empty;
@@ -324,6 +338,10 @@ public sealed partial class GameDetailViewModel : ObservableObject
     private void NotifyDisplayProperties()
     {
         OnPropertyChanged(nameof(DisplayShortDescription));
+        OnPropertyChanged(nameof(OverviewScreenshotUrl1));
+        OnPropertyChanged(nameof(OverviewScreenshotUrl2));
+        OnPropertyChanged(nameof(OverviewScreenshotUrl3));
+        OnPropertyChanged(nameof(HasOverviewScreenshots));
         OnPropertyChanged(nameof(DisplayDetailedDescription));
         OnPropertyChanged(nameof(DisplayDeveloper));
         OnPropertyChanged(nameof(DisplayPublisher));

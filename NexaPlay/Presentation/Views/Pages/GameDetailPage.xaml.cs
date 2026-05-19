@@ -114,7 +114,7 @@ public sealed partial class GameDetailPage : Page
             return "No description available.";
 
         var text = source;
-        text = Regex.Replace(text, @"<br\s*/?>", " ", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"<br\s*/?>", "\n", RegexOptions.IgnoreCase);
         text = Regex.Replace(text, @"</p\s*>", "\n\n", RegexOptions.IgnoreCase);
         text = Regex.Replace(text, @"</li\s*>", "\n", RegexOptions.IgnoreCase);
         text = Regex.Replace(text, @"<li[^>]*>", "- ", RegexOptions.IgnoreCase);

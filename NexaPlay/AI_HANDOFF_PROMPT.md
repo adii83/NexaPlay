@@ -313,6 +313,16 @@ Tanggal:
 - Next:
 ```
 
+### 2026-05-19 (polish ABOUT THE GAME section)
+
+- Fokus: merapikan layout teks "ABOUT THE GAME" dan menyisipkan "GAME OVERVIEW" di halaman Game Detail.
+- Perubahan: 
+  - Mengubah logika `FormatAboutText` agar mengganti tag `<br>` dengan `\n` (newline) dan bukannya spasi. Hal ini menjaga struktur paragraf asli dari Steam API.
+  - Memperbaiki binding `DisplayDetailedDescription` di `GameDetailViewModel` untuk mengembalikan string kosong apabila isinya identik dengan "About The Game", sehingga section "DETAILED DESCRIPTION" ganda tidak dirender di layar.
+  - Menambahkan section "GAME OVERVIEW" di atas "ABOUT THE GAME" yang memuat deskripsi pendek dan 3-image grid layout screenshot dengan efek _hover scale_.
+- Build: `Build succeeded`, 0 Error(s).
+- Next: Menyambungkan navigasi UI "Cek Bypass" ke halaman Bypass Games atau melanjut prioritas UI selanjutnya.
+
 ### 2026-05-19 (fix crash System Requirement x:Bind NullReferenceException)
 
 - Fokus: crash `0xC000027B` persisten yang membuat app tertutup sendiri.

@@ -401,6 +401,83 @@
                     </StackPanel>
 
                     <StackPanel x:Name="LeftContentPanel" Grid.Column="0" Grid.Row="2" Spacing="18">
+                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Visibility="{x:Bind local:GameDetailPage.StringToVis(ViewModel.DisplayShortDescription), Mode=OneWay}">
+                            <Border Width="4" Height="20" CornerRadius="2" Background="{ThemeResource NexaTextPrimaryBrush}" />
+                            <TextBlock
+                                Text="GAME OVERVIEW"
+                                FontSize="18"
+                                FontWeight="Bold"
+                                CharacterSpacing="40"
+                                Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                        </StackPanel>
+
+                        <TextBlock Text="{x:Bind ViewModel.DisplayShortDescription, Mode=OneWay}"
+                            FontSize="14"
+                            Foreground="{ThemeResource NexaTextSecondaryBrush}"
+                            TextWrapping="WrapWholeWords"
+                            LineHeight="26"
+                            Visibility="{x:Bind local:GameDetailPage.StringToVis(ViewModel.DisplayShortDescription), Mode=OneWay}" />
+
+                        <Grid Height="520" ColumnSpacing="8" Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.HasOverviewScreenshots), Mode=OneWay}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="6*" />
+                                <ColumnDefinition Width="4*" />
+                            </Grid.ColumnDefinitions>
+                            
+                            <!-- Left large image -->
+                            <Border Grid.Column="0" CornerRadius="8" Background="#101010" BorderBrush="#32FFFFFF" BorderThickness="1">
+                                 <Grid Tag="{x:Bind ViewModel.OverviewScreenshotUrl1, Mode=OneWay}"
+                                       Tapped="MediaCard_Tapped"
+                                       PointerEntered="MediaCard_PointerEntered"
+                                       PointerExited="MediaCard_PointerExited"
+                                       SizeChanged="MediaCard_SizeChanged">
+                                     <Image Stretch="UniformToFill">
+                                         <Image.Source>
+                                             <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.OverviewScreenshotUrl1), Mode=OneWay}" DecodePixelWidth="800" />
+                                         </Image.Source>
+                                     </Image>
+                                 </Grid>
+                            </Border>
+                            
+                            <!-- Right side (2 stacked images) -->
+                            <Grid Grid.Column="1" RowSpacing="8">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="1*" />
+                                    <RowDefinition Height="1*" />
+                                </Grid.RowDefinitions>
+                                
+                                <Border Grid.Row="0" CornerRadius="8" Background="#101010" BorderBrush="#32FFFFFF" BorderThickness="1">
+                                     <Grid Tag="{x:Bind ViewModel.OverviewScreenshotUrl2, Mode=OneWay}"
+                                           Tapped="MediaCard_Tapped"
+                                           PointerEntered="MediaCard_PointerEntered"
+                                           PointerExited="MediaCard_PointerExited"
+                                           SizeChanged="MediaCard_SizeChanged">
+                                         <Image Stretch="UniformToFill">
+                                             <Image.Source>
+                                                 <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.OverviewScreenshotUrl2), Mode=OneWay}" DecodePixelWidth="400" />
+                                             </Image.Source>
+                                     </Image>
+                                     </Grid>
+                                </Border>
+                                
+                                <Border Grid.Row="1" CornerRadius="8" Background="#101010" BorderBrush="#32FFFFFF" BorderThickness="1">
+                                     <Grid Tag="{x:Bind ViewModel.OverviewScreenshotUrl3, Mode=OneWay}"
+                                           Tapped="MediaCard_Tapped"
+                                           PointerEntered="MediaCard_PointerEntered"
+                                           PointerExited="MediaCard_PointerExited"
+                                           SizeChanged="MediaCard_SizeChanged">
+                                         <Image Stretch="UniformToFill">
+                                             <Image.Source>
+                                                 <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.OverviewScreenshotUrl3), Mode=OneWay}" DecodePixelWidth="400" />
+                                             </Image.Source>
+                                         </Image>
+                                     </Grid>
+                                </Border>
+                            </Grid>
+                        </Grid>
+
+                        <Border Height="1" Background="#1FFFFFFF" Margin="0,16,0,16" />
+
                         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                             <Border Width="4" Height="20" CornerRadius="2" Background="{ThemeResource NexaTextPrimaryBrush}" />
                             <TextBlock
@@ -412,7 +489,7 @@
                         </StackPanel>
 
                         <TextBlock x:Name="BodyPrimaryText"
-                            Text="{x:Bind local:GameDetailPage.FormatAboutText(ViewModel.Detail.AboutTheGame, ViewModel.DisplayShortDescription), Mode=OneWay}"
+                            Text="{x:Bind local:GameDetailPage.FormatAboutText(ViewModel.Detail.AboutTheGame, ViewModel.DisplayDetailedDescription), Mode=OneWay}"
                             FontSize="14"
                             Foreground="{ThemeResource NexaTextSecondaryBrush}"
                             TextWrapping="WrapWholeWords"
