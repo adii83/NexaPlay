@@ -10,6 +10,35 @@
     mc:Ignorable="d"
     Background="{ThemeResource NexaSurfaceBrush}">
 
+    <Page.Resources>
+        <DataTemplate x:Key="RichBlockTextTemplate" x:DataType="models:RichBlock">
+            <TextBlock Text="{x:Bind Content}" FontSize="14" Foreground="{ThemeResource NexaTextSecondaryBrush}" TextWrapping="WrapWholeWords" LineHeight="26" Margin="0,0,0,16" />
+        </DataTemplate>
+        <DataTemplate x:Key="RichBlockCenteredTextTemplate" x:DataType="models:RichBlock">
+            <TextBlock Text="{x:Bind Content}" FontSize="14" Foreground="{ThemeResource NexaTextSecondaryBrush}" TextWrapping="WrapWholeWords" LineHeight="26" Margin="0,0,0,16" HorizontalAlignment="Center" TextAlignment="Center" />
+        </DataTemplate>
+        <DataTemplate x:Key="RichBlockHeaderTemplate" x:DataType="models:RichBlock">
+            <TextBlock Text="{x:Bind Content}" FontSize="24" FontWeight="Bold" CharacterSpacing="40" Foreground="{ThemeResource NexaTextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,32,0,16" TextWrapping="WrapWholeWords" />
+        </DataTemplate>
+        <DataTemplate x:Key="RichBlockImageTemplate" x:DataType="models:RichBlock">
+            <Image Stretch="Uniform" MaxHeight="600" Margin="0,16,0,24">
+                <Image.Source>
+                    <BitmapImage UriSource="{x:Bind Content}" />
+                </Image.Source>
+            </Image>
+        </DataTemplate>
+        <DataTemplate x:Key="RichBlockVideoTemplate" x:DataType="models:RichBlock">
+            <MediaPlayerElement Source="{x:Bind local:GameDetailPage.StringToMediaSource(Content)}" AutoPlay="True" AreTransportControlsEnabled="False" MaxHeight="600" Margin="0,16,0,24" Loaded="RichVideo_Loaded" />
+        </DataTemplate>
+
+        <local:RichBlockTemplateSelector x:Key="RichBlockSelector"
+            TextTemplate="{StaticResource RichBlockTextTemplate}"
+            CenteredTextTemplate="{StaticResource RichBlockCenteredTextTemplate}"
+            HeaderTemplate="{StaticResource RichBlockHeaderTemplate}"
+            ImageTemplate="{StaticResource RichBlockImageTemplate}"
+            VideoTemplate="{StaticResource RichBlockVideoTemplate}" />
+    </Page.Resources>
+
     <Grid x:Name="RootLayout" SizeChanged="RootLayout_SizeChanged">
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup>
@@ -272,6 +301,7 @@
                             </Border>
 
                             <Button
+                                Command="{x:Bind ViewModel.CheckBypassCommand}"
                                 Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.HasDenuvo), Mode=OneWay}"
                                 Height="30"
                                 CornerRadius="6"
@@ -488,35 +518,14 @@
                                 Foreground="{ThemeResource NexaTextPrimaryBrush}" />
                         </StackPanel>
 
-                        <TextBlock x:Name="BodyPrimaryText"
-                            Text="{x:Bind local:GameDetailPage.FormatAboutText(ViewModel.Detail.AboutTheGame, ViewModel.DisplayDetailedDescription), Mode=OneWay}"
-                            FontSize="14"
-                            Foreground="{ThemeResource NexaTextSecondaryBrush}"
-                            TextWrapping="WrapWholeWords"
-                            LineHeight="26" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.DetailedDescriptionBlocks, Mode=OneWay}" ItemTemplateSelector="{StaticResource RichBlockSelector}" Margin="0,0,0,16">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="0" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
 
-                        <StackPanel
-                            Orientation="Horizontal"
-                            Spacing="10"
-                            VerticalAlignment="Center"
-                            Visibility="{x:Bind local:GameDetailPage.StringToVis(ViewModel.DisplayDetailedDescription), Mode=OneWay}">
-                            <Border Width="4" Height="20" CornerRadius="2" Background="{ThemeResource NexaTextPrimaryBrush}" />
-                            <TextBlock
-                                Text="DETAILED DESCRIPTION"
-                                FontSize="18"
-                                FontWeight="Bold"
-                                CharacterSpacing="40"
-                                Foreground="{ThemeResource NexaTextPrimaryBrush}" />
-                        </StackPanel>
-
-                        <TextBlock
-                            Text="{x:Bind local:GameDetailPage.FormatDetailedText(ViewModel.DisplayDetailedDescription), Mode=OneWay}"
-                            FontSize="14"
-                            Foreground="{ThemeResource NexaTextSecondaryBrush}"
-                            TextWrapping="WrapWholeWords"
-                            LineHeight="26"
-                            MaxLines="18"
-                            Visibility="{x:Bind local:GameDetailPage.StringToVis(ViewModel.DisplayDetailedDescription), Mode=OneWay}" />
 
                         <TextBlock
                             Text="{x:Bind local:GameDetailPage.FormatCategories(ViewModel.Categories), Mode=OneWay}"

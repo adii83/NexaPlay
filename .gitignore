@@ -47,3 +47,4 @@ AppPackages/
 BundleArtifacts/
 
 .env
+agents/rules/antigravity-rtk-rules.md

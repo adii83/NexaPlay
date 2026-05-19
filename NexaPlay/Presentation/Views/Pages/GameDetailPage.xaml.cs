@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Navigation;
 using NexaPlay.Presentation.ViewModels;
 using NexaPlay.Core.Models;
 using Windows.System;
+using Windows.Media.Core;
 
 namespace NexaPlay.Presentation.Views.Pages;
 
@@ -214,6 +215,31 @@ public sealed partial class GameDetailPage : Page
             return parsed;
 
         return new Uri("ms-appx:///Assets/StoreLogo.png");
+    }
+
+    public static MediaSource? StringToMediaSource(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return MediaSource.CreateFromUri(uri);
+        return null;
+    }
+
+    private void RichVideo_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is MediaPlayerElement mpe)
+        {
+            if (mpe.MediaPlayer == null)
+            {
+                mpe.SetMediaPlayer(new Windows.Media.Playback.MediaPlayer());
+            }
+            
+            if (mpe.MediaPlayer != null)
+            {
+                mpe.MediaPlayer.IsLoopingEnabled = true;
+                mpe.MediaPlayer.IsMuted = true;
+            }
+        }
     }
 
     private void RootLayout_SizeChanged(object sender, SizeChangedEventArgs e)

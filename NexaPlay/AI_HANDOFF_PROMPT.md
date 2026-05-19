@@ -35,6 +35,18 @@ Tugas awal sebelum edit:
 Jangan redesign semua halaman sekaligus.
 Jangan mengurangi feature parity GameHub.
 Jangan mengubah behavior inti tanpa alasan kuat dan tanpa cek referensi GameHub.
+Jangan lupa ## 10. Update Log Ringkas
+
+Tambahkan catatan baru di atas bagian ini setiap selesai batch penting.
+Format:
+
+```text
+Tanggal:
+- Fokus:
+- Perubahan:
+- Build:
+- Next:
+```
 ```
 
 ## 2. Status Project Saat Ini
@@ -312,6 +324,19 @@ Tanggal:
 - Build:
 - Next:
 ```
+
+
+
+### 2026-05-19 (Rich Content & Crash Fixes)
+
+- Fokus: Implementasi parser "Native Rich HTML Renderer" dan perbaikan crash UI.
+- Perubahan: 
+  - Membuat `RichBlockTemplateSelector` dan `RichBlock` model untuk merender teks, gambar, video, list, dan header native WinUI 3.
+  - Memperbaiki parser Regex di `GameDetailViewModel` untuk menerjemahkan `<br>`, `<p>`, dan `<li>` menjadi baris teks native.
+  - Mengganti `ItemsRepeater` dengan `ItemsControl` untuk mengatasi *Layout Cycle Crash* (`0xC000027B`) saat men-scroll gambar dinamis.
+  - Menyatukan sesi "About the Game" dan "Detailed Description" menjadi satu layout komprehensif.
+- Build: Succeeded, verified XAML parsing.
+- Next: Evaluasi stabilitas keseluruhan halaman detail game dan optimasi caching gambar jika diperlukan.
 
 ### 2026-05-19 (polish ABOUT THE GAME section)
 
