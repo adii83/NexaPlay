@@ -17,6 +17,7 @@ public sealed class MetadataService : IMetadataService
     private readonly HttpClient _http;
     private readonly SemaphoreSlim _loadLock = new(1, 1);
     private readonly SemaphoreSlim _sourceSyncLock = new(1, 1);
+    private readonly SemaphoreSlim _backgroundUpdateLock = new(1, 1);
 
     private readonly string _catalogDir;
     private readonly string _steamDataGzFile;
@@ -30,6 +31,7 @@ public sealed class MetadataService : IMetadataService
     private DateTime _lastLoaded = DateTime.MinValue;
     private IReadOnlyList<int>? _popularAppIdsCache;
     private DateTime _popularLastLoaded = DateTime.MinValue;
+    private DateTime _lastBackgroundCheckUtc = DateTime.MinValue;
 
     public MetadataService(IAppLogService log)
     {
@@ -54,6 +56,11 @@ public sealed class MetadataService : IMetadataService
         Directory.CreateDirectory(_catalogDir);
     }
 
+    public bool IsCacheAvailable =>
+        IsFileUsable(_steamDataGzFile) ||
+        IsFileUsable(_steamDataFile) ||
+        IsFileUsable(_overrideDataFile);
+
     public async Task<GameEntry?> GetMetadataAsync(int appId, CancellationToken ct = default)
     {
         await EnsureIndexedAsync(ct);
@@ -74,7 +81,7 @@ public sealed class MetadataService : IMetadataService
 
     public async Task<IReadOnlyList<int>> GetPopularAppIdsAsync(CancellationToken ct = default)
     {
-        if (_popularAppIdsCache is not null && DateTime.UtcNow - _popularLastLoaded < AppConstants.BypassGamesCacheTtl)
+        if (_popularAppIdsCache is not null && DateTime.UtcNow - _popularLastLoaded < AppConstants.SafetyNetTtl)
             return _popularAppIdsCache;
 
         try
@@ -94,7 +101,7 @@ public sealed class MetadataService : IMetadataService
 
     public async Task RefreshAsync(bool forceDownload = false, CancellationToken ct = default)
     {
-        await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(forceDownload, ct), ct);
+        await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(forceDownload, useHeadCheck: false, ct), ct);
         await BuildIndexAsync(ct);
     }
 
@@ -137,7 +144,7 @@ public sealed class MetadataService : IMetadataService
                     Message = $"Start {item.Name}"
                 });
 
-                await DownloadIfNeededSafeAsync(item.Url, item.Path, force: false, ct, item.Name, reporter);
+                await DownloadIfNeededSafeAsync(item.Url, item.Path, force: false, useHeadCheck: false, ct, item.Name, reporter);
 
                 progress?.Report(new MetadataWarmupProgress
                 {
@@ -171,24 +178,37 @@ public sealed class MetadataService : IMetadataService
 
     private async Task EnsureIndexedAsync(CancellationToken ct)
     {
-        if (_index is not null && DateTime.UtcNow - _lastLoaded < AppConstants.SteamDataCacheTtl)
+        if (_index is not null)
+        {
+            _ = PerformBackgroundUpdateAsync();
             return;
+        }
 
         await _loadLock.WaitAsync(ct);
         try
         {
-            if (_index is not null && DateTime.UtcNow - _lastLoaded < AppConstants.SteamDataCacheTtl)
+            if (_index is not null)
+            {
+                _ = PerformBackgroundUpdateAsync();
                 return;
+            }
 
             try
             {
-                await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(force: false, ct), ct);
+                if (HasEssentialLocalSources())
+                {
+                    await BuildIndexAsync(ct);
+                    _ = PerformBackgroundUpdateAsync();
+                    return;
+                }
+
+                await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(force: false, useHeadCheck: false, ct), ct);
                 await BuildIndexAsync(ct);
             }
             catch (JsonException ex)
             {
                 _log.Log("Metadata", $"Catalog parse failed, trying force refresh: {ex.Message}");
-                await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(force: true, ct), ct);
+                await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(force: true, useHeadCheck: false, ct), ct);
                 await BuildIndexAsync(ct);
             }
         }
@@ -198,27 +218,31 @@ public sealed class MetadataService : IMetadataService
         }
     }
 
-    private async Task SyncSourcesCoreAsync(bool force, CancellationToken ct)
+    private async Task<bool> SyncSourcesCoreAsync(bool force, bool useHeadCheck, CancellationToken ct)
     {
-        var jsonOk = await DownloadIfNeededSafeAsync(
-            AppConstants.SteamDataJsonUrl, _steamDataFile, force, ct, "steam_data.json", null);
-        var gzOk = await DownloadIfNeededSafeAsync(
-            AppConstants.SteamDataUrl, _steamDataGzFile, force, ct, "steam_data.json.gz", null);
+        var anyUpdated = false;
+        var jsonResult = await DownloadIfNeededSafeAsync(
+            AppConstants.SteamDataJsonUrl, _steamDataFile, force, useHeadCheck, ct, "steam_data.json", null);
+        var gzResult = await DownloadIfNeededSafeAsync(
+            AppConstants.SteamDataUrl, _steamDataGzFile, force, useHeadCheck, ct, "steam_data.json.gz", null);
+        anyUpdated |= jsonResult.Updated || gzResult.Updated;
 
-        if (!gzOk && jsonOk)
+        if (!gzResult.Available && jsonResult.Available)
         {
             _log.Log("Metadata", "Gzip source unavailable, fallback to steam_data.json");
         }
 
-        if (!gzOk && !jsonOk)
+        if (!gzResult.Available && !jsonResult.Available)
         {
             throw new IOException("Both primary metadata sources are unavailable/corrupted.");
         }
 
-        await DownloadIfNeededSafeAsync(AppConstants.OverrideDataUrl, _overrideDataFile, force, ct, "override_data.json", null);
-        await DownloadIfNeededSafeAsync(AppConstants.BypassGamesUrl, _fixGamesFile, force, ct, "fix_games.json", null);
-        await DownloadIfNeededSafeAsync(AppConstants.NewFixGamesUrl, _newFixGamesFile, force, ct, "new_fix_games.json", null);
-        await DownloadIfNeededSafeAsync(AppConstants.SteamGamesUrl, _steamGamesFile, force, ct, "steam_games.json", null);
+        anyUpdated |= (await DownloadIfNeededSafeAsync(AppConstants.OverrideDataUrl, _overrideDataFile, force, useHeadCheck, ct, "override_data.json", null)).Updated;
+        anyUpdated |= (await DownloadIfNeededSafeAsync(AppConstants.BypassGamesUrl, _fixGamesFile, force, useHeadCheck, ct, "fix_games.json", null)).Updated;
+        anyUpdated |= (await DownloadIfNeededSafeAsync(AppConstants.NewFixGamesUrl, _newFixGamesFile, force, useHeadCheck, ct, "new_fix_games.json", null)).Updated;
+        anyUpdated |= (await DownloadIfNeededSafeAsync(AppConstants.SteamGamesUrl, _steamGamesFile, force, useHeadCheck, ct, "steam_games.json", null)).Updated;
+
+        return anyUpdated;
     }
 
     private async Task RunWithSourceSyncLockAsync(Func<Task> action, CancellationToken ct)
@@ -234,17 +258,32 @@ public sealed class MetadataService : IMetadataService
         }
     }
 
-    private async Task<bool> DownloadIfNeededSafeAsync(
+    private async Task<T> RunWithSourceSyncLockAsync<T>(Func<Task<T>> action, CancellationToken ct)
+    {
+        await _sourceSyncLock.WaitAsync(ct);
+        try
+        {
+            return await action();
+        }
+        finally
+        {
+            _sourceSyncLock.Release();
+        }
+    }
+
+    private async Task<DownloadResult> DownloadIfNeededSafeAsync(
         string url,
         string outputPath,
         bool force,
+        bool useHeadCheck,
         CancellationToken ct,
         string sourceName,
         IProgress<double?>? progress)
     {
+        var updated = false;
         try
         {
-            await DownloadIfNeededAsync(url, outputPath, force, ct, sourceName, progress);
+            updated = await DownloadIfNeededAsync(url, outputPath, force, useHeadCheck, ct, sourceName, progress);
         }
         catch (Exception ex)
         {
@@ -252,7 +291,8 @@ public sealed class MetadataService : IMetadataService
             progress?.Report(null);
         }
 
-        return File.Exists(outputPath) && new FileInfo(outputPath).Length > 0;
+        var available = File.Exists(outputPath) && new FileInfo(outputPath).Length > 0;
+        return new DownloadResult(available, updated);
     }
 
     private async Task BuildIndexAsync(CancellationToken ct)
@@ -422,23 +462,58 @@ public sealed class MetadataService : IMetadataService
         }
     }
 
-    private async Task DownloadIfNeededAsync(
+    private async Task<bool> DownloadIfNeededAsync(
         string url,
         string outputPath,
         bool force,
+        bool useHeadCheck,
         CancellationToken ct,
         string sourceName,
         IProgress<double?>? progress)
     {
-        if (!force && File.Exists(outputPath))
+        var localExists = File.Exists(outputPath);
+        var localAge = localExists
+            ? DateTime.UtcNow - File.GetLastWriteTimeUtc(outputPath)
+            : TimeSpan.MaxValue;
+
+        if (!force && localExists && !useHeadCheck)
         {
-            var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(outputPath);
             var len = new FileInfo(outputPath).Length;
-            if (age < AppConstants.SteamDataCacheTtl && len > 0)
+            if (localAge < AppConstants.SafetyNetTtl && len > 0)
             {
-                _log.Log("Metadata", $"Skip download {sourceName}: cache valid ({len} bytes, age {age.TotalMinutes:F1}m)");
+                _log.Log("Metadata", $"Skip download {sourceName}: cache valid ({len} bytes, age {localAge.TotalMinutes:F1}m)");
                 progress?.Report(100);
-                return;
+                return false;
+            }
+        }
+
+        if (!force && useHeadCheck && localExists)
+        {
+            try
+            {
+                using var headReq = new HttpRequestMessage(HttpMethod.Head, url);
+                using var headResp = await _http.SendAsync(headReq, HttpCompletionOption.ResponseHeadersRead, ct);
+                headResp.EnsureSuccessStatusCode();
+
+                var remoteLastModified = headResp.Content.Headers.LastModified;
+                var localLastModified = File.GetLastWriteTimeUtc(outputPath);
+                if (remoteLastModified.HasValue && remoteLastModified.Value.UtcDateTime <= localLastModified)
+                {
+                    _log.Log("Metadata", $"Skip download {sourceName}: not modified on GitHub");
+                    progress?.Report(100);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                if (localAge < AppConstants.SafetyNetTtl)
+                {
+                    _log.Log("Metadata", $"Skip download {sourceName}: HEAD failed but cache still valid ({ex.Message})");
+                    progress?.Report(100);
+                    return false;
+                }
+
+                _log.Log("Metadata", $"HEAD failed for {sourceName}, trying GET fallback: {ex.Message}");
             }
         }
 
@@ -500,7 +575,7 @@ public sealed class MetadataService : IMetadataService
                     File.Copy(tempPath, outputPath, overwrite: true);
                     _log.Log("Metadata", $"Download ok {sourceName}: {downloadedLen} bytes");
                     progress?.Report(100);
-                    return;
+                    return true;
                 }
                 catch (IOException ioEx) when (attempt < maxAttempts &&
                                                (ioEx.Message.Contains("being used by another process", StringComparison.OrdinalIgnoreCase) ||
@@ -524,11 +599,12 @@ public sealed class MetadataService : IMetadataService
         }
         catch (Exception ex)
         {
-            var validExisting = File.Exists(outputPath) && new FileInfo(outputPath).Length > 0;
+            var validExisting = localExists && new FileInfo(outputPath).Length > 0;
             if (!validExisting)
                 throw;
 
             _log.Log("Metadata", $"Using stale source for {Path.GetFileName(outputPath)} after download error: {ex.Message}");
+            return false;
         }
     }
 
@@ -537,6 +613,53 @@ public sealed class MetadataService : IMetadataService
         using var response = await _http.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsStringAsync(ct);
+    }
+
+    private bool HasEssentialLocalSources()
+    {
+        return IsFileUsable(_steamDataGzFile) || IsFileUsable(_steamDataFile);
+    }
+
+    private async Task PerformBackgroundUpdateAsync()
+    {
+        if (_lastBackgroundCheckUtc != DateTime.MinValue &&
+            DateTime.UtcNow - _lastBackgroundCheckUtc < TimeSpan.FromMinutes(5))
+        {
+            return;
+        }
+
+        if (!await _backgroundUpdateLock.WaitAsync(0))
+            return;
+
+        _lastBackgroundCheckUtc = DateTime.UtcNow;
+        try
+        {
+            var updated = await RunWithSourceSyncLockAsync(
+                () => SyncSourcesCoreAsync(force: false, useHeadCheck: true, CancellationToken.None),
+                CancellationToken.None);
+
+            if (!updated)
+                return;
+
+            await _loadLock.WaitAsync();
+            try
+            {
+                await BuildIndexAsync(CancellationToken.None);
+                _log.Log("Metadata", "Background metadata update applied (hot-reload index).");
+            }
+            finally
+            {
+                _loadLock.Release();
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.Log("Metadata", $"Background metadata update failed: {ex.Message}");
+        }
+        finally
+        {
+            _backgroundUpdateLock.Release();
+        }
     }
 
     private static string? ReadString(JsonElement node, string propertyName)
@@ -584,5 +707,19 @@ public sealed class MetadataService : IMetadataService
         public bool Protection { get; init; }
         public string? HeaderImageUrl { get; init; }
         public string? Genre { get; init; }
+    }
+
+    private readonly record struct DownloadResult(bool Available, bool Updated);
+
+    private static bool IsFileUsable(string path)
+    {
+        try
+        {
+            return File.Exists(path) && new FileInfo(path).Length > 0;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

@@ -14,14 +14,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly ISteamService _steam;
     private readonly IAppLogService _log;
 
-    [ObservableProperty] private IReadOnlyList<InstalledGame> _installedGames = Array.Empty<InstalledGame>();
-    [ObservableProperty] private IReadOnlyList<string> _luaGames = Array.Empty<string>();
-    [ObservableProperty] private int _fixedCount;
-    [ObservableProperty] private bool _isLoading;
-    [ObservableProperty] private string _addAppId = string.Empty;
-    [ObservableProperty] private string _addStatus = string.Empty;
-    [ObservableProperty] private int _addProgress;
-    [ObservableProperty] private bool _isAdding;
+    [ObservableProperty] public partial IReadOnlyList<InstalledGame> InstalledGames { get; set; }
+    [ObservableProperty] public partial IReadOnlyList<string> LuaGames { get; set; }
+    [ObservableProperty] public partial int FixedCount { get; set; }
+    [ObservableProperty] public partial bool IsLoading { get; set; }
+    [ObservableProperty] public partial string AddAppId { get; set; }
+    [ObservableProperty] public partial string AddStatus { get; set; }
+    [ObservableProperty] public partial int AddProgress { get; set; }
+    [ObservableProperty] public partial bool IsAdding { get; set; }
 
     public LibraryViewModel(IAddGameService addGame, IOnlineFixService onlineFix, ISteamService steam, IAppLogService log)
     {
@@ -29,6 +29,12 @@ public sealed partial class LibraryViewModel : ObservableObject
         _onlineFix = onlineFix;
         _steam     = steam;
         _log       = log;
+
+        // Default values for partial properties
+        InstalledGames = Array.Empty<InstalledGame>();
+        LuaGames       = Array.Empty<string>();
+        AddAppId       = string.Empty;
+        AddStatus      = string.Empty;
     }
 
     public async Task LoadAsync()

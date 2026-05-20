@@ -108,5 +108,5 @@ Update status setiap selesai implementasi/validasi.
 3. Lengkapi behavior parity `Bypass Games` (cancel/error edge cases).
 4. Lengkapi `Library` parity (scan, add/remove, applied state sync).
 5. Hardening warning:
-   - `MVVMTK0045` (AOT-safe property pattern)
+   - `MVVMTK0045` (AOT-safe property pattern) — **Done** (semua ViewModel sudah migrasi ke partial property)
    - dependency advisory `SharpCompress`.

@@ -6,6 +6,8 @@ using NexaPlay.Infrastructure.Persistence;
 using System.IO.Compression;
 using System.Net.Http;
 using SharpCompress.Archives;
+using SharpCompress.Common;
+using SharpCompress.Readers;
 
 namespace NexaPlay.Infrastructure.Services;
 
@@ -178,20 +180,24 @@ public sealed class OnlineFixService : IOnlineFixService
         {
             // Fallback to SharpCompress for LZMA zips
             using var stream = File.OpenRead(zipPath);
-            using var archive = ArchiveFactory.Open(stream);
             var prefix = appId + "/";
-            var entries = archive.Entries.Where(e => !e.IsDirectory).ToList();
-            var allUnder = entries.All(e => (e.Key ?? "").Replace('\\', '/').StartsWith(prefix));
+            using var archive = ArchiveFactory.OpenArchive(stream, new ReaderOptions());
+            var entries = archive.Entries
+                .Where(entry => !entry.IsDirectory)
+                .ToList();
+
+            var allUnder = entries.All(entry => (entry.Key ?? string.Empty).Replace('\\', '/').StartsWith(prefix, StringComparison.Ordinal));
             foreach (var entry in entries)
             {
                 ct.ThrowIfCancellationRequested();
-                var key = (entry.Key ?? "").Replace('\\', '/');
-                var rel = allUnder && key.StartsWith(prefix) ? key[prefix.Length..] : key;
+                var key = (entry.Key ?? string.Empty).Replace('\\', '/');
+                var rel = allUnder && key.StartsWith(prefix, StringComparison.Ordinal)
+                    ? key[prefix.Length..]
+                    : key;
+
                 var target = Path.Combine(installPath, rel.Replace('/', Path.DirectorySeparatorChar));
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                await using var es = entry.OpenEntryStream();
-                await using var fs = File.Create(target);
-                await es.CopyToAsync(fs, ct);
+                entry.WriteToFile(target, new ExtractionOptions { Overwrite = true });
                 extracted.Add(rel);
             }
         }

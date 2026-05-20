@@ -80,13 +80,6 @@ public sealed partial class BypassGamesPage : Page
             DispatcherQueue.TryEnqueue(() =>
             {
                 // UpdateStatus(state.Status, GetStatusMessage(state), state.Percent < 0 ? (int)FixProgressBar.Value : state.Percent);
-
-                switch (state.Phase)
-                {
-                    // case "download": SetStep(2); break;
-                    // case "extract":
-                    // case "done":    SetStep(3); break;
-                }
             });
         });
 

@@ -23,9 +23,7 @@ public static class AppConstants
     public const string SupabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobXptdnJqYXp2cWlhdWZqcmp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MDI4NTUsImV4cCI6MjA4MDE3ODg1NX0.FyOhPNk9Yvc0g0Ki0W3ZEeJC1d3N5gv1WWXgyXsl0xg";
 
     // Cache TTLs
-    public static readonly TimeSpan SteamDataCacheTtl  = TimeSpan.FromHours(12);
-    public static readonly TimeSpan BypassGamesCacheTtl   = TimeSpan.FromHours(24);
-    public static readonly TimeSpan OverrideDataCacheTtl  = TimeSpan.FromHours(6);
+    public static readonly TimeSpan SafetyNetTtl = TimeSpan.FromHours(24);
 
     // Timeouts
     public static readonly TimeSpan LicenseOnlineTimeout = TimeSpan.FromSeconds(10);

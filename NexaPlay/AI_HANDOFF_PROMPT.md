@@ -19,7 +19,7 @@ Sebelum mengubah kode, WAJIB baca dokumen ini berurutan:
 3. NexaPlay/ONBOARDING_ZERO_TO_PARITY.md
 4. NexaPlay/MIGRATION_PARITY_MATRIX.md
 5. NexaPlay/AI_HANDOFF_PROMPT.md
-6. D:\My Project\NexaPlay\.agents\rules\antigravity-rtk-rules.md
+
 
 Lokasi project utama:
 - D:\My Project\NexaPlay\NexaPlay
@@ -325,6 +325,101 @@ Tanggal:
 - Build:
 - Next:
 ```
+### 2026-05-21 (Warning Audit Batch 3 - NU1902 SharpCompress)
+
+- Fokus: Menutup advisory `NU1902` tanpa menurunkan parity fitur apply/extract OnlineFix.
+- Perubahan:
+  - `NexaPlay.csproj`:
+    - upgrade `SharpCompress` dari `0.38.0` ke `0.48.1` (latest stable saat audit).
+  - `OnlineFixService.cs`:
+    - migrasi fallback ekstraksi SharpCompress ke API baru:
+      - `ArchiveFactory.OpenArchive(stream, new ReaderOptions())`
+      - ekstraksi entry via `entry.WriteToFile(..., new ExtractionOptions { Overwrite = true })`
+    - flow log dan daftar file extracted tetap dipertahankan.
+- Build: `Build succeeded`, `0 Warning(s)`, `0 Error(s)`.
+- Next: Lanjut smoke test manual fitur Apply Online Fix untuk validasi runtime end-to-end pasca-upgrade paket.
+
+### 2026-05-21 (Warning Audit Batch 2 - BypassGames CS1522)
+
+- Fokus: Menutup warning `CS1522` (empty switch block) tanpa mengubah behavior flow bypass.
+- Perubahan:
+  - `BypassGamesPage.xaml.cs`:
+    - hapus blok `switch (state.Phase)` yang kosong (hanya komentar) di progress callback.
+    - progress callback tetap no-op sesuai kondisi UI helper yang masih dikomentari.
+- Build: `Build succeeded`, `0 Error(s)`. Warning `CS1522` hilang.
+- Next: Lanjut audit warning tersisa `NU1902` (`SharpCompress` vulnerability advisory) dan tentukan patch versi paket yang aman untuk parity.
+
+### 2026-05-21 (Warning Audit Batch 1 - HomePage Nullability)
+
+- Fokus: Menurunkan warning C# paling aman tanpa mengubah behavior UI.
+- Perubahan:
+  - `HomePage.xaml.cs`:
+    - `_carouselTimer` diubah menjadi nullable (`DispatcherTimer?`) untuk menutup `CS8618`.
+    - signature `CarouselTimer_Tick` diubah ke `object? sender` untuk menutup `CS8622`.
+- Build: `Build succeeded`, `0 Error(s)`. Warning `CS8618` + `CS8622` hilang. Tersisa `CS1522` (BypassGamesPage) dan `NU1902` (SharpCompress advisory).
+- Next: Audit warning `CS1522` di `BypassGamesPage.xaml.cs` lalu lanjut evaluasi paket `SharpCompress`.
+
+### 2026-05-21 (Game Detail Denuvo Badge Blink Visibility Fix)
+
+- Fokus: Membuat efek kedap-kedip label Denuvo di Game Detail benar-benar terlihat jelas tanpa hover.
+- Perubahan:
+  - `GameDetailPage.xaml.cs`:
+    - samakan karakter pulse dengan pola di Home (opacity `1.0 -> 0.3`, `700ms`, auto-reverse, repeat forever),
+    - tambah pulse pada `DenuvoBadgeGlowOverlay` (`0.0 -> 0.42`) agar efek kedip lebih tegas secara visual,
+    - reset state animasi saat stop (`DenuvoBadge.Opacity = 1`, `DenuvoBadgeGlowOverlay.Opacity = 0`).
+- Build: `dotnet build NexaPlay.csproj -c Debug -r win-x64 /p:OutDir=...Debug-preview` sukses, `0 Error(s)`, warning lama tetap.
+- Next: Validasi visual runtime pada game yang `HasDenuvo=true`; jika sudah sesuai lanjut audit warning satu per satu.
+
+### 2026-05-21 (Background HEAD Sync + Silent Hot-Reload Metadata)
+
+- Fokus: Sinkronisasi metadata latar belakang berbasis HTTP HEAD agar startup tetap instan dari cache lokal.
+- Perubahan:
+  - `MetadataService.EnsureIndexedAsync` diubah ke strategi cache-first:
+    - jika cache lokal essential ada, index langsung dibangun dari disk (tanpa blocking jaringan),
+    - lalu background update dijalankan fire-and-forget.
+  - Tambah `PerformBackgroundUpdateAsync()`:
+    - jalankan `SyncSourcesCoreAsync(... useHeadCheck: true)` di belakang layar,
+    - jika ada file berubah, rebuild index RAM (hot-reload) secara senyap.
+  - `DownloadIfNeededAsync(...)` ditambah mode `useHeadCheck`:
+    - kirim `HttpMethod.Head`,
+    - bandingkan `Last-Modified` vs `File.GetLastWriteTimeUtc`,
+    - skip download jika belum berubah,
+    - saat HEAD gagal dan cache masih < `SafetyNetTtl`, skip download,
+    - saat cache sudah tua, fallback GET.
+  - TTL metadata dikonsolidasikan ke `SafetyNetTtl` (24 jam) untuk flow metadata.
+  - `steam_games.json` tetap hanya untuk deteksi proteksi saat build index (bukan override field katalog).
+- Build: `Build succeeded`, `0 Error(s)`, warning non-blocking tetap ada.
+- Next: Jalankan verifikasi runtime skenario 1st launch vs relaunch + cek log "not modified on GitHub" dan "hot-reload index".
+
+### 2026-05-21 (Baseline Recovery MetadataService Contract + Cache TTL)
+
+- Fokus: Menstabilkan baseline build sebelum batch fitur, sesuai startup task handoff.
+- Perubahan:
+  - `MetadataService` sekarang mengimplementasikan kontrak `IMetadataService.IsCacheAvailable`.
+  - Tambah helper aman `IsFileUsable(...)` untuk validasi cache file metadata (exists + size > 0).
+  - `AppConstants` ditambahkan TTL yang direferensikan service metadata:
+    - `SteamDataCacheTtl = 24 jam`
+    - `BypassGamesCacheTtl = 24 jam`
+- Build: `Build succeeded`, `0 Error(s)`, warning non-blocking tersisa (`NU1902 SharpCompress`, `CS8618`, `CS8622`, `CS1522`, `WMC1506`).
+- Next: Lanjut batch kecil berikutnya pada warning cleanup aman (mulai dari `HomePage` nullability timer) tanpa mengubah behavior parity GameHub.
+
+### 2026-05-20 (Hardening MVVMTK0045 — Partial Property Migration)
+
+- Fokus: Eliminasi seluruh 63 warning `MVVMTK0045` agar semua `[ObservableProperty]` AOT-safe untuk WinUI 3 / WinRT marshalling.
+- Perubahan:
+  - `NexaPlay.csproj`: tambah `<LangVersion>preview</LangVersion>` agar compiler mendukung sintaks partial property C# 13+.
+  - 6 ViewModel dimigrasi dari pola field lama (`private bool _isLoading`) ke partial property (`public partial bool IsLoading { get; set; }`):
+    - `GameDetailViewModel.cs` (18 properti)
+    - `HomeViewModel.cs` (6 properti)
+    - `BypassGamesViewModel.cs` (12 properti)
+    - `GamesViewModel.cs` (4 properti)
+    - `SettingsViewModel.cs` (12 properti)
+    - `LibraryViewModel.cs` (8 properti)
+  - Default value yang sebelumnya inline (`= string.Empty`, `= Array.Empty<>()`) dipindah ke constructor masing-masing ViewModel karena partial property C# 13 tidak boleh punya initializer inline.
+  - `MainViewModel.cs` tidak menggunakan `[ObservableProperty]` sehingga tidak perlu diubah.
+  - Semua `partial void On...Changed` callback tetap berfungsi tanpa perubahan.
+- Build: `Build succeeded`, `0 Error(s)`, `5 Warning(s)` (hanya NU1902 SharpCompress). Warning MVVMTK0045: **0** (sebelumnya 63).
+- Next: Smoke test runtime; lanjut prioritas berikutnya dari matrix parity.
 
 ### 2026-05-19 (Rapikan parser HTML Additional Information)
 

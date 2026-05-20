@@ -45,60 +45,138 @@ public sealed partial class MainWindow : Window
         this.Activated += OnFirstActivated;
     }
 
-    private void OnFirstActivated(object sender, WindowActivatedEventArgs e)
+    private async void OnFirstActivated(object sender, WindowActivatedEventArgs e)
     {
         this.Activated -= OnFirstActivated;
 
         // Ensure XamlRoot is ready before showing dialogs
         if (ContentFrame.XamlRoot != null)
         {
-            _ = ValidateLicenseAsync();
+            await ValidateLicenseAsync();
+            NavigateTo(NavHome);
+            await WarmupMetadataStartupAsync();
         }
         else
         {
-            ContentFrame.Loaded += (s, args) => _ = ValidateLicenseAsync();
+            ContentFrame.Loaded += async (s, args) => 
+            {
+                await ValidateLicenseAsync();
+                NavigateTo(NavHome);
+                await WarmupMetadataStartupAsync();
+            };
         }
 
-        NavigateTo(NavHome);
-        _ = WarmupMetadataStartupAsync();
+
     }
 
     private async System.Threading.Tasks.Task WarmupMetadataStartupAsync()
     {
-        StartupOverlay.Visibility = Visibility.Visible;
-        StartupStatusText.Text = "Menyiapkan sumber metadata inti...";
-        StartupProgressBar.IsIndeterminate = false;
-        StartupProgressBar.Value = 0;
-        StartupPercentText.Text = "0%";
+        bool isWarm = _metadataService.IsCacheAvailable;
+        var dispatcher = this.DispatcherQueue;
 
-        var progress = new Progress<MetadataWarmupProgress>(p =>
+        dispatcher.TryEnqueue(() =>
         {
-            var basePercent = p.TotalFiles <= 0 ? 0 : ((double)p.CompletedFiles / p.TotalFiles) * 100d;
-            var fileWeight = p.TotalFiles <= 0 ? 0 : (100d / p.TotalFiles);
-            var fileProgressPart = (p.FilePercent ?? 0) / 100d * fileWeight;
-            var overall = Math.Clamp(basePercent + fileProgressPart, 0, 100);
+            StartupOverlay.Visibility = Visibility.Visible;
+            StartupProgressBar.IsIndeterminate = false;
+            StartupProgressBar.Value = 0;
 
-            StartupStatusText.Text = p.Message;
-            StartupProgressBar.Value = overall;
-            StartupPercentText.Text = $"{overall:F0}%";
+            if (isWarm)
+            {
+                StartupTitleText.Visibility = Visibility.Collapsed;
+                StartupStatusText.Visibility = Visibility.Collapsed;
+                StartupPercentText.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                StartupTitleText.Text = "Menyiapkan NexaPlay";
+                StartupStatusText.Text = "Menghubungkan ke server...";
+                StartupPercentText.Text = "0%";
+
+                StartupTitleText.Visibility = Visibility.Visible;
+                StartupStatusText.Visibility = Visibility.Visible;
+                StartupPercentText.Visibility = Visibility.Visible;
+            }
         });
 
-        try
+        // Minimum time we want to show the loading screen (1.2 seconds)
+        var minDuration = TimeSpan.FromMilliseconds(1200);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        if (isWarm)
         {
-            await _metadataService.WarmupEssentialSourcesAsync(progress);
-            StartupStatusText.Text = "Metadata inti siap.";
-            StartupProgressBar.Value = 100;
-            StartupPercentText.Text = "100%";
+            // Run the actual metadata warmup in background
+            var warmupTask = _metadataService.WarmupEssentialSourcesAsync(null);
+
+            // Animate progress bar smoothly from 0 to 100 over 1200ms
+            const int steps = 40;
+            var stepDelay = (int)(minDuration.TotalMilliseconds / steps);
+            for (int i = 1; i <= steps; i++)
+            {
+                var val = (double)i / steps * 100d;
+                dispatcher.TryEnqueue(() => StartupProgressBar.Value = val);
+                await System.Threading.Tasks.Task.Delay(stepDelay);
+            }
+
+            await warmupTask;
         }
-        catch (Exception ex)
+        else
         {
-            StartupStatusText.Text = $"Warmup metadata gagal: {ex.Message}";
+            // Cold boot: actual progress from downloads
+            var progress = new Progress<MetadataWarmupProgress>(p =>
+            {
+                var basePercent = p.TotalFiles <= 0 ? 0 : ((double)p.CompletedFiles / p.TotalFiles) * 100d;
+                var fileWeight = p.TotalFiles <= 0 ? 0 : (100d / p.TotalFiles);
+                var fileProgressPart = (p.FilePercent ?? 0) / 100d * fileWeight;
+                var overall = Math.Clamp(basePercent + fileProgressPart, 0, 100);
+
+                dispatcher.TryEnqueue(() =>
+                {
+                    string friendlyMessage = p.FileName switch
+                    {
+                        "steam_data.json" or "steam_data.json.gz" => "Menyiapkan database game...",
+                        "override_data.json" => "Mengunduh konfigurasi...",
+                        "fix_games.json" or "new_fix_games.json" => "Menyiapkan bypass games...",
+                        "steam_games.json" => "Memverifikasi database Denuvo...",
+                        _ => "Sedang menyiapkan NexaPlay..."
+                    };
+                    StartupStatusText.Text = $"{friendlyMessage} ({p.CompletedFiles}/{p.TotalFiles})";
+                    StartupPercentText.Text = $"{overall:F0}%";
+                    StartupProgressBar.Value = overall;
+                });
+            });
+
+            try
+            {
+                await _metadataService.WarmupEssentialSourcesAsync(progress);
+                dispatcher.TryEnqueue(() =>
+                {
+                    StartupStatusText.Text = "NexaPlay siap!";
+                    StartupPercentText.Text = "100%";
+                    StartupProgressBar.Value = 100;
+                });
+            }
+            catch (Exception ex)
+            {
+                dispatcher.TryEnqueue(() =>
+                {
+                    StartupStatusText.Text = $"Gagal menyiapkan data: {ex.Message}";
+                });
+            }
         }
-        finally
+
+        stopwatch.Stop();
+        var remaining = minDuration - stopwatch.Elapsed;
+        if (remaining > TimeSpan.Zero)
         {
-            await System.Threading.Tasks.Task.Delay(350);
+            await System.Threading.Tasks.Task.Delay(remaining);
+        }
+
+        // Wait slightly for visual completion before collapsing
+        await System.Threading.Tasks.Task.Delay(150);
+        dispatcher.TryEnqueue(() =>
+        {
             StartupOverlay.Visibility = Visibility.Collapsed;
-        }
+        });
     }
 
     private async System.Threading.Tasks.Task ValidateLicenseAsync()
@@ -106,7 +184,7 @@ public sealed partial class MainWindow : Window
         var license = await _licenseService.LoadAsync();
         if (!license.IsValid)
         {
-            ShowLicenseActivation();
+            await ShowLicenseActivation();
         }
     }
 
@@ -223,7 +301,7 @@ public sealed partial class MainWindow : Window
             : (Microsoft.UI.Xaml.Style)Application.Current.Resources["NavLabelStyle"];
     }
 
-    private async void ShowLicenseActivation()
+    private async System.Threading.Tasks.Task ShowLicenseActivation()
     {
         if (ContentFrame.XamlRoot == null) return;
 

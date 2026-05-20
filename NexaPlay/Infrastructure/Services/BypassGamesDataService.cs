@@ -48,11 +48,11 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
 
     private async Task EnsureLoadedAsync(CancellationToken ct)
     {
-        if (_cached is not null && DateTime.UtcNow - _lastLoaded < AppConstants.BypassGamesCacheTtl) return;
+        if (_cached is not null && DateTime.UtcNow - _lastLoaded < AppConstants.SafetyNetTtl) return;
         await _lock.WaitAsync(ct);
         try
         {
-            if (_cached is not null && DateTime.UtcNow - _lastLoaded < AppConstants.BypassGamesCacheTtl) return;
+            if (_cached is not null && DateTime.UtcNow - _lastLoaded < AppConstants.SafetyNetTtl) return;
             await LoadAsync(ct);
         }
         finally { _lock.Release(); }
@@ -61,7 +61,7 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
     private async Task LoadAsync(CancellationToken ct)
     {
         // Try disk cache
-        if (File.Exists(_cacheFile) && DateTime.UtcNow - File.GetLastWriteTimeUtc(_cacheFile) < AppConstants.BypassGamesCacheTtl)
+        if (File.Exists(_cacheFile) && DateTime.UtcNow - File.GetLastWriteTimeUtc(_cacheFile) < AppConstants.SafetyNetTtl)
         {
             _cached = ParseFromFile(_cacheFile);
             _lastLoaded = DateTime.UtcNow;

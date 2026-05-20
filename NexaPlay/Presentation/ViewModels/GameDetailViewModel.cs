@@ -37,37 +37,37 @@ public sealed partial class GameDetailViewModel : ObservableObject
     private readonly INavigationService _nav;
 
     // —— Base metadata (from steam_data.json.gz — always available) ———————————
-    [ObservableProperty] private GameEntry? _game;
+    [ObservableProperty] public partial GameEntry? Game { get; set; }
 
     // —— Rich detail (from Steam Store API — loaded on-demand) ————————————————
-    [ObservableProperty] private GameDetailEntry? _detail;
-    [ObservableProperty] private bool _isDetailLoading;
-    [ObservableProperty] private bool _isDetailAvailable;
+    [ObservableProperty] public partial GameDetailEntry? Detail { get; set; }
+    [ObservableProperty] public partial bool IsDetailLoading { get; set; }
+    [ObservableProperty] public partial bool IsDetailAvailable { get; set; }
 
     // —— Fix catalog entry (from fix_games.json) ——————————————————————————————
-    [ObservableProperty] private FixEntry? _fixEntry;
-    [ObservableProperty] private bool _hasFixAvailable;
+    [ObservableProperty] public partial FixEntry? FixEntry { get; set; }
+    [ObservableProperty] public partial bool HasFixAvailable { get; set; }
 
     // —— Applied state ————————————————————————————————————————————————————————
-    [ObservableProperty] private bool _isFixApplied;
-    [ObservableProperty] private bool _isGameInstalled;
+    [ObservableProperty] public partial bool IsFixApplied { get; set; }
+    [ObservableProperty] public partial bool IsGameInstalled { get; set; }
 
     // —— Action states ————————————————————————————————————————————————————————
-    [ObservableProperty] private bool _isApplyingFix;
-    [ObservableProperty] private bool _isAddingGame;
-    [ObservableProperty] private int _actionPercent;
-    [ObservableProperty] private string _actionStatus = string.Empty;
-    [ObservableProperty] private BypassStatus _currentBypassStatus = BypassStatus.Unknown;
+    [ObservableProperty] public partial bool IsApplyingFix { get; set; }
+    [ObservableProperty] public partial bool IsAddingGame { get; set; }
+    [ObservableProperty] public partial int ActionPercent { get; set; }
+    [ObservableProperty] public partial string ActionStatus { get; set; }
+    [ObservableProperty] public partial BypassStatus CurrentBypassStatus { get; set; }
 
     // —— Selected screenshot index (for the strip) ————————————————————————————
-    [ObservableProperty] private int _selectedScreenshotIndex;
-    [ObservableProperty] private string _currentScreenshotUrl = string.Empty;
-    [ObservableProperty] private string _heroBackgroundUrl = string.Empty;
-    [ObservableProperty] private string _gameIconUrl = string.Empty;
-    [ObservableProperty] private bool _showRecommendedRequirements;
+    [ObservableProperty] public partial int SelectedScreenshotIndex { get; set; }
+    [ObservableProperty] public partial string CurrentScreenshotUrl { get; set; }
+    [ObservableProperty] public partial string HeroBackgroundUrl { get; set; }
+    [ObservableProperty] public partial string GameIconUrl { get; set; }
+    [ObservableProperty] public partial bool ShowRecommendedRequirements { get; set; }
 
     // —— About content loading state (set by Page, not ViewModel) ——————————————
-    [ObservableProperty] private bool _isAboutContentLoading;
+    [ObservableProperty] public partial bool IsAboutContentLoading { get; set; }
 
 
 
@@ -181,6 +181,13 @@ public sealed partial class GameDetailViewModel : ObservableObject
         _fixData      = fixData;
         _log          = log;
         _nav          = nav;
+
+        // Default values for partial properties (initializers not allowed on partial properties)
+        ActionStatus        = string.Empty;
+        CurrentBypassStatus = BypassStatus.Unknown;
+        CurrentScreenshotUrl = string.Empty;
+        HeroBackgroundUrl   = string.Empty;
+        GameIconUrl         = string.Empty;
     }
 
     // —— Load ———————————————————————————————————————————————————————————————————

@@ -292,34 +292,63 @@
 
             <Border x:Name="StartupOverlay"
                     Grid.RowSpan="2"
-                    Background="#B2141414"
+                    Background="#080808"
                     Visibility="Collapsed">
-                <Border Width="420"
-                        Padding="18"
-                        CornerRadius="10"
-                        Background="{ThemeResource NexaSurfaceElevatedBrush}"
-                        BorderBrush="{ThemeResource NexaBorderBrush}"
+                <Border Width="400"
+                        Padding="32,40,32,40"
+                        CornerRadius="16"
+                        Background="#121212"
+                        BorderBrush="#1F1F1F"
                         BorderThickness="1"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="Menyiapkan metadata..."
+                    <StackPanel Spacing="0">
+                        <!-- NexaPlay Premium Logo -->
+                        <Image Width="48" Height="48" HorizontalAlignment="Center" Margin="0,0,0,24">
+                            <Image.Source>
+                                <SvgImageSource RasterizePixelHeight="96" RasterizePixelWidth="96" UriSource="ms-appx:///Assets/logo.svg"/>
+                            </Image.Source>
+                        </Image>
+
+                        <!-- Title/Message (human language, only visible on cold boot) -->
+                        <TextBlock x:Name="StartupTitleText"
+                                   Text="Menyiapkan NexaPlay"
                                    FontSize="16"
                                    FontWeight="SemiBold"
-                                   Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                                   Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,6"
+                                   Visibility="Collapsed" />
+                        
                         <TextBlock x:Name="StartupStatusText"
-                                   Text="Inisialisasi..."
-                                   FontSize="12"
-                                   Foreground="{ThemeResource NexaTextSecondaryBrush}" />
+                                   Text="Mohon tunggu sebentar..."
+                                   FontSize="13"
+                                   Foreground="{ThemeResource NexaTextSecondaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   Margin="0,0,0,20"
+                                   Visibility="Collapsed" />
+
+                        <!-- Sleek Progress Bar -->
                         <ProgressBar x:Name="StartupProgressBar"
                                      Minimum="0"
                                      Maximum="100"
                                      Value="0"
-                                     Height="8" />
+                                     Height="4"
+                                     CornerRadius="2"
+                                     Background="#1F1F1F"
+                                     Foreground="{ThemeResource NexaAccentBrush}"
+                                     HorizontalAlignment="Stretch" />
+
+                        <!-- Percentage text (human language, only visible on cold boot) -->
                         <TextBlock x:Name="StartupPercentText"
                                    Text="0%"
-                                   FontSize="11"
-                                   Foreground="{ThemeResource NexaTextMutedBrush}" />
+                                   FontSize="12"
+                                   FontWeight="Medium"
+                                   Foreground="{ThemeResource NexaTextMutedBrush}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,12,0,0"
+                                   Visibility="Collapsed" />
                     </StackPanel>
                 </Border>
             </Border>

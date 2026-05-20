@@ -9,16 +9,23 @@ public sealed partial class GamesViewModel : ObservableObject
 {
     private readonly IBypassGamesDataService _fixData;
 
-    [ObservableProperty] private string _searchQuery = string.Empty;
-    [ObservableProperty] private bool _isLoading;
-    [ObservableProperty] private IReadOnlyList<FixEntry> _games = Array.Empty<FixEntry>();
-    [ObservableProperty] private int _totalCount;
+    [ObservableProperty] public partial string SearchQuery { get; set; }
+    [ObservableProperty] public partial bool IsLoading { get; set; }
+    [ObservableProperty] public partial IReadOnlyList<FixEntry> Games { get; set; }
+    [ObservableProperty] public partial int TotalCount { get; set; }
 
     private IReadOnlyList<FixEntry> _allGames = Array.Empty<FixEntry>();
 
     public bool IsEmpty => !IsLoading && Games.Count == 0;
 
-    public GamesViewModel(IBypassGamesDataService fixData) => _fixData = fixData;
+    public GamesViewModel(IBypassGamesDataService fixData)
+    {
+        _fixData = fixData;
+
+        // Default values for partial properties
+        SearchQuery = string.Empty;
+        Games       = Array.Empty<FixEntry>();
+    }
 
     public async Task LoadAsync()
     {

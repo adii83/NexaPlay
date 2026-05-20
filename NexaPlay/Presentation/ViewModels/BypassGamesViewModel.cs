@@ -16,22 +16,22 @@ public sealed partial class BypassGamesViewModel : ObservableObject
     private readonly IAppLogService _log;
 
     // Catalog
-    [ObservableProperty] private IReadOnlyList<FixEntry> _fixes = Array.Empty<FixEntry>();
-    [ObservableProperty] private IReadOnlyList<FixEntry> _filteredFixes = Array.Empty<FixEntry>();
-    [ObservableProperty] private bool _isLoading;
-    [ObservableProperty] private string _searchQuery = string.Empty;
+    [ObservableProperty] public partial IReadOnlyList<FixEntry> Fixes { get; set; }
+    [ObservableProperty] public partial IReadOnlyList<FixEntry> FilteredFixes { get; set; }
+    [ObservableProperty] public partial bool IsLoading { get; set; }
+    [ObservableProperty] public partial string SearchQuery { get; set; }
 
     // AV
-    [ObservableProperty] private IReadOnlyList<AntivirusInfo> _antivirusList = Array.Empty<AntivirusInfo>();
-    [ObservableProperty] private bool _isScanning;
+    [ObservableProperty] public partial IReadOnlyList<AntivirusInfo> AntivirusList { get; set; }
+    [ObservableProperty] public partial bool IsScanning { get; set; }
 
     // Fix progress
-    [ObservableProperty] private FixEntry? _selectedFix;
-    [ObservableProperty] private bool _isApplying;
-    [ObservableProperty] private int _fixPercent;
-    [ObservableProperty] private string _fixPhase = string.Empty;
-    [ObservableProperty] private string _BypassStatusMessage = string.Empty;
-    [ObservableProperty] private BypassStatus _currentBypassStatus = BypassStatus.Unknown;
+    [ObservableProperty] public partial FixEntry? SelectedFix { get; set; }
+    [ObservableProperty] public partial bool IsApplying { get; set; }
+    [ObservableProperty] public partial int FixPercent { get; set; }
+    [ObservableProperty] public partial string FixPhase { get; set; }
+    [ObservableProperty] public partial string BypassStatusMessage { get; set; }
+    [ObservableProperty] public partial BypassStatus CurrentBypassStatus { get; set; }
 
     private CancellationTokenSource? _fixCts;
 
@@ -44,6 +44,15 @@ public sealed partial class BypassGamesViewModel : ObservableObject
         _defender  = defender;
         _steam     = steam;
         _log       = log;
+
+        // Default values for partial properties
+        Fixes               = Array.Empty<FixEntry>();
+        FilteredFixes       = Array.Empty<FixEntry>();
+        SearchQuery         = string.Empty;
+        AntivirusList       = Array.Empty<AntivirusInfo>();
+        FixPhase            = string.Empty;
+        BypassStatusMessage = string.Empty;
+        CurrentBypassStatus = BypassStatus.Unknown;
     }
 
     public async Task LoadAsync()

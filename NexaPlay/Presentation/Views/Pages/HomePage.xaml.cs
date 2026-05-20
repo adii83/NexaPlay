@@ -13,7 +13,7 @@ namespace NexaPlay.Presentation.Views.Pages;
 public sealed partial class HomePage : Page
 {
     public HomeViewModel ViewModel => (HomeViewModel)DataContext;
-    private DispatcherTimer _carouselTimer;
+    private DispatcherTimer? _carouselTimer;
     private INavigationService? _nav;
 
     public HomePage() 
@@ -33,7 +33,7 @@ public sealed partial class HomePage : Page
         this.Unloaded += (s, e) => _carouselTimer.Stop();
     }
 
-    private void CarouselTimer_Tick(object sender, object e)
+    private void CarouselTimer_Tick(object? sender, object e)
     {
         if (HeroCarousel != null && HeroCarousel.Items.Count > 0)
         {

@@ -17,23 +17,23 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly IAppLogService _log;
 
     // License
-    [ObservableProperty] private LicenseInfo? _currentLicense;
-    [ObservableProperty] private string _licenseKeyInput = string.Empty;
-    [ObservableProperty] private bool _isActivating;
-    [ObservableProperty] private string _activationMessage = string.Empty;
-    [ObservableProperty] private bool _activationSuccess;
+    [ObservableProperty] public partial LicenseInfo? CurrentLicense { get; set; }
+    [ObservableProperty] public partial string LicenseKeyInput { get; set; }
+    [ObservableProperty] public partial bool IsActivating { get; set; }
+    [ObservableProperty] public partial string ActivationMessage { get; set; }
+    [ObservableProperty] public partial bool ActivationSuccess { get; set; }
 
     // Steam
-    [ObservableProperty] private string _steamPath = "Not detected";
-    [ObservableProperty] private int _steamLibraryCount;
+    [ObservableProperty] public partial string SteamPath { get; set; }
+    [ObservableProperty] public partial int SteamLibraryCount { get; set; }
 
     // Defender
-    [ObservableProperty] private IReadOnlyList<AntivirusInfo> _antivirusList = Array.Empty<AntivirusInfo>();
-    [ObservableProperty] private IReadOnlyList<string> _exclusions = Array.Empty<string>();
-    [ObservableProperty] private bool _isDetecting;
+    [ObservableProperty] public partial IReadOnlyList<AntivirusInfo> AntivirusList { get; set; }
+    [ObservableProperty] public partial IReadOnlyList<string> Exclusions { get; set; }
+    [ObservableProperty] public partial bool IsDetecting { get; set; }
 
     // System
-    [ObservableProperty] private string _deviceId = string.Empty;
+    [ObservableProperty] public partial string DeviceId { get; set; }
 
     public SettingsViewModel(
         ILicenseService license, ISteamService steam,
@@ -46,6 +46,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         _metadata = metadata;
         _fixData  = fixData;
         _log      = log;
+
+        // Default values for partial properties
+        LicenseKeyInput   = string.Empty;
+        ActivationMessage = string.Empty;
+        SteamPath         = "Not detected";
+        AntivirusList     = Array.Empty<AntivirusInfo>();
+        Exclusions        = Array.Empty<string>();
+        DeviceId          = string.Empty;
     }
 
     public async Task LoadAsync()

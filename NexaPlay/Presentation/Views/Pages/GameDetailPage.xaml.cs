@@ -33,6 +33,7 @@ public sealed partial class GameDetailPage : Page
     private long _expectedRenderStamp;
     private long _aboutLoadWatchdogStamp;
     private bool _isPageActive;
+    private Microsoft.UI.Xaml.Media.Animation.Storyboard? _denuvoPulseStoryboard;
     private static readonly JsonSerializerOptions _jsonCaseInsensitive = new() { PropertyNameCaseInsensitive = true };
 
     /// <summary>
@@ -127,6 +128,17 @@ public sealed partial class GameDetailPage : Page
         if (e.PropertyName == nameof(GameDetailViewModel.DisplayRichDescription))
         {
             RenderAboutGameWebView();
+        }
+        else if (e.PropertyName == nameof(GameDetailViewModel.HasDenuvo))
+        {
+            if (ViewModel.HasDenuvo)
+            {
+                StartDenuvoPulse();
+            }
+            else
+            {
+                StopDenuvoPulse();
+            }
         }
     }
 
@@ -777,6 +789,70 @@ public sealed partial class GameDetailPage : Page
     {
         MediaOverlay.Visibility = Visibility.Collapsed;
         MediaOverlayImage.Source = null;
+    }
+
+    private void DenuvoBadge_Loaded(object sender, RoutedEventArgs e)
+    {
+        StartDenuvoPulse();
+    }
+
+    private void DenuvoBadge_Unloaded(object sender, RoutedEventArgs e)
+    {
+        StopDenuvoPulse();
+    }
+
+    private void StartDenuvoPulse()
+    {
+        if (DenuvoBadge is null)
+            return;
+
+        if (_denuvoPulseStoryboard == null)
+        {
+            _denuvoPulseStoryboard = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
+            var badgePulse = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
+            {
+                From = 1.0,
+                To = 0.3,
+                Duration = new Duration(TimeSpan.FromMilliseconds(700)),
+                AutoReverse = true,
+                RepeatBehavior = Microsoft.UI.Xaml.Media.Animation.RepeatBehavior.Forever
+            };
+
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(badgePulse, DenuvoBadge);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(badgePulse, "Opacity");
+            _denuvoPulseStoryboard.Children.Add(badgePulse);
+
+            if (DenuvoBadgeGlowOverlay is not null)
+            {
+                var glowPulse = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
+                {
+                    From = 0.0,
+                    To = 0.42,
+                    Duration = new Duration(TimeSpan.FromMilliseconds(700)),
+                    AutoReverse = true,
+                    RepeatBehavior = Microsoft.UI.Xaml.Media.Animation.RepeatBehavior.Forever
+                };
+
+                Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(glowPulse, DenuvoBadgeGlowOverlay);
+                Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(glowPulse, "Opacity");
+                _denuvoPulseStoryboard.Children.Add(glowPulse);
+            }
+        }
+
+        _denuvoPulseStoryboard.Begin();
+    }
+
+    private void StopDenuvoPulse()
+    {
+        _denuvoPulseStoryboard?.Stop();
+        if (DenuvoBadge is not null)
+        {
+            DenuvoBadge.Opacity = 1;
+        }
+        if (DenuvoBadgeGlowOverlay is not null)
+        {
+            DenuvoBadgeGlowOverlay.Opacity = 0;
+        }
     }
 
     private sealed class WebViewHeightPayload

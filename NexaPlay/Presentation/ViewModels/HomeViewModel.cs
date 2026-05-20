@@ -15,12 +15,12 @@ public sealed partial class HomeViewModel : ObservableObject
     private readonly IMetadataService _metadata;
     private readonly IAppLogService _log;
 
-    [ObservableProperty] private int _totalFixes;
-    [ObservableProperty] private int _libraryCount;
-    [ObservableProperty] private bool _isLoading = true;
-    [ObservableProperty] private IReadOnlyList<FixEntry> _recentFixes = Array.Empty<FixEntry>();
-    [ObservableProperty] private ObservableCollection<GameEntry> _popularGames = new();
-    [ObservableProperty] private FixEntry? _heroGame;
+    [ObservableProperty] public partial int TotalFixes { get; set; }
+    [ObservableProperty] public partial int LibraryCount { get; set; }
+    [ObservableProperty] public partial bool IsLoading { get; set; }
+    [ObservableProperty] public partial IReadOnlyList<FixEntry> RecentFixes { get; set; }
+    [ObservableProperty] public partial ObservableCollection<GameEntry> PopularGames { get; set; }
+    [ObservableProperty] public partial FixEntry? HeroGame { get; set; }
 
     private IReadOnlyList<int> _allPopularAppIds = Array.Empty<int>();
     private int _currentPopularPage = 0;
@@ -36,6 +36,11 @@ public sealed partial class HomeViewModel : ObservableObject
         _addGame = addGame;
         _metadata = metadata;
         _log = log;
+
+        // Default values for partial properties
+        IsLoading    = true;
+        RecentFixes  = Array.Empty<FixEntry>();
+        PopularGames = new ObservableCollection<GameEntry>();
     }
 
     public async Task LoadAsync()
