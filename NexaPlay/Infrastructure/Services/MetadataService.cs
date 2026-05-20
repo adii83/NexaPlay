@@ -16,6 +16,7 @@ public sealed class MetadataService : IMetadataService
     private readonly IAppLogService _log;
     private readonly HttpClient _http;
     private readonly SemaphoreSlim _loadLock = new(1, 1);
+    private readonly SemaphoreSlim _sourceSyncLock = new(1, 1);
 
     private readonly string _catalogDir;
     private readonly string _steamDataGzFile;
@@ -33,8 +34,10 @@ public sealed class MetadataService : IMetadataService
     public MetadataService(IAppLogService log)
     {
         _log = log;
-        _http = new HttpClient { Timeout = AppConstants.HttpDefaultTimeout };
+        _http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("NexaPlay/1.0");
+        _http.DefaultRequestVersion = System.Net.HttpVersion.Version11;
+        _http.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
 
         _catalogDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -91,8 +94,62 @@ public sealed class MetadataService : IMetadataService
 
     public async Task RefreshAsync(bool forceDownload = false, CancellationToken ct = default)
     {
-        await SyncSourcesAsync(forceDownload, ct);
+        await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(forceDownload, ct), ct);
         await BuildIndexAsync(ct);
+    }
+
+    public async Task WarmupEssentialSourcesAsync(IProgress<MetadataWarmupProgress>? progress = null, CancellationToken ct = default)
+    {
+        await RunWithSourceSyncLockAsync(async () =>
+        {
+            var essentials = new (string Url, string Path, string Name)[]
+            {
+                (AppConstants.SteamDataJsonUrl, _steamDataFile, "steam_data.json"),
+                (AppConstants.SteamDataUrl, _steamDataGzFile, "steam_data.json.gz"),
+                (AppConstants.OverrideDataUrl, _overrideDataFile, "override_data.json")
+            };
+
+            var total = essentials.Length;
+            for (var i = 0; i < total; i++)
+            {
+                var item = essentials[i];
+                var completedBefore = i;
+                var reporter = new Progress<double?>(filePercent =>
+                {
+                    progress?.Report(new MetadataWarmupProgress
+                    {
+                        FileName = item.Name,
+                        Stage = "downloading",
+                        CompletedFiles = completedBefore,
+                        TotalFiles = total,
+                        FilePercent = filePercent,
+                        Message = $"Downloading {item.Name}"
+                    });
+                });
+
+                progress?.Report(new MetadataWarmupProgress
+                {
+                    FileName = item.Name,
+                    Stage = "start",
+                    CompletedFiles = completedBefore,
+                    TotalFiles = total,
+                    FilePercent = 0,
+                    Message = $"Start {item.Name}"
+                });
+
+                await DownloadIfNeededSafeAsync(item.Url, item.Path, force: false, ct, item.Name, reporter);
+
+                progress?.Report(new MetadataWarmupProgress
+                {
+                    FileName = item.Name,
+                    Stage = "done",
+                    CompletedFiles = i + 1,
+                    TotalFiles = total,
+                    FilePercent = 100,
+                    Message = $"Done {item.Name}"
+                });
+            }
+        }, ct);
     }
 
     public Task ClearCacheAsync()
@@ -123,8 +180,17 @@ public sealed class MetadataService : IMetadataService
             if (_index is not null && DateTime.UtcNow - _lastLoaded < AppConstants.SteamDataCacheTtl)
                 return;
 
-            await SyncSourcesAsync(force: false, ct);
-            await BuildIndexAsync(ct);
+            try
+            {
+                await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(force: false, ct), ct);
+                await BuildIndexAsync(ct);
+            }
+            catch (JsonException ex)
+            {
+                _log.Log("Metadata", $"Catalog parse failed, trying force refresh: {ex.Message}");
+                await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(force: true, ct), ct);
+                await BuildIndexAsync(ct);
+            }
         }
         finally
         {
@@ -132,26 +198,91 @@ public sealed class MetadataService : IMetadataService
         }
     }
 
-    private async Task SyncSourcesAsync(bool force, CancellationToken ct)
+    private async Task SyncSourcesCoreAsync(bool force, CancellationToken ct)
     {
-        await DownloadIfNeededAsync(AppConstants.SteamDataUrl, _steamDataGzFile, force, ct);
-        await DownloadIfNeededAsync(AppConstants.SteamDataJsonUrl, _steamDataFile, force, ct);
-        await DownloadIfNeededAsync(AppConstants.OverrideDataUrl, _overrideDataFile, force, ct);
-        await DownloadIfNeededAsync(AppConstants.BypassGamesUrl, _fixGamesFile, force, ct);
-        await DownloadIfNeededAsync(AppConstants.NewFixGamesUrl, _newFixGamesFile, force, ct);
-        await DownloadIfNeededAsync(AppConstants.SteamGamesUrl, _steamGamesFile, force, ct);
+        var jsonOk = await DownloadIfNeededSafeAsync(
+            AppConstants.SteamDataJsonUrl, _steamDataFile, force, ct, "steam_data.json", null);
+        var gzOk = await DownloadIfNeededSafeAsync(
+            AppConstants.SteamDataUrl, _steamDataGzFile, force, ct, "steam_data.json.gz", null);
+
+        if (!gzOk && jsonOk)
+        {
+            _log.Log("Metadata", "Gzip source unavailable, fallback to steam_data.json");
+        }
+
+        if (!gzOk && !jsonOk)
+        {
+            throw new IOException("Both primary metadata sources are unavailable/corrupted.");
+        }
+
+        await DownloadIfNeededSafeAsync(AppConstants.OverrideDataUrl, _overrideDataFile, force, ct, "override_data.json", null);
+        await DownloadIfNeededSafeAsync(AppConstants.BypassGamesUrl, _fixGamesFile, force, ct, "fix_games.json", null);
+        await DownloadIfNeededSafeAsync(AppConstants.NewFixGamesUrl, _newFixGamesFile, force, ct, "new_fix_games.json", null);
+        await DownloadIfNeededSafeAsync(AppConstants.SteamGamesUrl, _steamGamesFile, force, ct, "steam_games.json", null);
+    }
+
+    private async Task RunWithSourceSyncLockAsync(Func<Task> action, CancellationToken ct)
+    {
+        await _sourceSyncLock.WaitAsync(ct);
+        try
+        {
+            await action();
+        }
+        finally
+        {
+            _sourceSyncLock.Release();
+        }
+    }
+
+    private async Task<bool> DownloadIfNeededSafeAsync(
+        string url,
+        string outputPath,
+        bool force,
+        CancellationToken ct,
+        string sourceName,
+        IProgress<double?>? progress)
+    {
+        try
+        {
+            await DownloadIfNeededAsync(url, outputPath, force, ct, sourceName, progress);
+        }
+        catch (Exception ex)
+        {
+            _log.Log("Metadata", $"Download failed for {sourceName}: {ex.Message}");
+            progress?.Report(null);
+        }
+
+        return File.Exists(outputPath) && new FileInfo(outputPath).Length > 0;
     }
 
     private async Task BuildIndexAsync(CancellationToken ct)
     {
         var catalog = new Dictionary<int, RuntimeCatalogEntry>(capacity: 160_000);
+        var gzParsedOk = await MergeSourceSafeAsync(_steamDataGzFile, isGzip: true, catalog, ct);
+        var jsonParsedOk = await MergeSourceSafeAsync(_steamDataFile, isGzip: false, catalog, ct);
 
-        await MergeSourceAsync(_steamDataGzFile, isGzip: true, catalog, ct);
-        await MergeSourceAsync(_steamDataFile, isGzip: false, catalog, ct);
-        await MergeSourceAsync(_overrideDataFile, isGzip: false, catalog, ct);
-        var protectedAppIds = await LoadProtectionAppIdsAsync(
-            [_fixGamesFile, _newFixGamesFile, _steamGamesFile],
-            ct);
+        await MergeSourceSafeAsync(_overrideDataFile, isGzip: false, catalog, ct);
+
+        // Guard: if both primary sources fail or catalog is implausibly small,
+        // force caller to refresh sources (handled by EnsureIndexedAsync retry path).
+        if ((!gzParsedOk && !jsonParsedOk) || catalog.Count < 50_000)
+        {
+            throw new JsonException(
+                $"Runtime catalog incomplete/corrupted (count={catalog.Count}, gzParsed={gzParsedOk}, jsonParsed={jsonParsedOk}).");
+        }
+
+        HashSet<int> protectedAppIds;
+        try
+        {
+            protectedAppIds = await LoadProtectionAppIdsAsync(
+                [_fixGamesFile, _newFixGamesFile, _steamGamesFile],
+                ct);
+        }
+        catch (JsonException ex)
+        {
+            _log.Log("Metadata", $"Protection source parse error, continue without protection list: {ex.Message}");
+            protectedAppIds = new HashSet<int>();
+        }
 
         _index = catalog.Values
             .Select(e => new GameEntry
@@ -168,6 +299,24 @@ public sealed class MetadataService : IMetadataService
 
         _lastLoaded = DateTime.UtcNow;
         _log.Log("Metadata", $"Runtime catalog built: {_index.Count:N0} unique appids, protected={protectedAppIds.Count:N0}");
+    }
+
+    private async Task<bool> MergeSourceSafeAsync(
+        string path,
+        bool isGzip,
+        Dictionary<int, RuntimeCatalogEntry> catalog,
+        CancellationToken ct)
+    {
+        try
+        {
+            await MergeSourceAsync(path, isGzip, catalog, ct);
+            return true;
+        }
+        catch (JsonException ex)
+        {
+            _log.Log("Metadata", $"Skip corrupted source {Path.GetFileName(path)}: {ex.Message}");
+            return false;
+        }
     }
 
     private static async Task<HashSet<int>> LoadProtectionAppIdsAsync(
@@ -273,25 +422,110 @@ public sealed class MetadataService : IMetadataService
         }
     }
 
-    private async Task DownloadIfNeededAsync(string url, string outputPath, bool force, CancellationToken ct)
+    private async Task DownloadIfNeededAsync(
+        string url,
+        string outputPath,
+        bool force,
+        CancellationToken ct,
+        string sourceName,
+        IProgress<double?>? progress)
     {
         if (!force && File.Exists(outputPath))
         {
             var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(outputPath);
-            if (age < AppConstants.SteamDataCacheTtl)
+            var len = new FileInfo(outputPath).Length;
+            if (age < AppConstants.SteamDataCacheTtl && len > 0)
+            {
+                _log.Log("Metadata", $"Skip download {sourceName}: cache valid ({len} bytes, age {age.TotalMinutes:F1}m)");
+                progress?.Report(100);
                 return;
+            }
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+        _log.Log("Metadata", $"Download start {sourceName} (force={force})");
         try
         {
-            await using var source = await _http.GetStreamAsync(url, ct);
-            await using var target = File.Create(outputPath);
-            await source.CopyToAsync(target, ct);
+            const int maxAttempts = 3;
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                var tempPath = Path.Combine(
+                    Path.GetTempPath(),
+                    "NexaPlay",
+                    $"{sourceName}.{Environment.ProcessId}.{attempt}.{Guid.NewGuid():N}.tmp");
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(tempPath)!);
+                    // Wait until transfer finishes; cancellation only comes from caller/user action.
+                    using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+                    _log.Log("Metadata",
+                        $"Download response {sourceName}: status={(int)response.StatusCode}, len={(response.Content.Headers.ContentLength?.ToString() ?? "unknown")}");
+                    response.EnsureSuccessStatusCode();
+
+                    var content = response.Content;
+                    if (content is null)
+                        throw new IOException($"Response content is null for {sourceName}");
+
+                    var totalBytes = content.Headers.ContentLength;
+                    var lastReportedPercent = -1d;
+                    // No body timeout: wait until download fully completes (or user cancels via ct).
+                    await using var source = await content.ReadAsStreamAsync(ct);
+                    await using (var target = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                    {
+                        var buffer = new byte[128 * 1024];
+                        long written = 0;
+                        int read;
+                        while ((read = await source.ReadAsync(buffer.AsMemory(0, buffer.Length), ct)) > 0)
+                        {
+                            await target.WriteAsync(buffer.AsMemory(0, read), ct);
+                            written += read;
+
+                            if (totalBytes is > 0)
+                            {
+                                var percent = Math.Round(written * 100d / totalBytes.Value, 1);
+                                if (percent - lastReportedPercent >= 2 || percent >= 100)
+                                {
+                                    lastReportedPercent = percent;
+                                    progress?.Report(percent);
+                                }
+                            }
+                        }
+                        await target.FlushAsync(ct);
+                    }
+
+                    var downloadedLen = new FileInfo(tempPath).Length;
+                    if (downloadedLen <= 0)
+                        throw new IOException($"Downloaded empty file from {url}");
+
+                    File.Copy(tempPath, outputPath, overwrite: true);
+                    _log.Log("Metadata", $"Download ok {sourceName}: {downloadedLen} bytes");
+                    progress?.Report(100);
+                    return;
+                }
+                catch (IOException ioEx) when (attempt < maxAttempts &&
+                                               (ioEx.Message.Contains("being used by another process", StringComparison.OrdinalIgnoreCase) ||
+                                                ioEx.HResult == unchecked((int)0x80070020)))
+                {
+                    _log.Log("Metadata", $"Temp file lock {sourceName}, retry {attempt}/{maxAttempts}: {ioEx.Message}");
+                    await Task.Delay(500 * attempt, ct);
+                }
+                finally
+                {
+                    try
+                    {
+                        if (File.Exists(tempPath))
+                            File.Delete(tempPath);
+                    }
+                    catch { }
+                }
+            }
+
+            throw new IOException($"Failed to download {sourceName} after retries due to temp file lock.");
         }
         catch (Exception ex)
         {
-            if (!File.Exists(outputPath))
+            var validExisting = File.Exists(outputPath) && new FileInfo(outputPath).Length > 0;
+            if (!validExisting)
                 throw;
 
             _log.Log("Metadata", $"Using stale source for {Path.GetFileName(outputPath)} after download error: {ex.Message}");

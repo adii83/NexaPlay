@@ -1,6 +1,8 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using NexaPlay.Contracts.Navigation;
 using NexaPlay.Presentation.ViewModels;
@@ -118,6 +120,17 @@ public sealed partial class HomePage : Page
     // Converters for x:Bind
     public static Microsoft.UI.Xaml.Visibility InverseBoolToVis(bool val) => val ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
     public static Microsoft.UI.Xaml.Visibility BoolToVis(bool val) => val ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+    public static ImageSource SafeImageSource(string? raw)
+    {
+        if (!string.IsNullOrWhiteSpace(raw) &&
+            Uri.TryCreate(raw, UriKind.Absolute, out var parsed) &&
+            (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps || parsed.Scheme == "ms-appx"))
+        {
+            return new BitmapImage(parsed);
+        }
+
+        return new BitmapImage(new Uri("ms-appx:///Assets/StoreLogo.png"));
+    }
 
     private void DenuvoBadge_Loaded(object sender, RoutedEventArgs e)
     {

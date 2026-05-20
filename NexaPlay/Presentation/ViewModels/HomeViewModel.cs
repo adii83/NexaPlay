@@ -13,6 +13,7 @@ public sealed partial class HomeViewModel : ObservableObject
     private readonly IBypassGamesDataService _fixData;
     private readonly IAddGameService _addGame;
     private readonly IMetadataService _metadata;
+    private readonly IAppLogService _log;
 
     [ObservableProperty] private int _totalFixes;
     [ObservableProperty] private int _libraryCount;
@@ -25,11 +26,16 @@ public sealed partial class HomeViewModel : ObservableObject
     private int _currentPopularPage = 0;
     private const int PopularGamesPageSize = 32;
 
-    public HomeViewModel(IBypassGamesDataService fixData, IAddGameService addGame, IMetadataService metadata)
+    public HomeViewModel(
+        IBypassGamesDataService fixData,
+        IAddGameService addGame,
+        IMetadataService metadata,
+        IAppLogService log)
     {
         _fixData = fixData;
         _addGame = addGame;
         _metadata = metadata;
+        _log = log;
     }
 
     public async Task LoadAsync()
@@ -60,35 +66,25 @@ public sealed partial class HomeViewModel : ObservableObject
     {
         try
         {
-            var dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-            
-            await Task.Run(async () =>
+            _allPopularAppIds = await _metadata.GetPopularAppIdsAsync();
+            _currentPopularPage = 0;
+            _log.Log("Home", $"Popular app ids loaded: {_allPopularAppIds.Count}");
+
+            var popularList = new List<GameEntry>();
+            while (popularList.Count < PopularGamesPageSize && _currentPopularPage < _allPopularAppIds.Count)
             {
-                _allPopularAppIds = await _metadata.GetPopularAppIdsAsync();
-                _currentPopularPage = 0; // Using this as the current index tracker now
-                
-                var popularList = new List<GameEntry>();
-                while(popularList.Count < PopularGamesPageSize && _currentPopularPage < _allPopularAppIds.Count)
-                {
-                    var pid = _allPopularAppIds[_currentPopularPage++];
-                    var meta = await _metadata.GetMetadataAsync(pid);
-                    if (meta != null) popularList.Add(meta);
-                }
-                
-                if (dispatcher != null)
-                {
-                    dispatcher.TryEnqueue(() => 
-                    {
-                        PopularGames = new ObservableCollection<GameEntry>(popularList);
-                    });
-                }
-                else
-                {
-                    PopularGames = new ObservableCollection<GameEntry>(popularList);
-                }
-            });
+                var pid = _allPopularAppIds[_currentPopularPage++];
+                var meta = await _metadata.GetMetadataAsync(pid);
+                if (meta != null) popularList.Add(meta);
+            }
+
+            PopularGames = new ObservableCollection<GameEntry>(popularList);
+            _log.Log("Home", $"Popular games rendered: {PopularGames.Count}");
         }
-        catch (Exception) { /* Ignored */ }
+        catch (Exception ex)
+        {
+            _log.Log("Home", $"Popular games load failed: {ex.Message}");
+        }
     }
 
     [RelayCommand]

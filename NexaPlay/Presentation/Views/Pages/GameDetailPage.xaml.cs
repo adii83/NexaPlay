@@ -4,6 +4,9 @@ using System.Linq;
 using System.Net;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -13,6 +16,7 @@ using NexaPlay.Presentation.ViewModels;
 using NexaPlay.Core.Models;
 using Windows.System;
 using Windows.Media.Core;
+using Microsoft.Web.WebView2.Core;
 
 namespace NexaPlay.Presentation.Views.Pages;
 
@@ -23,6 +27,28 @@ public sealed partial class GameDetailPage : Page
     private const double MinHeroHeight = 360d;
 
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _mediaCarouselTimer;
+    private CancellationTokenSource? _loadCts;
+    private int _navigationSession;
+    private long _renderStamp;
+    private long _expectedRenderStamp;
+    private long _aboutLoadWatchdogStamp;
+    private bool _isPageActive;
+    private static readonly JsonSerializerOptions _jsonCaseInsensitive = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>
+    /// Static cache: AppId → rendered height (pixels).
+    /// Static agar bertahan meski page instance baru dibuat — cukup simpan angka,
+    /// hampir nol overhead RAM. Digunakan untuk set height WebView2 INSTAN saat
+    /// user revisit game yang sudah pernah dibuka sebelumnya (eliminasi loading ring).
+    /// </summary>
+    private static readonly Dictionary<int, double> _heightCache = new();
+
+    /// <summary>
+    /// AppId dari game yang saat ini sudah di-render di WebView2 instance ini.
+    /// Jika sama dengan AppId yang diminta → skip NavigateToString sepenuhnya.
+    /// </summary>
+    private int _renderedForAppId = -1;
+    private bool _hasValidRenderForCurrentApp;
 
     public GameDetailViewModel ViewModel { get; }
 
@@ -35,8 +61,39 @@ public sealed partial class GameDetailPage : Page
     protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
+        _isPageActive = true;
+        var session = Interlocked.Increment(ref _navigationSession);
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = new CancellationTokenSource();
+
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        
+        try
+        {
+            await AboutGameWebView.EnsureCoreWebView2Async();
+        }
+        catch { }
+
+        if (!IsSessionActive(session))
+            return;
+
         if (e.Parameter is int appId)
-            await ViewModel.LoadAsync(appId);
+        {
+            try
+            {
+                await ViewModel.LoadAsync(appId, _loadCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+
+        if (!IsSessionActive(session))
+            return;
+
+        RenderAboutGameWebView();
             
         // Initialize smart auto-scroll timer to tick every 4 seconds
         _mediaCarouselTimer = DispatcherQueue.CreateTimer();
@@ -48,6 +105,15 @@ public sealed partial class GameDetailPage : Page
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
         base.OnNavigatedFrom(e);
+        _isPageActive = false;
+        Interlocked.Increment(ref _navigationSession);
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = null;
+        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        // WebView2 TIDAK di-Close() agar instance + height tetap hidup.
+        // Height sudah tersimpan di _heightCache (static) untuk revisit instan.
+
         if (_mediaCarouselTimer != null)
         {
             _mediaCarouselTimer.Stop();
@@ -56,8 +122,293 @@ public sealed partial class GameDetailPage : Page
         }
     }
 
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(GameDetailViewModel.DisplayRichDescription))
+        {
+            RenderAboutGameWebView();
+        }
+    }
+
+    /// <summary>
+    /// Strip heading pertama yang bunyinya "About the Game" / "About This Game"
+    /// dari HTML Steam — karena kita sudah tidak pakai native header di atas WebView2.
+    /// </summary>
+    private static string StripAboutGameHeading(string html)
+    {
+        // Match: <h1>, <h2>, atau <h3> dengan konten teks "about the game" / "about this game"
+        // Termasuk varian dengan atribut (e.g. <h2 class="bb_tag">)
+        var regex = new System.Text.RegularExpressions.Regex(
+            @"<h[1-3][^>]*>\s*About\s+(?:the|this)\s+Game\s*</h[1-3]>",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var match = regex.Match(html);
+        return match.Success ? html.Remove(match.Index, match.Length) : html;
+    }
+
+    /// <summary>
+    /// Render About the Game dengan smart height cache:
+    ///   Tier 1 — Same AppId di instance ini → skip sepenuhnya (0ms)
+    ///   Tier 2 — AppId pernah dikunjungi → height di-set instan dari _heightCache,
+    ///            render di background tanpa loading ring (smooth, no flash)
+    ///   Tier 3 — Cold open → show loading ring, render normal
+    /// </summary>
+    private void RenderAboutGameWebView()
+    {
+        if (!_isPageActive)
+            return;
+
+        var rawHtml = ViewModel.DisplayRichDescription;
+        var appId   = ViewModel.Game?.AppId ?? 0;
+
+        if (string.IsNullOrWhiteSpace(rawHtml))
+        {
+            AboutGameWebView.Visibility = Visibility.Collapsed;
+            ViewModel.IsAboutContentLoading = false;
+            return;
+        }
+
+        AboutGameWebView.Visibility = Visibility.Visible;
+
+        // ── Tier 1: Game yang sama sudah di-render di instance ini ────────────────
+        // Skip NavigateToString sepenuhnya — 0ms, tidak ada perubahan UI apapun.
+        if (_hasValidRenderForCurrentApp && _renderedForAppId == appId && AboutGameWebView.Height > 0)
+        {
+            ViewModel.IsAboutContentLoading = false;
+            return;
+        }
+
+        // ── Tier 2: Height di-cache dari kunjungan sebelumnya ────────────────────
+        // Set height INSTAN (O(1)) → tidak ada layout jump, tidak ada loading ring.
+        // WebView2 render di background — user tidak merasakan delay.
+        if (_heightCache.TryGetValue(appId, out double cachedHeight))
+        {
+            AboutGameWebView.Height = cachedHeight;
+            ViewModel.IsAboutContentLoading = false;
+        }
+        else
+        {
+            // ── Tier 3: Cold open — tampilkan loading ring ────────────────────────
+            ViewModel.IsAboutContentLoading = true;
+        }
+
+        // Strip heading "About the Game" dari HTML (duplikat dengan section divider)
+        var cleanHtml = StripAboutGameHeading(rawHtml);
+        if (string.IsNullOrWhiteSpace(cleanHtml))
+        {
+            cleanHtml = rawHtml;
+        }
+
+        var html = $@"
+        <html>
+        <head>
+            <style>
+                html, body {{
+                    background-color: #080808 !important;
+                    color: #C6C9CE;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    font-size: 14px;
+                    line-height: 1.85;
+                    margin: 0;
+                    padding: 0;
+                    overflow: hidden;
+                }}
+                * {{
+                    background-color: transparent !important;
+                    background: transparent !important;
+                    box-sizing: border-box;
+                }}
+                #nexacontent {{ padding-bottom: 4px; }}
+                img, video, iframe {{
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: 6px;
+                    display: block;
+                    margin: 14px 0;
+                }}
+                a {{ color: #66C0F4; text-decoration: none; }}
+                a:hover {{ text-decoration: underline; }}
+                /* ── NexaPlay-style headings: UPPERCASE + garis putih kiri ── */
+                h1, h2, h3, h4, .bb_h1, .bb_h2, .bb_h3 {{
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
+                    font-weight: 700;
+                    color: #FFFFFF;
+                    padding-left: 14px;
+                    border-left: 4px solid #FFFFFF;
+                    margin: 28px 0 16px 0;
+                    line-height: 1.4;
+                }}
+                h1, .bb_h1 {{ font-size: 16px; }}
+                h2, .bb_h2 {{ font-size: 15px; }}
+                h3, .bb_h3 {{ font-size: 14px; font-weight: 600; }}
+                h4          {{ font-size: 13px; font-weight: 600; }}
+                ul, ol {{ padding-left: 22px; margin: 8px 0 14px 0; }}
+                li {{ margin-bottom: 6px; line-height: 1.7; }}
+                strong, b {{ color: #E8E8E8; font-weight: 600; }}
+                p {{ margin: 0 0 14px 0; }}
+                p:first-child {{ margin-top: 0; }}
+            </style>
+        </head>
+        <body>
+            <div id=""nexacontent"">
+                {cleanHtml}
+            </div>
+        </body>
+        </html>";
+
+        try
+        {
+            _hasValidRenderForCurrentApp = false;
+            _expectedRenderStamp = Interlocked.Increment(ref _renderStamp);
+            AboutGameWebView.NavigateToString(html);
+            StartAboutLoadWatchdog(_expectedRenderStamp);
+        }
+        catch
+        {
+            ViewModel.IsAboutContentLoading = false;
+        }
+    }
+
+    private async void AboutGameWebView_NavigationCompleted(WebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
+    {
+        if (!_isPageActive)
+            return;
+
+        if (!args.IsSuccess)
+        {
+            ViewModel.IsAboutContentLoading = false;
+            return;
+        }
+
+        // Fail-safe: jangan biarkan loading ring nyangkut jika JS height callback gagal.
+        if (sender.Height <= 0)
+            sender.Height = 320;
+        ViewModel.IsAboutContentLoading = false;
+
+        try
+        {
+            // Ukur #nexacontent.scrollHeight — lebih presisi daripada documentElement.
+            // Tambah buffer 32px untuk bottom margin/padding yang mungkin tidak ter-report.
+            // Tiga titik pengukuran: DOM ready, onload (gambar selesai), dan 1500ms fallback.
+            var appId = ViewModel.Game?.AppId ?? 0;
+            var stamp = _expectedRenderStamp;
+            await sender.ExecuteScriptAsync(@"
+                var __nexaAppId = " + appId + @";
+                var __nexaStamp = " + stamp + @";
+                var _nexaReported = false;
+                function reportHeight() {
+                    var el = document.getElementById('nexacontent');
+                    var h = el ? (el.scrollHeight + 32) : (document.documentElement.scrollHeight + 32);
+                    if (h > 0) {
+                        window.chrome.webview.postMessage(JSON.stringify({ appId: __nexaAppId, stamp: __nexaStamp, height: h }));
+                        _nexaReported = true;
+                    }
+                }
+                reportHeight();
+                window.addEventListener('load', function() { setTimeout(reportHeight, 100); });
+                setTimeout(reportHeight, 1500);
+            ");
+        }
+        catch
+        {
+            ViewModel.IsAboutContentLoading = false;
+        }
+    }
+
+    private void AboutGameWebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+    {
+        try
+        {
+            if (!_isPageActive)
+                return;
+
+            var raw = args.TryGetWebMessageAsString();
+            WebViewHeightPayload? payload = null;
+            try
+            {
+                payload = JsonSerializer.Deserialize<WebViewHeightPayload>(raw, _jsonCaseInsensitive);
+            }
+            catch
+            {
+                payload = null;
+            }
+
+            var currentAppId = ViewModel.Game?.AppId ?? 0;
+            double measuredHeight = 0;
+            if (payload is not null && payload.Height > 0)
+            {
+                if (payload.AppId > 0 && payload.AppId != currentAppId)
+                    return;
+                
+                if (payload.Stamp > 0 && payload.Stamp != _expectedRenderStamp)
+                    return;
+
+                measuredHeight = payload.Height;
+            }
+            else if (!double.TryParse(raw, out measuredHeight) || measuredHeight <= 0)
+            {
+                return;
+            }
+
+            // Defer ke UI thread — mencegah LayoutCycleException.
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                try
+                {
+                    if (!_isPageActive)
+                        return;
+
+                    sender.Height = measuredHeight;
+                    ViewModel.IsAboutContentLoading = false;
+
+                    // Simpan ke static cache — O(1) write, hampir nol memory.
+                    // Digunakan di Tier2 saat user revisit game ini di masa depan.
+                    if (currentAppId > 0)
+                    {
+                        _heightCache[currentAppId] = measuredHeight;
+                        _renderedForAppId = currentAppId;
+                        _hasValidRenderForCurrentApp = true;
+                    }
+                }
+                catch { }
+            });
+        }
+        catch { }
+    }
+
+    private void StartAboutLoadWatchdog(long stamp)
+    {
+        _aboutLoadWatchdogStamp = stamp;
+        var timer = DispatcherQueue.CreateTimer();
+        timer.IsRepeating = false;
+        timer.Interval = TimeSpan.FromMilliseconds(2500);
+        timer.Tick += (_, _) =>
+        {
+            try
+            {
+                if (!_isPageActive)
+                    return;
+
+                if (stamp != _aboutLoadWatchdogStamp || stamp != _expectedRenderStamp)
+                    return;
+
+                if (ViewModel.IsAboutContentLoading)
+                {
+                    if (AboutGameWebView.Height <= 0)
+                        AboutGameWebView.Height = 320;
+                    ViewModel.IsAboutContentLoading = false;
+                }
+            }
+            catch { }
+        };
+        timer.Start();
+    }
+
     private void MediaCarouselTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
     {
+        if (!_isPageActive || ViewModel.IsDetailLoading)
+            return;
+
         var screenshots = ViewModel.Screenshots;
         if (screenshots.Count <= 1) return;
         
@@ -84,11 +435,14 @@ public sealed partial class GameDetailPage : Page
         double itemEnd = itemStart + 304.0; 
         
         // If the card is outside the viewport (or too close to the right edge), scroll smoothly
-        if (itemStart < currentOffset || itemEnd > currentOffset + viewportWidth - 304.0)
+        if (viewportWidth > 0 && (itemStart < currentOffset || itemEnd > currentOffset + viewportWidth - 304.0))
         {
             MediaScrollViewer.ChangeView(nextIndex * 304.0, null, null);
         }
     }
+
+    private bool IsSessionActive(int session) =>
+        _isPageActive && session == _navigationSession && (_loadCts?.IsCancellationRequested != true);
 
     public static Visibility BoolToVis(bool value) =>
         value ? Visibility.Visible : Visibility.Collapsed;
@@ -107,6 +461,98 @@ public sealed partial class GameDetailPage : Page
 
     public static string FormatCategories(IReadOnlyList<string> categories) =>
         categories.Count == 0 ? string.Empty : string.Join(" · ", categories.Take(4));
+
+    public static int GetPostAboutScreenshotCount(
+        IReadOnlyList<ScreenshotEntry> screenshots,
+        string? overview1,
+        string? overview2,
+        string? overview3) =>
+        BuildPostAboutScreenshotUrls(screenshots, overview1, overview2, overview3).Count;
+
+    public static string GetPostAboutScreenshotUrl(
+        IReadOnlyList<ScreenshotEntry> screenshots,
+        string? overview1,
+        string? overview2,
+        string? overview3,
+        int index)
+    {
+        var items = BuildPostAboutScreenshotUrls(screenshots, overview1, overview2, overview3);
+        return index >= 0 && index < items.Count ? items[index] : string.Empty;
+    }
+
+    public static string GetPostAboutHeroScreenshotUrl(
+        IReadOnlyList<ScreenshotEntry> screenshots,
+        string? overview1,
+        string? overview2,
+        string? overview3) =>
+        GetPostAboutScreenshotUrl(screenshots, overview1, overview2, overview3, 0);
+
+    public static IReadOnlyList<string> GetPostAboutTailScreenshotUrls(
+        IReadOnlyList<ScreenshotEntry> screenshots,
+        string? overview1,
+        string? overview2,
+        string? overview3)
+    {
+        var items = BuildPostAboutScreenshotUrls(screenshots, overview1, overview2, overview3);
+        if (items.Count <= 1)
+            return Array.Empty<string>();
+        return items.Skip(1).ToArray();
+    }
+
+    public static Visibility PostAboutLayoutVisibility(
+        IReadOnlyList<ScreenshotEntry> screenshots,
+        string? overview1,
+        string? overview2,
+        string? overview3,
+        int minCountInclusive,
+        int maxCountInclusive)
+    {
+        var count = GetPostAboutScreenshotCount(screenshots, overview1, overview2, overview3);
+        return count >= minCountInclusive && count <= maxCountInclusive
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private static IReadOnlyList<string> BuildPostAboutScreenshotUrls(
+        IReadOnlyList<ScreenshotEntry> screenshots,
+        string? overview1,
+        string? overview2,
+        string? overview3)
+    {
+        if (screenshots.Count == 0)
+            return Array.Empty<string>();
+
+        var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        AddIfNotEmpty(excluded, overview1);
+        AddIfNotEmpty(excluded, overview2);
+        AddIfNotEmpty(excluded, overview3);
+
+        var result = new List<string>(capacity: 5);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var shot in screenshots)
+        {
+            var url = shot.FullUrl;
+            if (string.IsNullOrWhiteSpace(url))
+                continue;
+            if (excluded.Contains(url))
+                continue;
+            if (!seen.Add(url))
+                continue;
+
+            result.Add(url);
+            if (result.Count == 5)
+                break;
+        }
+
+        return result;
+    }
+
+    private static void AddIfNotEmpty(HashSet<string> set, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+            set.Add(value);
+    }
 
     public static string FormatAboutText(string? aboutHtml, string? shortDescription)
     {
@@ -202,11 +648,23 @@ public sealed partial class GameDetailPage : Page
             return "Not specified.";
 
         var text = html;
+        text = Regex.Replace(text, @"\r\n|\r", "\n");
         text = Regex.Replace(text, @"<br\s*/?>", "\n", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"</p\s*>", "\n\n", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"<p[^>]*>", string.Empty, RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"</div\s*>", "\n", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"<div[^>]*>", string.Empty, RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"</li\s*>", "\n", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"<li[^>]*>", "- ", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"</?(ul|ol)[^>]*>", "\n", RegexOptions.IgnoreCase);
         text = Regex.Replace(text, "<[^>]+>", string.Empty);
         text = WebUtility.HtmlDecode(text);
+        text = Regex.Replace(text, @"[ \t]+\n", "\n");
+        text = Regex.Replace(text, @"[ \t]{2,}", " ");
         text = Regex.Replace(text, @"\n{3,}", "\n\n");
-        return text.Trim();
+        text = Regex.Replace(text, @"\u2022\s*", "- ");
+        text = Regex.Replace(text, @"^(?:-\s*){2,}", "- ", RegexOptions.Multiline);
+        return text.Trim() is { Length: > 0 } cleaned ? cleaned : "Not specified.";
     }
 
     public static Uri SafeUri(string? raw)
@@ -319,6 +777,16 @@ public sealed partial class GameDetailPage : Page
     {
         MediaOverlay.Visibility = Visibility.Collapsed;
         MediaOverlayImage.Source = null;
+    }
+
+    private sealed class WebViewHeightPayload
+    {
+        [JsonPropertyName("appId")]
+        public int AppId { get; set; }
+        [JsonPropertyName("stamp")]
+        public long Stamp { get; set; }
+        [JsonPropertyName("height")]
+        public double Height { get; set; }
     }
 }
 

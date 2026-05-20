@@ -6,6 +6,7 @@ using NexaPlay.Core.Enums;
 using NexaPlay.Core.Models;
 using NexaPlay.Presentation.Views.Pages;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.Json;
@@ -65,7 +66,10 @@ public sealed partial class GameDetailViewModel : ObservableObject
     [ObservableProperty] private string _gameIconUrl = string.Empty;
     [ObservableProperty] private bool _showRecommendedRequirements;
 
-    [ObservableProperty] private ObservableCollection<RichBlock> _detailedDescriptionBlocks = new();
+    // —— About content loading state (set by Page, not ViewModel) ——————————————
+    [ObservableProperty] private bool _isAboutContentLoading;
+
+
 
     public IReadOnlyList<ScreenshotEntry> Screenshots => Detail?.Screenshots ?? Array.Empty<ScreenshotEntry>();
     public IReadOnlyList<MovieEntry> Movies => Detail?.Movies ?? Array.Empty<MovieEntry>();
@@ -76,6 +80,40 @@ public sealed partial class GameDetailViewModel : ObservableObject
     public string OverviewScreenshotUrl2 => Detail?.Screenshots?.ElementAtOrDefault(1)?.FullUrl ?? string.Empty;
     public string OverviewScreenshotUrl3 => Detail?.Screenshots?.ElementAtOrDefault(2)?.FullUrl ?? string.Empty;
     public bool HasOverviewScreenshots => !string.IsNullOrEmpty(OverviewScreenshotUrl1);
+    public IReadOnlyList<string> PostAboutScreenshotUrls => BuildPostAboutScreenshotUrls();
+    public int PostAboutScreenshotCount => PostAboutScreenshotUrls.Count;
+    public string PostAboutHeroScreenshotUrl => PostAboutScreenshotUrls.ElementAtOrDefault(0) ?? string.Empty;
+    public IReadOnlyList<string> PostAboutTailScreenshotUrls => PostAboutScreenshotUrls.Skip(1).ToArray();
+    public bool HasPostAboutScreenshots => !string.IsNullOrWhiteSpace(PostAboutHeroScreenshotUrl);
+    public bool HasPostAboutTailScreenshots => PostAboutTailScreenshotUrls.Count > 0;
+    public string PostAboutScreenshotUrl1 => PostAboutScreenshotUrls.ElementAtOrDefault(0) ?? string.Empty;
+    public string PostAboutScreenshotUrl2 => PostAboutScreenshotUrls.ElementAtOrDefault(1) ?? string.Empty;
+    public string PostAboutScreenshotUrl3 => PostAboutScreenshotUrls.ElementAtOrDefault(2) ?? string.Empty;
+    public bool HasPostAboutLayoutSingle => PostAboutScreenshotCount == 1;
+    public bool HasPostAboutLayoutDouble => PostAboutScreenshotCount == 2;
+    public bool HasPostAboutLayoutTriple => PostAboutScreenshotCount >= 3;
+
+    /// <summary>
+    /// Konten utama "About the Game" — raw HTML dari Steam API.
+    /// Ini yang ditampilkan oleh WebView2. Mayoritas game punya field ini.
+    /// </summary>
+    public string DisplayAboutTheGame => Detail?.AboutTheGame ?? string.Empty;
+
+    /// <summary>
+    /// Konten kaya — DetailedDescription diprioritaskan (biasanya lebih lengkap,
+    /// mencakup AboutTheGame + konten ekstra seperti edition info).
+    /// Fallback ke AboutTheGame jika DetailedDescription kosong.
+    /// Tidak ada filter comparison — ambil konten apa adanya.
+    /// </summary>
+    public string DisplayRichDescription =>
+        !string.IsNullOrWhiteSpace(Detail?.DetailedDescription)
+            ? Detail!.DetailedDescription
+            : Detail?.AboutTheGame ?? string.Empty;
+
+    /// <summary>
+    /// Konten "Detailed Description" — hanya ditampilkan jika berbeda dari AboutTheGame.
+    /// Kebanyakan game punya isi identik, jadi ini biasanya kosong.
+    /// </summary>
     public string DisplayDetailedDescription 
     {
         get 
@@ -106,6 +144,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
     public bool CanRestartSteam => !IsAddingGame && !IsApplyingFix;
 
     private CancellationTokenSource? _fixCts;
+    private int _loadVersion;
 
     partial void OnGameChanged(GameEntry? value) => NotifyStatusProperties();
     partial void OnHasFixAvailableChanged(bool value) => NotifyStatusProperties();
@@ -154,9 +193,15 @@ public sealed partial class GameDetailViewModel : ObservableObject
     /// </summary>
     public async Task LoadAsync(int appId, CancellationToken ct = default)
     {
+        var loadVersion = Interlocked.Increment(ref _loadVersion);
+        ct.ThrowIfCancellationRequested();
 
         // Step 1 — base metadata (O(1) dictionary lookup)
-        Game = await _metadata.GetMetadataAsync(appId, ct);
+        var baseGame = await _metadata.GetMetadataAsync(appId, ct);
+        ct.ThrowIfCancellationRequested();
+        if (loadVersion != _loadVersion) return;
+
+        Game = baseGame;
         GameIconUrl = Game?.IconImageUrl
             ?? Game?.HeaderImageUrl
             ?? string.Empty;
@@ -165,6 +210,8 @@ public sealed partial class GameDetailViewModel : ObservableObject
 
         // Step 2 — fix catalog + applied state
         var fixes = await _fixData.GetAllFixesAsync(ct);
+        ct.ThrowIfCancellationRequested();
+        if (loadVersion != _loadVersion) return;
         FixEntry = fixes.FirstOrDefault(f => f.AppId == appId);
         HasFixAvailable = FixEntry is not null;
         IsFixApplied    = _onlineFix.IsApplied(appId);
@@ -176,6 +223,8 @@ public sealed partial class GameDetailViewModel : ObservableObject
         try
         {
             var fetched = await _storeService.GetDetailAsync(appId, ct);
+            ct.ThrowIfCancellationRequested();
+            if (loadVersion != _loadVersion) return;
             CurrentScreenshotUrl = fetched?.Screenshots.FirstOrDefault()?.FullUrl
                 ?? Game?.HeaderImageUrl
                 ?? string.Empty;
@@ -191,8 +240,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
             Detail = fetched;
             IsDetailAvailable = Detail is not null;
 
-            var blocks = await Task.Run(() => ParseDetailedDescriptionBlocks(Detail?.DetailedDescription));
-            DetailedDescriptionBlocks = new ObservableCollection<RichBlock>(blocks);
+
 
             NotifyDisplayProperties();
             HeroBackgroundUrl = ReadFirstAssetUrl(Detail?.RawMetadataJson, "library_hero_2x")
@@ -367,6 +415,20 @@ public sealed partial class GameDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(OverviewScreenshotUrl2));
         OnPropertyChanged(nameof(OverviewScreenshotUrl3));
         OnPropertyChanged(nameof(HasOverviewScreenshots));
+        OnPropertyChanged(nameof(PostAboutScreenshotUrls));
+        OnPropertyChanged(nameof(PostAboutScreenshotCount));
+        OnPropertyChanged(nameof(PostAboutHeroScreenshotUrl));
+        OnPropertyChanged(nameof(PostAboutTailScreenshotUrls));
+        OnPropertyChanged(nameof(HasPostAboutScreenshots));
+        OnPropertyChanged(nameof(HasPostAboutTailScreenshots));
+        OnPropertyChanged(nameof(PostAboutScreenshotUrl1));
+        OnPropertyChanged(nameof(PostAboutScreenshotUrl2));
+        OnPropertyChanged(nameof(PostAboutScreenshotUrl3));
+        OnPropertyChanged(nameof(HasPostAboutLayoutSingle));
+        OnPropertyChanged(nameof(HasPostAboutLayoutDouble));
+        OnPropertyChanged(nameof(HasPostAboutLayoutTriple));
+        OnPropertyChanged(nameof(DisplayAboutTheGame));
+        OnPropertyChanged(nameof(DisplayRichDescription));
         OnPropertyChanged(nameof(DisplayDetailedDescription));
         OnPropertyChanged(nameof(DisplayDeveloper));
         OnPropertyChanged(nameof(DisplayPublisher));
@@ -430,116 +492,40 @@ public sealed partial class GameDetailViewModel : ObservableObject
         return null;
     }
 
-    private static List<RichBlock> ParseDetailedDescriptionBlocks(string? html)
+    private IReadOnlyList<string> BuildPostAboutScreenshotUrls()
     {
-        var blocks = new List<RichBlock>();
-        if (string.IsNullOrWhiteSpace(html))
+        if (Detail?.Screenshots is null || Detail.Screenshots.Count == 0)
+            return Array.Empty<string>();
+
+        var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        AddIfNotEmpty(excluded, OverviewScreenshotUrl1);
+        AddIfNotEmpty(excluded, OverviewScreenshotUrl2);
+        AddIfNotEmpty(excluded, OverviewScreenshotUrl3);
+
+        var result = new List<string>(capacity: 5);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var shot in Detail.Screenshots)
         {
-            return blocks;
+            var url = shot.FullUrl;
+            if (string.IsNullOrWhiteSpace(url))
+                continue;
+            if (excluded.Contains(url))
+                continue;
+            if (!seen.Add(url))
+                continue;
+
+            result.Add(url);
+            if (result.Count >= 5)
+                break;
         }
 
-        var pattern = @"(<img[^>]+src=[""']([^""']+)[""'][^>]*>|<source[^>]+src=[""']([^""']+)[""'][^>]*>|<h[12][^>]*>(.*?)</h[12]>|<div[^>]*class=[""'][^""']*bb_center[^""']*[""'][^>]*>(.*?)</div>)";
-        int currentIndex = 0;
-        var matches = Regex.Matches(html, pattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
-        
-        foreach (Match match in matches)
-        {
-            if (match.Index > currentIndex)
-            {
-                var textHtml = html.Substring(currentIndex, match.Index - currentIndex);
-                var text = CleanHtmlText(textHtml);
-                if (!string.IsNullOrWhiteSpace(text))
-                {
-                    blocks.Add(new RichBlock { Type = RichBlockType.Text, Content = text });
-                }
-            }
-            
-            var fullTag = match.Groups[1].Value;
-            if (fullTag.StartsWith("<img", StringComparison.OrdinalIgnoreCase))
-            {
-                blocks.Add(new RichBlock { Type = RichBlockType.Image, Content = match.Groups[2].Value });
-            }
-            else if (fullTag.StartsWith("<source", StringComparison.OrdinalIgnoreCase))
-            {
-                var url = match.Groups[3].Value;
-                if (url.Contains(".webm", StringComparison.OrdinalIgnoreCase) || url.Contains(".mp4", StringComparison.OrdinalIgnoreCase))
-                {
-                    blocks.Add(new RichBlock { Type = RichBlockType.Video, Content = url });
-                }
-            }
-            else if (fullTag.StartsWith("<h", StringComparison.OrdinalIgnoreCase))
-            {
-                var headerText = CleanHtmlText(match.Groups[4].Value);
-                if (!string.IsNullOrWhiteSpace(headerText) && 
-                    !headerText.Equals("About the Game", StringComparison.OrdinalIgnoreCase) &&
-                    !headerText.Equals("Detailed Description", StringComparison.OrdinalIgnoreCase))
-                {
-                    blocks.Add(new RichBlock { Type = RichBlockType.Header, Content = headerText });
-                }
-            }
-            else if (fullTag.StartsWith("<div", StringComparison.OrdinalIgnoreCase))
-            {
-                var centerText = CleanHtmlText(match.Groups[5].Value);
-                if (!string.IsNullOrWhiteSpace(centerText))
-                {
-                    blocks.Add(new RichBlock { Type = RichBlockType.CenteredText, Content = centerText });
-                }
-            }
-            
-            currentIndex = match.Index + match.Length;
-        }
-        
-        if (currentIndex < html.Length)
-        {
-            var textHtml = html.Substring(currentIndex);
-            var text = CleanHtmlText(textHtml);
-            if (!string.IsNullOrWhiteSpace(text))
-            {
-                blocks.Add(new RichBlock { Type = RichBlockType.Text, Content = text });
-            }
-        }
-
-        var deduplicated = new List<RichBlock>();
-        foreach (var b in blocks)
-        {
-            if (deduplicated.Count > 0)
-            {
-                var last = deduplicated.Last();
-                
-                if (last.Type == RichBlockType.Video && b.Type == RichBlockType.Video)
-                    continue;
-
-                if (last.Type == RichBlockType.Image && b.Type == RichBlockType.Image && last.Content == b.Content)
-                    continue;
-            }
-            deduplicated.Add(b);
-        }
-        
-        return deduplicated;
+        return result;
     }
 
-    private static string CleanHtmlText(string input)
+    private static void AddIfNotEmpty(HashSet<string> set, string? value)
     {
-        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
-
-        // Clean up tabs and excessive spaces first
-        input = Regex.Replace(input, @"[ \t]+", " ");
-
-        input = Regex.Replace(input, @"\s*<br\s*/?>\s*", "\n", RegexOptions.IgnoreCase);
-        input = Regex.Replace(input, @"\s*</?p[^>]*>\s*", "\n", RegexOptions.IgnoreCase);
-        
-        input = Regex.Replace(input, @"\s*<li[^>]*>\s*", "\n• ", RegexOptions.IgnoreCase);
-        input = Regex.Replace(input, @"\s*</li>\s*", "\n", RegexOptions.IgnoreCase);
-        input = Regex.Replace(input, @"\s*</?[uo]l[^>]*>\s*", "\n\n", RegexOptions.IgnoreCase);
-
-        input = Regex.Replace(input, @"<.*?>", string.Empty);
-        
-        input = System.Net.WebUtility.HtmlDecode(input);
-
-        input = Regex.Replace(input, @"\n{3,}", "\n\n");
-        // Also clean up bullet points that got double newlined for some reason
-        input = Regex.Replace(input, @"\n+•", "\n•");
-        
-        return input.Trim();
+        if (!string.IsNullOrWhiteSpace(value))
+            set.Add(value);
     }
 }

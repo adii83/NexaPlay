@@ -37,10 +37,29 @@ echo.
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ErrorActionPreference='Continue';" ^
-  "$stamp=(Get-Date).ToString('yyyy-MM-dd HH:mm:ss');" ^
-  "'' | Out-File -FilePath '%LOG_FILE%' -Encoding utf8;" ^
-  "'===== NexaPlay Watch Started: ' + $stamp + ' =====' | Out-File -FilePath '%LOG_FILE%' -Append -Encoding utf8;" ^
-  "& '%DOTNET_EXE%' watch --project '%PROJECT_FILE%' run -c Debug -r win-x64 --property:Platform=x64 --launch-profile 'NexaPlay (Unpackaged)' 2>&1 | Tee-Object -FilePath '%LOG_FILE%' -Append"
+  "$root='%ROOT_DIR%';" ^
+  "$log='%LOG_FILE%';" ^
+  "$crashFile=Join-Path $root 'crash.txt';" ^
+  "$eventDump=Join-Path $root 'nexaplay_crash_context.log';" ^
+  "function Write-Log([string]$text){ Add-Content -Path $log -Value $text -Encoding Unicode }" ^
+  "function Dump-CrashContext{" ^
+  "  $ts=Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff';" ^
+  "  Add-Content -Path $eventDump -Value ('===== Crash Context ' + $ts + ' =====') -Encoding UTF8;" ^
+  "  if(Test-Path $crashFile){ Add-Content -Path $eventDump -Value '--- crash.txt (tail 120) ---' -Encoding UTF8; Get-Content $crashFile -Tail 120 | Add-Content -Path $eventDump -Encoding UTF8 }" ^
+  "  Add-Content -Path $eventDump -Value '--- Application/Error Events (last 15m, top 30) ---' -Encoding UTF8;" ^
+  "  Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-15)} -ErrorAction SilentlyContinue |" ^
+  "    Where-Object { $_.ProviderName -in @('Application Error','.NET Runtime','Windows Error Reporting') -or $_.Message -match 'NexaPlay|NexaPlay.exe|KERNELBASE|0xc000027b|0xC000027B' } |" ^
+  "    Select-Object -First 30 TimeCreated, Id, LevelDisplayName, ProviderName, Message | Format-List | Out-String -Width 500 | Add-Content -Path $eventDump -Encoding UTF8;" ^
+  "  Add-Content -Path $eventDump -Value '' -Encoding UTF8;" ^
+  "}" ^
+  "'' | Out-File -FilePath $log -Encoding Unicode;" ^
+  "Write-Log ('===== NexaPlay Watch Started: ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' =====');" ^
+  "& '%DOTNET_EXE%' watch --project '%PROJECT_FILE%' run -c Debug -r win-x64 --property:Platform=x64 --launch-profile 'NexaPlay (Unpackaged)' 2>&1 | ForEach-Object {" ^
+  "  $line=$_.ToString();" ^
+  "  Write-Host $line;" ^
+  "  Write-Log $line;" ^
+  "  if($line -match 'Exited with error code'){ Dump-CrashContext }" ^
+  "}"
 
 set "EXIT_CODE=%ERRORLEVEL%"
 echo.

@@ -54,7 +54,7 @@
                                         <!-- Background Image -->
                                         <Border CornerRadius="12">
                                             <Border.Background>
-                                                <ImageBrush ImageSource="{x:Bind PosterUrl}" Stretch="UniformToFill" />
+                                                <ImageBrush ImageSource="{x:Bind local:HomePage.SafeImageSource(PosterUrl), Mode=OneWay}" Stretch="UniformToFill" />
                                             </Border.Background>
                                         </Border>
                                         
@@ -157,7 +157,7 @@
                                         <!-- Header Image Area -->
                                         <Border CornerRadius="12">
                                             <Border.Background>
-                                                <ImageBrush ImageSource="{x:Bind HeaderImageUrl}" Stretch="UniformToFill" />
+                                                <ImageBrush ImageSource="{x:Bind local:HomePage.SafeImageSource(HeaderImageUrl), Mode=OneWay}" Stretch="UniformToFill" />
                                             </Border.Background>
                                         </Border>
 

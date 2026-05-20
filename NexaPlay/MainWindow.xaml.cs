@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using NexaPlay.Contracts.Navigation;
 using NexaPlay.Contracts.Services;
+using NexaPlay.Core.Models;
 using NexaPlay.Presentation.ViewModels;
 using NexaPlay.Presentation.Views.Dialogs;
 using NexaPlay.Presentation.Views.Pages;
@@ -15,12 +16,14 @@ public sealed partial class MainWindow : Window
     private readonly MainViewModel _vm;
     private readonly INavigationService _nav;
     private readonly ILicenseService _licenseService;
+    private readonly IMetadataService _metadataService;
 
-    public MainWindow(MainViewModel vm, INavigationService nav, ILicenseService licenseService)
+    public MainWindow(MainViewModel vm, INavigationService nav, ILicenseService licenseService, IMetadataService metadataService)
     {
         _vm             = vm;
         _nav            = nav;
         _licenseService = licenseService;
+        _metadataService = metadataService;
         InitializeComponent();
         
         ExtendsContentIntoTitleBar = true;
@@ -57,6 +60,45 @@ public sealed partial class MainWindow : Window
         }
 
         NavigateTo(NavHome);
+        _ = WarmupMetadataStartupAsync();
+    }
+
+    private async System.Threading.Tasks.Task WarmupMetadataStartupAsync()
+    {
+        StartupOverlay.Visibility = Visibility.Visible;
+        StartupStatusText.Text = "Menyiapkan sumber metadata inti...";
+        StartupProgressBar.IsIndeterminate = false;
+        StartupProgressBar.Value = 0;
+        StartupPercentText.Text = "0%";
+
+        var progress = new Progress<MetadataWarmupProgress>(p =>
+        {
+            var basePercent = p.TotalFiles <= 0 ? 0 : ((double)p.CompletedFiles / p.TotalFiles) * 100d;
+            var fileWeight = p.TotalFiles <= 0 ? 0 : (100d / p.TotalFiles);
+            var fileProgressPart = (p.FilePercent ?? 0) / 100d * fileWeight;
+            var overall = Math.Clamp(basePercent + fileProgressPart, 0, 100);
+
+            StartupStatusText.Text = p.Message;
+            StartupProgressBar.Value = overall;
+            StartupPercentText.Text = $"{overall:F0}%";
+        });
+
+        try
+        {
+            await _metadataService.WarmupEssentialSourcesAsync(progress);
+            StartupStatusText.Text = "Metadata inti siap.";
+            StartupProgressBar.Value = 100;
+            StartupPercentText.Text = "100%";
+        }
+        catch (Exception ex)
+        {
+            StartupStatusText.Text = $"Warmup metadata gagal: {ex.Message}";
+        }
+        finally
+        {
+            await System.Threading.Tasks.Task.Delay(350);
+            StartupOverlay.Visibility = Visibility.Collapsed;
+        }
     }
 
     private async System.Threading.Tasks.Task ValidateLicenseAsync()

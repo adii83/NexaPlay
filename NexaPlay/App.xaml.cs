@@ -10,21 +10,23 @@ using NexaPlay.Presentation.Navigation;
 using NexaPlay.Presentation.ViewModels;
 using System;
 using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace NexaPlay;
 
 public partial class App : Application
 {
+    private static readonly object CrashLogLock = new();
+    private static string CrashLogPath => Path.Combine(AppContext.BaseDirectory, "crash.txt");
+
     private IServiceProvider? _serviceProvider;
     private Window? _window;
 
     public App()
     {
         InitializeComponent();
-        this.UnhandledException += (s, e) => 
-        {
-            File.WriteAllText("crash.txt", "Unhandled Exception: " + e.Exception.ToString());
-        };
+        RegisterCrashLogging();
 
         try 
         {
@@ -34,7 +36,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            File.WriteAllText("crash_init.txt", "Init Exception: " + ex.ToString());
+            AppendCrashLog("InitException", ex.ToString());
         }
     }
 
@@ -80,7 +82,52 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            File.WriteAllText("crash_launch.txt", "Launch Exception: " + ex.ToString());
+            AppendCrashLog("LaunchException", ex.ToString());
+        }
+    }
+
+    private void RegisterCrashLogging()
+    {
+        this.UnhandledException += (s, e) =>
+        {
+            AppendCrashLog("WinUI.UnhandledException", e.Exception?.ToString() ?? "(null exception)");
+        };
+
+        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+        {
+            AppendCrashLog("AppDomain.UnhandledException",
+                $"IsTerminating={e.IsTerminating}\n{e.ExceptionObject}");
+        };
+
+        TaskScheduler.UnobservedTaskException += (s, e) =>
+        {
+            AppendCrashLog("TaskScheduler.UnobservedTaskException", e.Exception.ToString());
+            e.SetObserved();
+        };
+    }
+
+    private static void AppendCrashLog(string source, string details)
+    {
+        try
+        {
+            lock (CrashLogLock)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("==================================================");
+                sb.AppendLine($"Timestamp : {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                sb.AppendLine($"Source    : {source}");
+                sb.AppendLine($"Process   : {Environment.ProcessId}");
+                sb.AppendLine($"Thread    : {Environment.CurrentManagedThreadId}");
+                sb.AppendLine("Details:");
+                sb.AppendLine(details);
+                sb.AppendLine();
+
+                File.AppendAllText(CrashLogPath, sb.ToString(), Encoding.UTF8);
+            }
+        }
+        catch
+        {
+            // Last-resort logging must never throw.
         }
     }
 }

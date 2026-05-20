@@ -11,32 +11,7 @@
     Background="{ThemeResource NexaSurfaceBrush}">
 
     <Page.Resources>
-        <DataTemplate x:Key="RichBlockTextTemplate" x:DataType="models:RichBlock">
-            <TextBlock Text="{x:Bind Content}" FontSize="14" Foreground="{ThemeResource NexaTextSecondaryBrush}" TextWrapping="WrapWholeWords" LineHeight="26" Margin="0,0,0,16" />
-        </DataTemplate>
-        <DataTemplate x:Key="RichBlockCenteredTextTemplate" x:DataType="models:RichBlock">
-            <TextBlock Text="{x:Bind Content}" FontSize="14" Foreground="{ThemeResource NexaTextSecondaryBrush}" TextWrapping="WrapWholeWords" LineHeight="26" Margin="0,0,0,16" HorizontalAlignment="Center" TextAlignment="Center" />
-        </DataTemplate>
-        <DataTemplate x:Key="RichBlockHeaderTemplate" x:DataType="models:RichBlock">
-            <TextBlock Text="{x:Bind Content}" FontSize="24" FontWeight="Bold" CharacterSpacing="40" Foreground="{ThemeResource NexaTextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,32,0,16" TextWrapping="WrapWholeWords" />
-        </DataTemplate>
-        <DataTemplate x:Key="RichBlockImageTemplate" x:DataType="models:RichBlock">
-            <Image Stretch="Uniform" MaxHeight="600" Margin="0,16,0,24">
-                <Image.Source>
-                    <BitmapImage UriSource="{x:Bind Content}" />
-                </Image.Source>
-            </Image>
-        </DataTemplate>
-        <DataTemplate x:Key="RichBlockVideoTemplate" x:DataType="models:RichBlock">
-            <MediaPlayerElement Source="{x:Bind local:GameDetailPage.StringToMediaSource(Content)}" AutoPlay="True" AreTransportControlsEnabled="False" MaxHeight="600" Margin="0,16,0,24" Loaded="RichVideo_Loaded" />
-        </DataTemplate>
 
-        <local:RichBlockTemplateSelector x:Key="RichBlockSelector"
-            TextTemplate="{StaticResource RichBlockTextTemplate}"
-            CenteredTextTemplate="{StaticResource RichBlockCenteredTextTemplate}"
-            HeaderTemplate="{StaticResource RichBlockHeaderTemplate}"
-            ImageTemplate="{StaticResource RichBlockImageTemplate}"
-            VideoTemplate="{StaticResource RichBlockVideoTemplate}" />
     </Page.Resources>
 
     <Grid x:Name="RootLayout" SizeChanged="RootLayout_SizeChanged">
@@ -448,7 +423,7 @@
                             LineHeight="26"
                             Visibility="{x:Bind local:GameDetailPage.StringToVis(ViewModel.DisplayShortDescription), Mode=OneWay}" />
 
-                        <Grid Height="520" ColumnSpacing="8" Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.HasOverviewScreenshots), Mode=OneWay}">
+                        <Grid Height="480" ColumnSpacing="8" Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.HasOverviewScreenshots), Mode=OneWay}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="6*" />
                                 <ColumnDefinition Width="4*" />
@@ -508,23 +483,164 @@
 
                         <Border Height="1" Background="#1FFFFFFF" Margin="0,16,0,16" />
 
-                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                            <Border Width="4" Height="20" CornerRadius="2" Background="{ThemeResource NexaTextPrimaryBrush}" />
-                            <TextBlock
-                                Text="ABOUT THE GAME"
-                                FontSize="18"
-                                FontWeight="Bold"
-                                CharacterSpacing="40"
-                                Foreground="{ThemeResource NexaTextPrimaryBrush}" />
-                        </StackPanel>
+                        <!-- Loading ring saat WebView2 sedang render konten About -->
+                        <Grid
+                            MinHeight="160"
+                            Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.IsAboutContentLoading), Mode=OneWay}"
+                            Margin="0,8,0,0">
+                            <ProgressRing
+                                Width="30"
+                                Height="30"
+                                Foreground="{ThemeResource NexaAccentBrush}"
+                                IsActive="{x:Bind ViewModel.IsAboutContentLoading, Mode=OneWay}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+                        </Grid>
 
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.DetailedDescriptionBlocks, Mode=OneWay}" ItemTemplateSelector="{StaticResource RichBlockSelector}" Margin="0,0,0,16">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Spacing="0" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                        <!-- WebView2 — visible setelah height dilaporkan JS (konten siap) -->
+                        <WebView2
+                            x:Name="AboutGameWebView"
+                            DefaultBackgroundColor="Transparent"
+                            IsHitTestVisible="False"
+                            Visibility="{x:Bind local:GameDetailPage.InverseBoolToVis(ViewModel.IsAboutContentLoading), Mode=OneWay}"
+                            NavigationCompleted="AboutGameWebView_NavigationCompleted"
+                            WebMessageReceived="AboutGameWebView_WebMessageReceived"
+                            Margin="0,0,0,16" />
+
+                        <Grid Margin="0,4,0,14" RowSpacing="8" Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.HasPostAboutScreenshots), Mode=OneWay}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Single: full width -->
+                            <Border
+                                Grid.Row="0"
+                                Height="360"
+                                CornerRadius="8"
+                                Background="#101010"
+                                BorderBrush="#26FFFFFF"
+                                BorderThickness="1"
+                                Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.HasPostAboutLayoutSingle), Mode=OneWay}">
+                                <Grid
+                                    Tag="{x:Bind ViewModel.PostAboutScreenshotUrl1, Mode=OneWay}"
+                                    Tapped="MediaCard_Tapped"
+                                    PointerEntered="MediaCard_PointerEntered"
+                                    PointerExited="MediaCard_PointerExited"
+                                    SizeChanged="MediaCard_SizeChanged">
+                                    <Image Stretch="UniformToFill">
+                                        <Image.Source>
+                                            <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.PostAboutScreenshotUrl1), Mode=OneWay}" DecodePixelWidth="1600" />
+                                        </Image.Source>
+                                    </Image>
+                                </Grid>
+                            </Border>
+
+                            <!-- Double: kanan besar, kiri memanjang ke bawah -->
+                            <Grid
+                                Grid.Row="1"
+                                Height="480"
+                                ColumnSpacing="8"
+                                Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.HasPostAboutLayoutDouble), Mode=OneWay}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="4*" />
+                                    <ColumnDefinition Width="6*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" CornerRadius="8" Background="#101010" BorderBrush="#26FFFFFF" BorderThickness="1">
+                                    <Grid
+                                        Tag="{x:Bind ViewModel.PostAboutScreenshotUrl1, Mode=OneWay}"
+                                        Tapped="MediaCard_Tapped"
+                                        PointerEntered="MediaCard_PointerEntered"
+                                        PointerExited="MediaCard_PointerExited"
+                                        SizeChanged="MediaCard_SizeChanged">
+                                        <Image Stretch="UniformToFill">
+                                            <Image.Source>
+                                                <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.PostAboutScreenshotUrl1), Mode=OneWay}" DecodePixelWidth="1200" />
+                                            </Image.Source>
+                                        </Image>
+                                    </Grid>
+                                </Border>
+
+                                <Border Grid.Column="1" CornerRadius="8" Background="#101010" BorderBrush="#26FFFFFF" BorderThickness="1">
+                                    <Grid
+                                        Tag="{x:Bind ViewModel.PostAboutScreenshotUrl2, Mode=OneWay}"
+                                        Tapped="MediaCard_Tapped"
+                                        PointerEntered="MediaCard_PointerEntered"
+                                        PointerExited="MediaCard_PointerExited"
+                                        SizeChanged="MediaCard_SizeChanged">
+                                        <Image Stretch="UniformToFill">
+                                            <Image.Source>
+                                                <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.PostAboutScreenshotUrl2), Mode=OneWay}" DecodePixelWidth="1600" />
+                                            </Image.Source>
+                                        </Image>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                            <!-- Triple+: mirror game-overview (besar kanan) -->
+                            <Grid
+                                Grid.Row="2"
+                                Height="440"
+                                ColumnSpacing="8"
+                                RowSpacing="10"
+                                Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.HasPostAboutLayoutTriple), Mode=OneWay}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="4*" />
+                                    <ColumnDefinition Width="6*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Column="0" Grid.Row="0" CornerRadius="8" Background="#101010" BorderBrush="#26FFFFFF" BorderThickness="1">
+                                    <Grid
+                                        Tag="{x:Bind ViewModel.PostAboutScreenshotUrl1, Mode=OneWay}"
+                                        Tapped="MediaCard_Tapped"
+                                        PointerEntered="MediaCard_PointerEntered"
+                                        PointerExited="MediaCard_PointerExited"
+                                        SizeChanged="MediaCard_SizeChanged">
+                                        <Image Stretch="UniformToFill">
+                                            <Image.Source>
+                                                <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.PostAboutScreenshotUrl1), Mode=OneWay}" DecodePixelWidth="700" />
+                                            </Image.Source>
+                                        </Image>
+                                    </Grid>
+                                </Border>
+
+                                <Border Grid.Column="0" Grid.Row="1" CornerRadius="8" Background="#101010" BorderBrush="#26FFFFFF" BorderThickness="1">
+                                    <Grid
+                                        Tag="{x:Bind ViewModel.PostAboutScreenshotUrl2, Mode=OneWay}"
+                                        Tapped="MediaCard_Tapped"
+                                        PointerEntered="MediaCard_PointerEntered"
+                                        PointerExited="MediaCard_PointerExited"
+                                        SizeChanged="MediaCard_SizeChanged">
+                                        <Image Stretch="UniformToFill">
+                                            <Image.Source>
+                                                <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.PostAboutScreenshotUrl2), Mode=OneWay}" DecodePixelWidth="700" />
+                                            </Image.Source>
+                                        </Image>
+                                    </Grid>
+                                </Border>
+
+                                <Border Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" CornerRadius="8" Background="#101010" BorderBrush="#26FFFFFF" BorderThickness="1">
+                                    <Grid
+                                        Tag="{x:Bind ViewModel.PostAboutScreenshotUrl3, Mode=OneWay}"
+                                        Tapped="MediaCard_Tapped"
+                                        PointerEntered="MediaCard_PointerEntered"
+                                        PointerExited="MediaCard_PointerExited"
+                                        SizeChanged="MediaCard_SizeChanged">
+                                        <Image Stretch="UniformToFill">
+                                            <Image.Source>
+                                                <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.PostAboutScreenshotUrl3), Mode=OneWay}" DecodePixelWidth="1400" />
+                                            </Image.Source>
+                                        </Image>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Grid>
 
 
                         <TextBlock
@@ -579,7 +695,7 @@
                             <StackPanel Grid.Column="0" Grid.Row="1" Spacing="6">
                                 <TextBlock Text="SUPPORT" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="13" FontWeight="SemiBold" />
                                 <TextBlock
-                                    Text="{x:Bind ViewModel.DisplaySupport, Mode=OneWay}"
+                                    Text="{x:Bind local:GameDetailPage.FormatInlineHtml(ViewModel.DisplaySupport), Mode=OneWay}"
                                     Foreground="{ThemeResource NexaTextSecondaryBrush}"
                                     FontSize="13"
                                     TextWrapping="WrapWholeWords" />
@@ -597,7 +713,7 @@
                             <StackPanel Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" Spacing="6">
                                 <TextBlock Text="LEGAL NOTICE" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="13" FontWeight="SemiBold" />
                                 <TextBlock
-                                    Text="{x:Bind ViewModel.DisplayLegalNotice, Mode=OneWay}"
+                                    Text="{x:Bind local:GameDetailPage.FormatInlineHtml(ViewModel.DisplayLegalNotice), Mode=OneWay}"
                                     Foreground="{ThemeResource NexaTextSecondaryBrush}"
                                     FontSize="13"
                                     TextWrapping="WrapWholeWords" />

@@ -290,6 +290,40 @@
                    Grid.Row="1"
                    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"/>
 
+            <Border x:Name="StartupOverlay"
+                    Grid.RowSpan="2"
+                    Background="#B2141414"
+                    Visibility="Collapsed">
+                <Border Width="420"
+                        Padding="18"
+                        CornerRadius="10"
+                        Background="{ThemeResource NexaSurfaceElevatedBrush}"
+                        BorderBrush="{ThemeResource NexaBorderBrush}"
+                        BorderThickness="1"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Menyiapkan metadata..."
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                        <TextBlock x:Name="StartupStatusText"
+                                   Text="Inisialisasi..."
+                                   FontSize="12"
+                                   Foreground="{ThemeResource NexaTextSecondaryBrush}" />
+                        <ProgressBar x:Name="StartupProgressBar"
+                                     Minimum="0"
+                                     Maximum="100"
+                                     Value="0"
+                                     Height="8" />
+                        <TextBlock x:Name="StartupPercentText"
+                                   Text="0%"
+                                   FontSize="11"
+                                   Foreground="{ThemeResource NexaTextMutedBrush}" />
+                    </StackPanel>
+                </Border>
+            </Border>
+
         </Grid>
             </SplitView.Content>
         </SplitView>

@@ -20,6 +20,7 @@ Sebelum mengubah kode, WAJIB baca dokumen ini berurutan:
 4. NexaPlay/MIGRATION_PARITY_MATRIX.md
 5. NexaPlay/AI_HANDOFF_PROMPT.md
 6. D:\My Project\NexaPlay\.agents\rules\antigravity-rtk-rules.md
+
 Lokasi project utama:
 - D:\My Project\NexaPlay\NexaPlay
 
@@ -325,7 +326,222 @@ Tanggal:
 - Next:
 ```
 
+### 2026-05-19 (Rapikan parser HTML Additional Information)
 
+- Fokus: Penulisan konten di `ADDITIONAL INFORMATION` masih terlihat kurang rapi karena parsing HTML terlalu minimal.
+- Perubahan:
+  - `GameDetailPage.xaml.cs` `FormatInlineHtml(...)` diperkuat dengan pendekatan parser ringan:
+    - normalisasi newline (`\r\n`/`\r`),
+    - konversi `br/p/div/li/ul/ol` ke struktur baris yang lebih rapi,
+    - strip tag sisa + HTML decode,
+    - normalisasi spasi ganda/newline berlebih,
+    - normalisasi bullet agar konsisten (`- `).
+  - `GameDetailPage.xaml`:
+    - `SUPPORT` sekarang pakai `FormatInlineHtml(ViewModel.DisplaySupport)`.
+    - `LEGAL NOTICE` sekarang pakai `FormatInlineHtml(ViewModel.DisplayLegalNotice)`.
+  - `SUPPORTED LANGUAGES` dan `DRM NOTICE` tetap pakai formatter yang sama sehingga keempat blok info tambahan punya gaya parsing konsisten.
+- Build: `Build succeeded`, `0 Error(s)`, `5 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
+- Next: Validasi visual runtime pada beberapa game dengan HTML berbeda (languages panjang, DRM multiline, support URL+email) untuk cek wrapping dan readability.
+
+### 2026-05-19 (Simplify Post-About Media Layout 1/2/3)
+
+- Fokus: Menyederhanakan layout screenshot bawah About agar konsisten, tidak acak, dan sesuai arahan: 1 full, 2 stacked (bawah lebih lebar), 3+ model mirror Game Overview dengan card besar di kanan.
+- Perubahan:
+  - `GameDetailViewModel.cs`:
+    - Tambah properti hitung/layout:
+      - `PostAboutScreenshotCount`
+      - `PostAboutScreenshotUrl1/2/3`
+      - `HasPostAboutLayoutSingle`, `HasPostAboutLayoutDouble`, `HasPostAboutLayoutTriple`
+    - Tetap gunakan filter existing: sumber screenshot metadata, exclude screenshot yang sudah dipakai di `GAME OVERVIEW`, dedupe URL.
+  - `GameDetailPage.xaml`:
+    - Ganti layout post-about lama menjadi 3 mode sederhana:
+      1. **Single**: 1 gambar full-width.
+      2. **Double**: 2 gambar bertumpuk, kartu kedua lebih tinggi/lebar visual (center-crop).
+      3. **Triple+**: 3 gambar dengan komposisi mirror `GAME OVERVIEW` (dua kecil kiri, satu besar kanan).
+    - Semua card tetap reuse interaksi media existing (`Tapped`, hover scale handlers).
+- Build: `Build succeeded`, `0 Error(s)`, `68 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
+- Next: Validasi visual runtime di beberapa game (sisa screenshot 1, 2, dan >=3) untuk fine-tune tinggi card jika diperlukan.
+
+### 2026-05-19 (Post-About Screenshot Layout tanpa duplikasi Overview)
+
+- Fokus: Menambahkan screenshot section di bawah WebView2 About dengan gaya mirip referensi teman (hero + grid variatif), tanpa memakai screenshot yang sudah dipakai di GAME OVERVIEW.
+- Perubahan:
+  - `GameDetailViewModel.cs`: tambah properti post-about:
+    - `PostAboutScreenshotUrls` (maks 5),
+    - `PostAboutHeroScreenshotUrl`,
+    - `PostAboutTailScreenshotUrls`,
+    - `HasPostAboutScreenshots`,
+    - `HasPostAboutTailScreenshots`.
+  - Filter screenshot mengecualikan `OverviewScreenshotUrl1/2/3` + dedupe URL agar tidak muncul ganda.
+  - `GameDetailPage.xaml`: tambah section baru di bawah `AboutGameWebView`:
+    - 1 hero image besar + tail grid `ItemsRepeater` untuk sisa screenshot,
+    - klik/hover tetap reuse handler media existing (`MediaCard_Tapped`, pointer hover),
+    - visibilitas pakai properti bool ViewModel agar aman dari generated x:Bind error.
+- Build: `Build succeeded`, `0 Error(s)`, `68 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
+- Next: Validasi runtime lintas game untuk memastikan pola 1–5 screenshot terlihat natural dan tidak bentrok dengan GAME OVERVIEW.
+
+### 2026-05-19 (Crash Logging + Home ImageSource Guard)
+
+- Fokus: crash saat spam/perf test yang keluar sebagai `-1073741189` dan perlu jejak log yang lebih kaya.
+- Perubahan:
+  - Root cause baru dari `crash.txt`: binding `HomePage` gagal convert URL ke `ImageSource` (`System.ArgumentException`).
+  - `HomePage.xaml` diubah agar `ImageBrush` memakai helper aman (`SafeImageSource`) untuk `PosterUrl` dan `HeaderImageUrl`.
+  - `HomePage.xaml.cs` ditambah `SafeImageSource(string?)` dengan fallback `ms-appx:///Assets/StoreLogo.png` saat URL invalid.
+  - `App.xaml.cs` logging crash ditingkatkan: append log bertimestamp + source + thread/process untuk `WinUI UnhandledException`, `AppDomain.UnhandledException`, dan `TaskScheduler.UnobservedTaskException`.
+  - `run_nexaplay.bat` ditingkatkan: saat output watch mendeteksi `Exited with error code`, script otomatis dump konteks crash ke `nexaplay_crash_context.log` (tail `crash.txt` + event Application/.NET Runtime/WER 15 menit terakhir).
+- Build: `Build succeeded`, `0 Error(s)`, `70 Warning(s)` (non-blocking), Debug x64.
+- Next: jalankan ulang `run_nexaplay.bat`, lakukan stress-test spam cepat, lalu kirim `crash.txt` + `nexaplay_crash_context.log` terbaru jika masih jatuh.
+
+### 2026-05-19 (Hotfix spinner About WebView2 nyangkut)
+
+- Fokus: loading ring section About tetap muter terus (munyer) dan konten tidak muncul pada beberapa flow revisit/navigasi cepat.
+- Perubahan:
+  - `GameDetailPage.xaml.cs`: pada jalur `Tier 1` (`_renderedForAppId` sama + `Height > 0`) sekarang memaksa `IsAboutContentLoading = false` sebelum `return`, supaya state loading tidak nyangkut.
+  - `GameDetailPage.xaml.cs`: tambah watchdog `StartAboutLoadWatchdog()` (2.5s) setelah `NavigateToString`; jika callback JS tidak datang, fallback mematikan loading ring dan set tinggi minimum aman.
+  - `GameDetailPage.xaml.cs`: `NavigationCompleted` sukses sekarang juga mengunci `_renderedForAppId` aktif, jadi revisit tetap stabil walau callback height terlambat.
+  - `GameDetailPage.xaml.cs`: `WebMessageReceived` kini validasi `stamp` payload (`payload.Stamp == _expectedRenderStamp`) untuk menolak message stale dari render lama.
+- Build: `Build succeeded`, `0 Error(s)`, `70 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
+- Next: retest runtime skenario `A→list→A`, `A→B→A`, dan scroll cepat pada detail untuk memastikan ring About tidak nyangkut dan konten muncul konsisten.
+
+### 2026-05-19 (Hotfix About kosong setelah patch spinner)
+
+- Fokus: tidak crash, tapi konten About kosong pada sebagian flow revisit cepat.
+- Perubahan:
+  - `GameDetailPage.xaml.cs`: tambah guard `_hasValidRenderForCurrentApp` agar `Tier 1` hanya aktif setelah render HTML valid benar-benar diterima dari callback height (`WebMessageReceived`), bukan dari event navigasi awal.
+  - `GameDetailPage.xaml.cs`: reset `_hasValidRenderForCurrentApp = false` sebelum setiap `NavigateToString` agar render lama tidak dianggap valid untuk request baru.
+  - `GameDetailPage.xaml.cs`: hapus set `_renderedForAppId` dari `NavigationCompleted`; sekarang `_renderedForAppId` hanya di-set saat message height valid diterima.
+- Build: `Build succeeded`, `0 Error(s)`, `70 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
+- Next: validasi ulang flow `A→list→A` dan `A→B→A`; pastikan About tampil isi dan tidak blank saat revisit.
+
+### 2026-05-19 (Tracing WebView2 About untuk kasus blank)
+
+- Fokus: kasus About masih blank (tidak crash), perlu jejak event runtime agar akar penyebab terlihat jelas.
+- Perubahan:
+  - `GameDetailPage.xaml.cs`: tambah trace file `about_webview_trace.log` di folder output aplikasi (`AppContext.BaseDirectory`).
+  - Tambah log detail di alur About: awal render (`rawLen`), abort empty source, hit `Tier1`, hasil `StripAboutGameHeading` (`cleanLen`), fallback strip bila hasil kosong, `NavigateToString` stamp, `NavigationCompleted` sukses/gagal, hasil `ExecuteScript`, payload `WebMessageReceived`, drop reason (appId/stamp/invalid height), apply height, dan watchdog release.
+- Build: `Build succeeded`, `0 Error(s)`, `70 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
+- Next: reproduksi blank sekali lagi lalu kirim isi `about_webview_trace.log` terbaru untuk analisa akar penyebab final.
+
+### 2026-05-19 (Fix parser payload WebView2 + klarifikasi lokasi log)
+
+- Fokus: About tetap blank walau trace aktif.
+- Root cause dari trace:
+  - `WebMessageReceived` menerima JSON valid (`{"appId":...,"stamp":...,"height":...}`) tapi parser C# gagal map properti lowercase, sehingga jatuh ke jalur `invalid-height` dan height tidak pernah diaplikasikan.
+- Perubahan:
+  - `GameDetailPage.xaml.cs`: parser `JsonSerializer.Deserialize` dibuat `PropertyNameCaseInsensitive=true`.
+  - `GameDetailPage.xaml.cs`: `WebViewHeightPayload` ditandai `[JsonPropertyName("appId"|"stamp"|"height")]` agar mapping payload JS stabil.
+  - Klarifikasi lokasi trace: log ditemukan di output runtime aktif, contoh `bin\x64\Debug\net8.0-windows10.0.19041.0\win-x64\about_webview_trace.log` (bisa berbeda dari `Debug-preview` tergantung cara run).
+- Build: gagal sementara karena file lock `CS2012` (`Microsoft.UI.Xaml.Markup.Compiler`), bukan error logic code.
+- Next: stop proses run/watch yang masih aktif lalu build ulang; retest About dan cek trace apakah `WebMessage apply` sudah muncul.
+
+### 2026-05-19 (Cleanup final: hapus tracing debug WebView2 About)
+
+- Fokus: kembalikan implementasi Smart Height Cache ke mode final (tanpa disk I/O tambahan).
+- Perubahan:
+  - `GameDetailPage.xaml.cs`: hapus seluruh tracing debug `about_webview_trace.log` (`LogAbout`, `Truncate`, field trace path/lock, dan seluruh call log di render/navigation/message/watchdog).
+  - Parser JSON payload `WebMessageReceived` yang sudah diperbaiki tetap dipertahankan (`PropertyNameCaseInsensitive` + `[JsonPropertyName]`) agar height callback stabil.
+  - Alur `Tier 1 / Tier 2 / Tier 3` tetap dipertahankan apa adanya.
+- Build: `Build succeeded`, `0 Error(s)`, `70 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
+- Next: smoke test ulang `A→A`, `A→B→A`, dan cold open setelah restart app untuk memastikan behavior final tetap smooth.
+
+### 2026-05-19 (Stabilkan glitch WebView2 + native-only scroll)
+
+- Fokus: kurangi glitch/flicker pada About WebView2 dan pastikan scroll selalu mengikuti ScrollViewer native.
+- Perubahan:
+  - `GameDetailPage.xaml.cs`: hentikan render prematur saat `OnNavigatedTo` (sebelum `LoadAsync` selesai) dan render dilakukan setelah data detail siap, untuk mengurangi transisi kosong→isi yang memicu glitch visual.
+  - `GameDetailPage.xaml`: `AboutGameWebView` di-set `IsHitTestVisible="False"` agar WebView2 tidak menangkap wheel/pointer scroll; hasilnya scroll tetap pure native dari `ScrollViewer` parent.
+  - Mekanisme Smart Height Cache (Tier1/Tier2/Tier3) tetap dipertahankan.
+- Build: `Build succeeded`, `0 Error(s)`, `68 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
+- Next: verifikasi UX bahwa area About tetap terbaca mulus saat scroll cepat; catatan: karena hit test dimatikan, link/interaksi di dalam konten WebView2 tidak bisa diklik (sesuai mode pure native scroll).
+
+### 2026-05-19 (Hotfix crash spam-load Game Detail)
+
+- Fokus: crash acak saat user spam klik/navigasi cepat (load detail bertumpuk, pindah game cepat, dan scroll/media update bersamaan).
+- Perubahan:
+  - `GameDetailPage.xaml.cs`: tambah guard lifecycle (`_isPageActive`), navigation session gate, dan cancellation token per navigasi agar async lama tidak meneruskan update UI setelah page berpindah.
+  - `GameDetailPage.xaml.cs`: event WebView2 `WebMessageReceived` sekarang validasi payload JSON (`appId`, `stamp`, `height`) untuk menolak message lama/stale dari render sebelumnya.
+  - `GameDetailPage.xaml.cs`: timer carousel diberi guard saat page tidak aktif / belum loaded / detail masih loading.
+  - `GameDetailViewModel.cs`: `LoadAsync` diberi versi request (`_loadVersion`) + cancellation checks agar hasil fetch lama tidak menimpa state fetch terbaru saat klik cepat.
+  - Entry tambahan non-fokus yang sempat ditulis sebelumnya sudah dihapus agar log kembali murni mengikuti alur fokus kamu.
+- Build: `Build succeeded`, `0 Error(s)`, `68 Warning(s)` (non-blocking), Debug x64.
+- Next: stress-test runtime dengan skenario spam (A→list→A, A→B→A, scroll+klik media cepat) dan cek apakah `crash.txt` masih terisi.
+
+### 2026-05-19 (Smart Height Cache + Fix 4 masalah WebView2)
+
+- Fokus: (1) Konten bawah terpotong. (2) Heading "About the Game" duplikat dari HTML Steam. (3) Spacing heading terlalu rapat. (4) Flash loading ring setiap revisit — implementasi smart height cache.
+
+- Root cause terpotong: Buffer height kurang + timeout terlalu pendek.
+- Root cause heading duplikat: Steam `detailed_description` mengandung `<h2>About the Game</h2>` sebagai heading pertama, sementara kita sudah punya section divider native XAML. Fix: `StripAboutGameHeading()` regex strip.
+- Root cause flash loading: `IsAboutContentLoading=true` selalu di-set tanpa cek apakah height sudah diketahui.
+
+- Perubahan utama:
+  1. `GameDetailPage.xaml.cs` — Static `_heightCache: Dictionary<int, double>` + `_renderedForAppId: int` sebagai field class.
+  2. `RenderAboutGameWebView()` — Logika 3-tier:
+     - **Tier 1**: AppId sama + WebView2 sudah punya height → `return` sepenuhnya (0ms, skip NavigateToString).
+     - **Tier 2**: AppId pernah dikunjungi → `_heightCache.TryGetValue()` → set height instan, `IsAboutContentLoading = false`, render di background tanpa loading ring.
+     - **Tier 3**: Cold open → `IsAboutContentLoading = true` seperti biasa.
+  3. `AboutGameWebView_WebMessageReceived()` — Setelah height diterima dari JS: simpan `_heightCache[appId] = height` + update `_renderedForAppId = appId`.
+  4. `OnNavigatedFrom()` — Hapus `AboutGameWebView.Close()` agar WebView2 instance tetap hidup (mendukung Tier 1).
+  5. `GameDetailPage.xaml` — Tambah ProgressRing overlay untuk about section (visible saat `IsAboutContentLoading`), hapus native TextBlock "ABOUT THE GAME" (sudah terkandung di HTML Steam sebagai h2 heading).
+  6. CSS update: `line-height: 1.85`, heading `margin: 28px 0 16px 0`, `p margin: 0 0 14px 0`, `li margin-bottom: 6px`.
+  7. JS height measurement: buffer `+32px`, timeout `1500ms`, `window.onload` + `setTimeout(100ms)`.
+  8. `StripAboutGameHeading()` — Regex strip `<h1/h2/h3>About the/this Game</h1/h2/h3>` dari HTML sebelum render.
+
+- Source WebView2: `DisplayRichDescription` = `DetailedDescription ?? AboutTheGame` (tidak ada filter comparison).
+- Memory overhead _heightCache: `~12 byte` per game pernah dikunjungi — tidak signifikan.
+- Build: `0 Error(s)`, `68 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
+- Next: Test revisit flow (A→list→A, A→B→A), pastikan Tier1 dan Tier2 berjalan smooth.
+
+### 2026-05-19 (Fix About duplikat + heading NexaPlay style + gap bawah)
+
+- Fokus: (1) Konten "About the Game" tampil dua kali. (2) Heading di dalam WebView2 tidak berformat NexaPlay. (3) Gap besar antara konten dan "Additional Information".
+- Root cause duplikat: `RenderAboutGameWebView()` menggabungkan `about_the_game` + `detailed_description`. Untuk beberapa game, `detailed_description` berisi subset dari `about_the_game` (bukan identik) sehingga keduanya ikut tampil. Fix: hapus `detailed_description` dari render — `about_the_game` sudah berisi seluruh konten.
+- Root cause gap bawah: JS mengukur `document.documentElement.scrollHeight` yang include extra viewport space. Fix: wrap konten dalam `div#nexacontent`, ukur `scrollHeight` dari div itu saja.
+- Perubahan:
+  1. `GameDetailPage.xaml.cs` `RenderAboutGameWebView()`: Hapus `detailedHtml` — hanya render `aboutHtml`. Content dibungkus `<div id="nexacontent">`.
+  2. CSS heading baru: `h1,h2,h3,h4,.bb_h1,.bb_h2,.bb_h3` → `text-transform: uppercase`, `letter-spacing: 2px`, `border-left: 4px solid #FFFFFF`, `padding-left: 12px` — sesuai NexaPlay section header style.
+  3. JS `NavigationCompleted`: Ukur `el.scrollHeight` dari `#nexacontent` untuk tinggi yang akurat.
+- Build: `0 Error(s)`, `68 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
+- Next: Restart app, validasi heading UPPERCASE + garis putih kiri, tidak ada duplikat konten, gap bawah berkurang.
+
+### 2026-05-19 (Refactor WebView2 About — gabung konten + fix crash)
+
+- Fokus: Fix konten "About the Game" kosong, gabungkan `about_the_game` + `detailed_description` dalam satu WebView2, dan fix crash `XamlParseException` saat launch.
+- Root cause konten kosong: WebView2 mendengarkan `DisplayDetailedDescription` yang return empty jika `detailed_description == about_the_game` (mayoritas game Steam).
+- Root cause crash: Stale build artifact (`obj/`) dari perubahan sebelumnya. Diselesaikan dengan `Clean` + rebuild.
+- Perubahan:
+  1. `GameDetailViewModel.cs`: Property baru `DisplayAboutTheGame` → `Detail?.AboutTheGame`. `DisplayDetailedDescription` tetap ada untuk konten bonus yang berbeda. `_isAboutContentLoading` masih ada di ViewModel tapi tidak digunakan di UI (page-level `IsDetailLoading` yang handle loading).
+  2. `GameDetailPage.xaml.cs`: Trigger berubah ke `DisplayAboutTheGame`. Handler baru `RenderAboutGameWebView()` menggabungkan about + detailed (jika berbeda) dalam satu HTML. CSS heading diperbaiki: h1=20px, h2=17px, h3=15px, bb_h1/bb_h2/bb_h3 sesuai. Separator `.nexa-separator` antar konten. Hapus referensi `IsAboutContentLoading`.
+  3. `GameDetailPage.xaml`: Hapus ProgressRing about terpisah — loading sudah di-handle page-level `IsDetailLoading` (ProgressRing di baris 98-106). WebView2 langsung visible tanpa binding loading.
+  4. `GameDetailPage.xaml`: Grid GAME OVERVIEW `Height` dari 520 → 480 (dari batch sebelumnya).
+- Catatan: Tidak ada API call ganda — `LoadAsync` → `GetDetailAsync(appId)` fetch semuanya (about, detailed, screenshots, metadata) dalam satu panggilan. WebView2 hanya merender data dari `Detail` yang sudah tersedia.
+- Build: Clean + rebuild `Build succeeded`, `0 Error(s)`, `68 Warning(s)` (non-blocking).
+- Next: Restart app, validasi konten "About the Game" tampil untuk semua game.
+
+### 2026-05-19 (Fix WebView2 konten terpotong — LayoutCycle-safe height)
+
+- Fokus: WebView2 "About the Game" konten terpotong karena JS height feedback dihapus di batch sebelumnya.
+- Root cause sesi sebelumnya: JS `postMessage(scrollHeight)` → `sender.Height = height` dilakukan secara langsung di `WebMessageReceived` (masih dalam layout pass yang sama) → WinUI 3 mendeteksi layout cycle.
+- Fix proper: Kembalikan JS height feedback, tapi defer `sender.Height = height` via `DispatcherQueue.TryEnqueue()`. Assignment sekarang terjadi di frame berikutnya, di luar layout pass aktif — sehingga tidak ada layout cycle.
+- Tambahan: `NavigationCompleted` kini menjalankan JS `reportHeight()` langsung + `window.onload` + `setTimeout(600ms)` sebagai fallback untuk gambar lambat. Dengan ini, konten "About the Game" selalu menampilkan tinggi penuh meskipun ada gambar embedded.
+- Perubahan:
+  1. `GameDetailPage.xaml.cs`: `AboutGameWebView_NavigationCompleted` memanggil JS multi-trigger (`reportHeight()`, `onload`, `setTimeout 600ms`).
+  2. `GameDetailPage.xaml.cs`: `AboutGameWebView_WebMessageReceived` mengeset `sender.Height` via `DispatcherQueue.TryEnqueue()` — deferred, aman dari layout cycle.
+  3. `GameDetailPage.xaml`: `MaxHeight="1200"` dihapus dari WebView2, hanya `MinHeight="300"` yang dipertahankan sebagai placeholder saat loading.
+- Build: `Build succeeded`, `0 Error(s)`, `67 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
+- Next: Restart app dan validasi bahwa "About the Game" menampilkan konten lengkap tanpa terpotong. Jika ada LayoutCycle lagi, cek `RootLayout_SizeChanged` sebagai kandidat berikutnya.
+
+### 2026-05-19 (WebView2 Migration for "About the Game")
+
+- Fokus: Migrasi parser Native HTML ke WebView2 untuk sesi "About the Game" demi mencapai 100% UI Parity dengan Steam.
+- Perubahan: 
+  - Menghapus parser `RichBlock` dari `GameDetailViewModel.cs` dan menghapus `RichBlock.cs` serta `RichBlockTemplateSelector.cs`.
+  - Mengimplementasikan `<WebView2>` di `GameDetailPage.xaml` untuk merender konten HTML kotor langsung.
+  - Menyuntikkan CSS gelap via C# agar *background* WebView transparan dan *scrollbar* tersembunyi.
+  - Mengimplementasikan komunikasi JavaScript (`window.chrome.webview.postMessage`) ke C# (`WebMessageReceived`) untuk membuat tinggi `WebView2` dinamis tanpa *double scrollbar*.
+  - Menerapkan pembersihan memori ketat (`WebView2.Close()`) pada `OnNavigatedFrom` untuk menghindari *memory leak*.
+- Build: Succeeded, 0 Error(s).
+- Next: Evaluasi performa navigasi halaman detail game, atau melanjutkan prioritas navigasi ("Home data parity" / "Update system parity").
 
 ### 2026-05-19 (Rich Content & Crash Fixes)
 
