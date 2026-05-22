@@ -34,6 +34,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
     private readonly ISteamService _steam;
     private readonly IBypassGamesDataService _fixData;
     private readonly IAppLogService _log;
+    private readonly INexaPlayOverrideService _nexaPlayOverride;
     private readonly INavigationService _nav;
 
     // —— Base metadata (from steam_data.json.gz — always available) ———————————
@@ -170,6 +171,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
         IAddGameService addGame,
         ISteamService steam,
         IBypassGamesDataService fixData,
+        INexaPlayOverrideService nexaPlayOverride,
         IAppLogService log,
         INavigationService nav)
     {
@@ -179,6 +181,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
         _addGame      = addGame;
         _steam        = steam;
         _fixData      = fixData;
+        _nexaPlayOverride = nexaPlayOverride;
         _log          = log;
         _nav          = nav;
 
@@ -250,7 +253,9 @@ public sealed partial class GameDetailViewModel : ObservableObject
 
 
             NotifyDisplayProperties();
-            HeroBackgroundUrl = ReadFirstAssetUrl(Detail?.RawMetadataJson, "library_hero_2x")
+            var heroOverride = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId))?.LibraryHero2x;
+            HeroBackgroundUrl = heroOverride
+                ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "library_hero_2x")
                 ?? Game?.LibraryHero2xUrl
                 ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "background_raw")
                 ?? Game?.BackgroundRawImageUrl
@@ -258,7 +263,9 @@ public sealed partial class GameDetailViewModel : ObservableObject
                 ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "header")
                 ?? Game?.HeaderImageUrl
                 ?? string.Empty;
-            GameIconUrl = ReadFirstAssetUrl(Detail?.RawMetadataJson, "icon")
+            var iconOverride = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId))?.Icon;
+            GameIconUrl = iconOverride
+                ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "icon")
                 ?? Game?.IconImageUrl
                 ?? Game?.HeaderImageUrl
                 ?? string.Empty;

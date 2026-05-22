@@ -15,6 +15,9 @@ public static class AppConstants
     public const string PopularGamesUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/appid_populer.json";
     public const string OverrideDataUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/override_data.json";
 
+    // NexaPlay-specific override (separate repo)
+    public const string NexaPlayOverrideUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/nexaplay_override.json";
+
     // Online fix base URL
     public const string OnlineFixBaseUrl = "https://files.luatools.work/OnlineFix1/";
 
@@ -41,4 +44,5 @@ public static class AppConstants
     public const string FixLogPrefix           = "nexaplay-fix-log-";
     public const string OverrideDataCacheFileName = "override_data.json";
     public const string UserOverrideDataCacheFileName = "user_override_data.json";
+    public const string NexaPlayOverrideCacheFileName = "nexaplay_override.json";
 }

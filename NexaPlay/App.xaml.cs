@@ -18,7 +18,7 @@ namespace NexaPlay;
 public partial class App : Application
 {
     private static readonly object CrashLogLock = new();
-    private static string CrashLogPath => Path.Combine(AppContext.BaseDirectory, "crash.txt");
+    private static string CrashLogPath => @"D:\My Project\NexaPlay\crash.txt";
 
     private IServiceProvider? _serviceProvider;
     private Window? _window;
@@ -50,6 +50,7 @@ public partial class App : Application
         services.AddSingleton<AppliedStateStore>();
         services.AddSingleton<ISteamService, SteamPlatformService>();
         services.AddSingleton<IWindowsDefenderService, WindowsDefenderService>();
+        services.AddSingleton<INexaPlayOverrideService, NexaPlayOverrideService>();
         services.AddSingleton<IMetadataService, MetadataService>();
         services.AddSingleton<IBypassGamesDataService, BypassGamesDataService>();
         services.AddSingleton<IOnlineFixService, OnlineFixService>();
@@ -122,7 +123,7 @@ public partial class App : Application
                 sb.AppendLine(details);
                 sb.AppendLine();
 
-                File.AppendAllText(CrashLogPath, sb.ToString(), Encoding.UTF8);
+                File.WriteAllText(CrashLogPath, sb.ToString(), Encoding.UTF8);
             }
         }
         catch

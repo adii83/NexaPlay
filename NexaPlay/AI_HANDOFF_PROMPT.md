@@ -19,6 +19,7 @@ Sebelum mengubah kode, WAJIB baca dokumen ini berurutan:
 3. NexaPlay/ONBOARDING_ZERO_TO_PARITY.md
 4. NexaPlay/MIGRATION_PARITY_MATRIX.md
 5. NexaPlay/AI_HANDOFF_PROMPT.md
+6. NexaPlay/AI_HANDOFF_HOME_HISTORY.md (riwayat detail perbaikan page Home)
 
 
 Lokasi project utama:
@@ -31,11 +32,11 @@ Tugas awal sebelum edit:
 1. Ringkas pemahaman posisi terakhir NexaPlay.
 2. Sebutkan halaman/fokus aktif terbaru.
 3. Jalankan baseline build.
-4. Baru lanjut implementasi batch kecil.
 
 Jangan redesign semua halaman sekaligus.
 Jangan mengurangi feature parity GameHub.
 Jangan mengubah behavior inti tanpa alasan kuat dan tanpa cek referensi GameHub.
+
 Jangan lupa ## 10. Update Log Ringkas
 
 Tambahkan catatan baru di atas bagian ini setiap selesai batch penting.
@@ -48,6 +49,7 @@ Tanggal:
 - Build:
 - Next:
 ```
+
 ```
 
 ## 2. Status Project Saat Ini
@@ -325,420 +327,95 @@ Tanggal:
 - Build:
 - Next:
 ```
-### 2026-05-21 (Warning Audit Batch 3 - NU1902 SharpCompress)
 
-- Fokus: Menutup advisory `NU1902` tanpa menurunkan parity fitur apply/extract OnlineFix.
+
+### 2026-05-23
+- Fokus: checkpoint awal sesi (sinkronisasi konteks + baseline verification sebelum edit kode).
 - Perubahan:
-  - `NexaPlay.csproj`:
-    - upgrade `SharpCompress` dari `0.38.0` ke `0.48.1` (latest stable saat audit).
-  - `OnlineFixService.cs`:
-    - migrasi fallback ekstraksi SharpCompress ke API baru:
-      - `ArchiveFactory.OpenArchive(stream, new ReaderOptions())`
-      - ekstraksi entry via `entry.WriteToFile(..., new ExtractionOptions { Overwrite = true })`
-    - flow log dan daftar file extracted tetap dipertahankan.
-- Build: `Build succeeded`, `0 Warning(s)`, `0 Error(s)`.
-- Next: Lanjut smoke test manual fitur Apply Online Fix untuk validasi runtime end-to-end pasca-upgrade paket.
+  - Membaca dokumen wajib berurutan: `README.md` -> `AGENTS.md` -> `ONBOARDING_ZERO_TO_PARITY.md` -> `MIGRATION_PARITY_MATRIX.md` -> `AI_HANDOFF_PROMPT.md` -> `AI_HANDOFF_HOME_HISTORY.md`.
+  - Menetapkan guardrail sesi: tidak redesign lintas halaman, tidak menurunkan parity GameHub, dan tetap page-by-page.
+- Build: baseline build gate `Debug x64` sukses (`0 Error(s)`, `0 Warning(s)`).
+- Next: lanjut eksekusi batch berikutnya dengan fokus aktif di `Games`/parity runtime sesuai prioritas terakhir handoff.
 
-### 2026-05-21 (Warning Audit Batch 2 - BypassGames CS1522)
-
-- Fokus: Menutup warning `CS1522` (empty switch block) tanpa mengubah behavior flow bypass.
+### 2026-05-23
+- Fokus: stabilisasi besar `Games Page` agar parity perilaku `Home > Popular Games` tercapai (responsive grid, pagination, anti-glitch resize, dan state pager aktif).
 - Perubahan:
-  - `BypassGamesPage.xaml.cs`:
-    - hapus blok `switch (state.Phase)` yang kosong (hanya komentar) di progress callback.
-    - progress callback tetap no-op sesuai kondisi UI helper yang masih dikomentari.
-- Build: `Build succeeded`, `0 Error(s)`. Warning `CS1522` hilang.
-- Next: Lanjut audit warning tersisa `NU1902` (`SharpCompress` vulnerability advisory) dan tentukan patch versi paket yang aman untuk parity.
+  - **Grid + Pagination Core**
+    - `GamesViewModel`: page size diubah dari statis menjadi dinamis mengikuti kolom (`kolom x 10 baris`) agar target “kebawah 10 card” tercapai.
+    - `GamesPage.xaml.cs`: layout kolom tetap memakai breakpoint parity Home (`6/5/4/3`) + rasio card `1:1.5` + `ItemsWrapGrid` runtime.
+  - **Anti Glitch Resize (Fullscreen/Windowed)**
+    - Resize pakai debounce untuk menghindari update beruntun saat drag/transisi mode window.
+    - Posisi scroll dipertahankan saat resize-update dengan capture/restore `VerticalOffset`, sehingga viewport tidak lompat ke atas.
+    - Animasi transisi page disuppress saat update karena resize agar tidak terasa seperti “ganti page”.
+    - Bug page aktif yang sempat balik ke page 1 saat toggle fullscreen/windowed sudah ditangani (menjaga page aktif saat kolom berubah).
+  - **Autofill Bottom Row**
+    - Setelah tuning anti-glitch, update kolom di jalur debounce diaktifkan kembali secara aman agar autofill card bawah tetap jalan pada fullscreen.
+  - **Pager UX**
+    - Tombol angka pager dibuat state-aware: hanya page aktif yang `background putih + teks hitam`; page nonaktif tetap dark.
+    - Visibilitas angka page menyesuaikan total page (`ShowPage1/2/3`).
+  - **Smooth Transition**
+    - Next/Prev/GoTo page diberi animasi fade+slide yang lebih halus untuk perpindahan page normal (bukan resize).
+  - **Parity Pattern Home Popular**
+    - `Games` collection diubah ke `ObservableCollection` + sinkronisasi incremental (`add/remove/update` per item) agar tidak replace list kasar, sehingga flicker berkurang signifikan sambil mempertahankan autofill.
+- Build:
+  - Beberapa build normal sempat terkena file lock `NexaPlay.exe` saat app berjalan.
+  - Build verifikasi menggunakan `OutDir=Debug-preview` konsisten sukses di checkpoint akhir (`0 Error(s)`, warning lama Home `WMC1506` non-blocking).
+- Next:
+  - Runtime QA final khusus `Games`:
+    1) stress test toggle fullscreen/windowed berulang di page 1/2/3,
+    2) verifikasi tidak ada kedipan yang mengganggu,
+    3) verifikasi autofill baris bawah tetap penuh lintas mode window + DPI.
+  - Jika masih ada micro-flicker device-spesifik, lanjut batch kecil “batched UI update during resize” tanpa ubah behavior inti/parity.
 
-### 2026-05-21 (Warning Audit Batch 1 - HomePage Nullability)
-
-- Fokus: Menurunkan warning C# paling aman tanpa mengubah behavior UI.
+### 2026-05-23
+- Fokus: stabilisasi glitch `Games` saat pagination dan transisi fullscreen <-> windowed.
 - Perubahan:
-  - `HomePage.xaml.cs`:
-    - `_carouselTimer` diubah menjadi nullable (`DispatcherTimer?`) untuk menutup `CS8618`.
-    - signature `CarouselTimer_Tick` diubah ke `object? sender` untuk menutup `CS8622`.
-- Build: `Build succeeded`, `0 Error(s)`. Warning `CS8618` + `CS8622` hilang. Tersisa `CS1522` (BypassGamesPage) dan `NU1902` (SharpCompress advisory).
-- Next: Audit warning `CS1522` di `BypassGamesPage.xaml.cs` lalu lanjut evaluasi paket `SharpCompress`.
+  - `GamesViewModel.cs`: `UpdateGridColumns` tidak lagi reset kasar ke halaman 1; sekarang menjaga posisi list relatif dengan hitung ulang index awal item agar resize terasa stabil.
+  - `GamesPage.xaml.cs`: update kolom saat resize dibuat debounce `140ms` (pola yang dipakai di histori Home) untuk mengurangi refresh beruntun/jitter saat drag resize.
+  - `GamesPage.xaml.cs`: tambah animasi transisi saat ganti page (fade + slide halus) dipicu saat `CurrentPageLabel` berubah.
+  - `GamesPage.xaml`: tombol angka pager `1/2/3` diubah jadi background putih dengan teks hitam sesuai request.
+- Build: build normal sempat merah karena file lock `NexaPlay.exe`; build verifikasi dengan `OutDir=Debug-preview` sukses (`0 Error(s)`, `0 Warning(s)`).
+- Next: validasi runtime fokus di `Games`: spam klik `Prev/Next/1/2/3` dan uji resize windowed/fullscreen berulang untuk cek apakah glitch sudah hilang total.
 
-### 2026-05-21 (Game Detail Denuvo Badge Blink Visibility Fix)
-
-- Fokus: Membuat efek kedap-kedip label Denuvo di Game Detail benar-benar terlihat jelas tanpa hover.
+### 2026-05-23
+- Fokus: ubah logika page `Games` menjadi 10 baris kebawah per halaman (kolom tetap adaptif seperti `Home > Popular`).
 - Perubahan:
-  - `GameDetailPage.xaml.cs`:
-    - samakan karakter pulse dengan pola di Home (opacity `1.0 -> 0.3`, `700ms`, auto-reverse, repeat forever),
-    - tambah pulse pada `DenuvoBadgeGlowOverlay` (`0.0 -> 0.42`) agar efek kedip lebih tegas secara visual,
-    - reset state animasi saat stop (`DenuvoBadge.Opacity = 1`, `DenuvoBadgeGlowOverlay.Opacity = 0`).
-- Build: `dotnet build NexaPlay.csproj -c Debug -r win-x64 /p:OutDir=...Debug-preview` sukses, `0 Error(s)`, warning lama tetap.
-- Next: Validasi visual runtime pada game yang `HasDenuvo=true`; jika sudah sesuai lanjut audit warning satu per satu.
+  - `GamesViewModel.cs`: ganti page size statis `10` menjadi dinamis `kolom x 10` (`RowsPerPage=10`, `PageSize => _gridColumns * RowsPerPage`).
+  - `GamesViewModel.cs`: tambah `UpdateGridColumns(int columns)` untuk sinkron jumlah item per halaman saat lebar grid berubah (fullscreen/windowed).
+  - `GamesPage.xaml.cs`: setelah `ApplyGamesGridLayout`, kirim jumlah kolom aktif ke ViewModel agar pagination ikut pola layout runtime.
+- Build: `Build succeeded`, `0 Error(s)`; warning non-blocking termasuk lock file `NexaPlay.exe` karena app sedang berjalan.
+- Next: validasi visual di runtime bahwa tiap halaman terisi penuh 10 baris kebawah untuk semua mode window, lalu fine-tune jika ada gap sisa di row terakhir.
 
-### 2026-05-21 (Background HEAD Sync + Silent Hot-Reload Metadata)
-
-- Fokus: Sinkronisasi metadata latar belakang berbasis HTTP HEAD agar startup tetap instan dari cache lokal.
+### 2026-05-23
+- Fokus: rapikan spacing card `Games` agar parity `Home Popular` + set page size kecil untuk performa UX list.
 - Perubahan:
-  - `MetadataService.EnsureIndexedAsync` diubah ke strategi cache-first:
-    - jika cache lokal essential ada, index langsung dibangun dari disk (tanpa blocking jaringan),
-    - lalu background update dijalankan fire-and-forget.
-  - Tambah `PerformBackgroundUpdateAsync()`:
-    - jalankan `SyncSourcesCoreAsync(... useHeadCheck: true)` di belakang layar,
-    - jika ada file berubah, rebuild index RAM (hot-reload) secara senyap.
-  - `DownloadIfNeededAsync(...)` ditambah mode `useHeadCheck`:
-    - kirim `HttpMethod.Head`,
-    - bandingkan `Last-Modified` vs `File.GetLastWriteTimeUtc`,
-    - skip download jika belum berubah,
-    - saat HEAD gagal dan cache masih < `SafetyNetTtl`, skip download,
-    - saat cache sudah tua, fallback GET.
-  - TTL metadata dikonsolidasikan ke `SafetyNetTtl` (24 jam) untuk flow metadata.
-  - `steam_games.json` tetap hanya untuk deteksi proteksi saat build index (bukan override field katalog).
-- Build: `Build succeeded`, `0 Error(s)`, warning non-blocking tetap ada.
-- Next: Jalankan verifikasi runtime skenario 1st launch vs relaunch + cek log "not modified on GitHub" dan "hot-reload index".
+  - `GamesPage.xaml`: `GridViewItem` margin diubah `0 -> 8` agar gap horizontal/vertikal antar card sama ritmenya dengan `Home`.
+  - `GamesPage.xaml`: corner radius card disamakan ke `12` (root + image + gradient layer) agar kontur card tidak terlihat “pecah” antar item.
+  - `GamesViewModel.cs`: `PageSize` diubah `30 -> 10` sesuai request “kebawahnya 10 card”.
+- Build: setelah patch batch ini dijalankan build ulang (Debug x64) untuk validasi.
+- Next: validasi visual langsung di window app; jika masih ada deviasi, copy nilai spacing persis dari template `Home` (badge/title offset) ke `Games`.
 
-### 2026-05-21 (Baseline Recovery MetadataService Contract + Cache TTL)
+### 2026-05-23
 
-- Fokus: Menstabilkan baseline build sebelum batch fitur, sesuai startup task handoff.
+- Fokus: parity UI `Games` terhadap mekanik layout `Home Popular` + stabilisasi UX filter/search/pager.
 - Perubahan:
-  - `MetadataService` sekarang mengimplementasikan kontrak `IMetadataService.IsCacheAvailable`.
-  - Tambah helper aman `IsFileUsable(...)` untuk validasi cache file metadata (exists + size > 0).
-  - `AppConstants` ditambahkan TTL yang direferensikan service metadata:
-    - `SteamDataCacheTtl = 24 jam`
-    - `BypassGamesCacheTtl = 24 jam`
-- Build: `Build succeeded`, `0 Error(s)`, warning non-blocking tersisa (`NU1902 SharpCompress`, `CS8618`, `CS8622`, `CS1522`, `WMC1506`).
-- Next: Lanjut batch kecil berikutnya pada warning cleanup aman (mulai dari `HomePage` nullability timer) tanpa mengubah behavior parity GameHub.
+  - `GamesPage` top bar dipoles bertahap: alignment field search, logo kiri, tombol search icon putih, dan tips SteamDB.
+  - Overlay filter `Games` distabilkan: jarak checkbox `Status Game` disamakan ritmenya dengan `Genre`, panel tetap hitam solid dan melayang di atas card.
+  - Animasi buka/tutup filter ditambah (fade + slide halus) di `GamesPage.xaml.cs`.
+  - Pager diubah dari posisi melayang ke **footer konten** (dipindah ke `GridView.Footer`) dengan model `Prev | 1 | 2 | 3 | Next`.
+  - Crash `RelayCommand<int>` akibat `CommandParameter` string diperbaiki dengan parsing aman di `GoToPage(string pageText)`.
+  - Engine layout card `Games` diparitas-kan dengan `Home Popular`: `GamesGrid_SizeChanged` + `ApplyGamesGridLayout` memakai breakpoint kolom `6/5/4/3`, perhitungan slot width, rasio card `1:1.5`, dan set `ItemsWrapGrid.ItemWidth/ItemHeight/MaximumRowsOrColumns` secara runtime.
+  - Warning `CS0219` di `MainWindow.xaml.cs` dibersihkan (variabel `title` tidak dipakai).
+- Build: checkpoint terakhir `Build succeeded`, `0 Error(s)`, warning tersisa `WMC1506` lama di `HomePage.xaml`.
+- Next: lanjutkan parity logika `Games` load-more/fill-row bawah mengikuti pola `Home` (target rows penuh per kolom) sebelum masuk integrasi metadata besar 160k.
 
-### 2026-05-20 (Hardening MVVMTK0045 — Partial Property Migration)
+### 2026-05-23
 
-- Fokus: Eliminasi seluruh 63 warning `MVVMTK0045` agar semua `[ObservableProperty]` AOT-safe untuk WinUI 3 / WinRT marshalling.
+- Fokus: Stabilitas awal transisi fokus dari `Home` ke `Games`.
 - Perubahan:
-  - `NexaPlay.csproj`: tambah `<LangVersion>preview</LangVersion>` agar compiler mendukung sintaks partial property C# 13+.
-  - 6 ViewModel dimigrasi dari pola field lama (`private bool _isLoading`) ke partial property (`public partial bool IsLoading { get; set; }`):
-    - `GameDetailViewModel.cs` (18 properti)
-    - `HomeViewModel.cs` (6 properti)
-    - `BypassGamesViewModel.cs` (12 properti)
-    - `GamesViewModel.cs` (4 properti)
-    - `SettingsViewModel.cs` (12 properti)
-    - `LibraryViewModel.cs` (8 properti)
-  - Default value yang sebelumnya inline (`= string.Empty`, `= Array.Empty<>()`) dipindah ke constructor masing-masing ViewModel karena partial property C# 13 tidak boleh punya initializer inline.
-  - `MainViewModel.cs` tidak menggunakan `[ObservableProperty]` sehingga tidak perlu diubah.
-  - Semua `partial void On...Changed` callback tetap berfungsi tanpa perubahan.
-- Build: `Build succeeded`, `0 Error(s)`, `5 Warning(s)` (hanya NU1902 SharpCompress). Warning MVVMTK0045: **0** (sebelumnya 63).
-- Next: Smoke test runtime; lanjut prioritas berikutnya dari matrix parity.
-
-### 2026-05-19 (Rapikan parser HTML Additional Information)
-
-- Fokus: Penulisan konten di `ADDITIONAL INFORMATION` masih terlihat kurang rapi karena parsing HTML terlalu minimal.
-- Perubahan:
-  - `GameDetailPage.xaml.cs` `FormatInlineHtml(...)` diperkuat dengan pendekatan parser ringan:
-    - normalisasi newline (`\r\n`/`\r`),
-    - konversi `br/p/div/li/ul/ol` ke struktur baris yang lebih rapi,
-    - strip tag sisa + HTML decode,
-    - normalisasi spasi ganda/newline berlebih,
-    - normalisasi bullet agar konsisten (`- `).
-  - `GameDetailPage.xaml`:
-    - `SUPPORT` sekarang pakai `FormatInlineHtml(ViewModel.DisplaySupport)`.
-    - `LEGAL NOTICE` sekarang pakai `FormatInlineHtml(ViewModel.DisplayLegalNotice)`.
-  - `SUPPORTED LANGUAGES` dan `DRM NOTICE` tetap pakai formatter yang sama sehingga keempat blok info tambahan punya gaya parsing konsisten.
-- Build: `Build succeeded`, `0 Error(s)`, `5 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
-- Next: Validasi visual runtime pada beberapa game dengan HTML berbeda (languages panjang, DRM multiline, support URL+email) untuk cek wrapping dan readability.
-
-### 2026-05-19 (Simplify Post-About Media Layout 1/2/3)
-
-- Fokus: Menyederhanakan layout screenshot bawah About agar konsisten, tidak acak, dan sesuai arahan: 1 full, 2 stacked (bawah lebih lebar), 3+ model mirror Game Overview dengan card besar di kanan.
-- Perubahan:
-  - `GameDetailViewModel.cs`:
-    - Tambah properti hitung/layout:
-      - `PostAboutScreenshotCount`
-      - `PostAboutScreenshotUrl1/2/3`
-      - `HasPostAboutLayoutSingle`, `HasPostAboutLayoutDouble`, `HasPostAboutLayoutTriple`
-    - Tetap gunakan filter existing: sumber screenshot metadata, exclude screenshot yang sudah dipakai di `GAME OVERVIEW`, dedupe URL.
-  - `GameDetailPage.xaml`:
-    - Ganti layout post-about lama menjadi 3 mode sederhana:
-      1. **Single**: 1 gambar full-width.
-      2. **Double**: 2 gambar bertumpuk, kartu kedua lebih tinggi/lebar visual (center-crop).
-      3. **Triple+**: 3 gambar dengan komposisi mirror `GAME OVERVIEW` (dua kecil kiri, satu besar kanan).
-    - Semua card tetap reuse interaksi media existing (`Tapped`, hover scale handlers).
-- Build: `Build succeeded`, `0 Error(s)`, `68 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
-- Next: Validasi visual runtime di beberapa game (sisa screenshot 1, 2, dan >=3) untuk fine-tune tinggi card jika diperlukan.
-
-### 2026-05-19 (Post-About Screenshot Layout tanpa duplikasi Overview)
-
-- Fokus: Menambahkan screenshot section di bawah WebView2 About dengan gaya mirip referensi teman (hero + grid variatif), tanpa memakai screenshot yang sudah dipakai di GAME OVERVIEW.
-- Perubahan:
-  - `GameDetailViewModel.cs`: tambah properti post-about:
-    - `PostAboutScreenshotUrls` (maks 5),
-    - `PostAboutHeroScreenshotUrl`,
-    - `PostAboutTailScreenshotUrls`,
-    - `HasPostAboutScreenshots`,
-    - `HasPostAboutTailScreenshots`.
-  - Filter screenshot mengecualikan `OverviewScreenshotUrl1/2/3` + dedupe URL agar tidak muncul ganda.
-  - `GameDetailPage.xaml`: tambah section baru di bawah `AboutGameWebView`:
-    - 1 hero image besar + tail grid `ItemsRepeater` untuk sisa screenshot,
-    - klik/hover tetap reuse handler media existing (`MediaCard_Tapped`, pointer hover),
-    - visibilitas pakai properti bool ViewModel agar aman dari generated x:Bind error.
-- Build: `Build succeeded`, `0 Error(s)`, `68 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
-- Next: Validasi runtime lintas game untuk memastikan pola 1–5 screenshot terlihat natural dan tidak bentrok dengan GAME OVERVIEW.
-
-### 2026-05-19 (Crash Logging + Home ImageSource Guard)
-
-- Fokus: crash saat spam/perf test yang keluar sebagai `-1073741189` dan perlu jejak log yang lebih kaya.
-- Perubahan:
-  - Root cause baru dari `crash.txt`: binding `HomePage` gagal convert URL ke `ImageSource` (`System.ArgumentException`).
-  - `HomePage.xaml` diubah agar `ImageBrush` memakai helper aman (`SafeImageSource`) untuk `PosterUrl` dan `HeaderImageUrl`.
-  - `HomePage.xaml.cs` ditambah `SafeImageSource(string?)` dengan fallback `ms-appx:///Assets/StoreLogo.png` saat URL invalid.
-  - `App.xaml.cs` logging crash ditingkatkan: append log bertimestamp + source + thread/process untuk `WinUI UnhandledException`, `AppDomain.UnhandledException`, dan `TaskScheduler.UnobservedTaskException`.
-  - `run_nexaplay.bat` ditingkatkan: saat output watch mendeteksi `Exited with error code`, script otomatis dump konteks crash ke `nexaplay_crash_context.log` (tail `crash.txt` + event Application/.NET Runtime/WER 15 menit terakhir).
-- Build: `Build succeeded`, `0 Error(s)`, `70 Warning(s)` (non-blocking), Debug x64.
-- Next: jalankan ulang `run_nexaplay.bat`, lakukan stress-test spam cepat, lalu kirim `crash.txt` + `nexaplay_crash_context.log` terbaru jika masih jatuh.
-
-### 2026-05-19 (Hotfix spinner About WebView2 nyangkut)
-
-- Fokus: loading ring section About tetap muter terus (munyer) dan konten tidak muncul pada beberapa flow revisit/navigasi cepat.
-- Perubahan:
-  - `GameDetailPage.xaml.cs`: pada jalur `Tier 1` (`_renderedForAppId` sama + `Height > 0`) sekarang memaksa `IsAboutContentLoading = false` sebelum `return`, supaya state loading tidak nyangkut.
-  - `GameDetailPage.xaml.cs`: tambah watchdog `StartAboutLoadWatchdog()` (2.5s) setelah `NavigateToString`; jika callback JS tidak datang, fallback mematikan loading ring dan set tinggi minimum aman.
-  - `GameDetailPage.xaml.cs`: `NavigationCompleted` sukses sekarang juga mengunci `_renderedForAppId` aktif, jadi revisit tetap stabil walau callback height terlambat.
-  - `GameDetailPage.xaml.cs`: `WebMessageReceived` kini validasi `stamp` payload (`payload.Stamp == _expectedRenderStamp`) untuk menolak message stale dari render lama.
-- Build: `Build succeeded`, `0 Error(s)`, `70 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
-- Next: retest runtime skenario `A→list→A`, `A→B→A`, dan scroll cepat pada detail untuk memastikan ring About tidak nyangkut dan konten muncul konsisten.
-
-### 2026-05-19 (Hotfix About kosong setelah patch spinner)
-
-- Fokus: tidak crash, tapi konten About kosong pada sebagian flow revisit cepat.
-- Perubahan:
-  - `GameDetailPage.xaml.cs`: tambah guard `_hasValidRenderForCurrentApp` agar `Tier 1` hanya aktif setelah render HTML valid benar-benar diterima dari callback height (`WebMessageReceived`), bukan dari event navigasi awal.
-  - `GameDetailPage.xaml.cs`: reset `_hasValidRenderForCurrentApp = false` sebelum setiap `NavigateToString` agar render lama tidak dianggap valid untuk request baru.
-  - `GameDetailPage.xaml.cs`: hapus set `_renderedForAppId` dari `NavigationCompleted`; sekarang `_renderedForAppId` hanya di-set saat message height valid diterima.
-- Build: `Build succeeded`, `0 Error(s)`, `70 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
-- Next: validasi ulang flow `A→list→A` dan `A→B→A`; pastikan About tampil isi dan tidak blank saat revisit.
-
-### 2026-05-19 (Tracing WebView2 About untuk kasus blank)
-
-- Fokus: kasus About masih blank (tidak crash), perlu jejak event runtime agar akar penyebab terlihat jelas.
-- Perubahan:
-  - `GameDetailPage.xaml.cs`: tambah trace file `about_webview_trace.log` di folder output aplikasi (`AppContext.BaseDirectory`).
-  - Tambah log detail di alur About: awal render (`rawLen`), abort empty source, hit `Tier1`, hasil `StripAboutGameHeading` (`cleanLen`), fallback strip bila hasil kosong, `NavigateToString` stamp, `NavigationCompleted` sukses/gagal, hasil `ExecuteScript`, payload `WebMessageReceived`, drop reason (appId/stamp/invalid height), apply height, dan watchdog release.
-- Build: `Build succeeded`, `0 Error(s)`, `70 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
-- Next: reproduksi blank sekali lagi lalu kirim isi `about_webview_trace.log` terbaru untuk analisa akar penyebab final.
-
-### 2026-05-19 (Fix parser payload WebView2 + klarifikasi lokasi log)
-
-- Fokus: About tetap blank walau trace aktif.
-- Root cause dari trace:
-  - `WebMessageReceived` menerima JSON valid (`{"appId":...,"stamp":...,"height":...}`) tapi parser C# gagal map properti lowercase, sehingga jatuh ke jalur `invalid-height` dan height tidak pernah diaplikasikan.
-- Perubahan:
-  - `GameDetailPage.xaml.cs`: parser `JsonSerializer.Deserialize` dibuat `PropertyNameCaseInsensitive=true`.
-  - `GameDetailPage.xaml.cs`: `WebViewHeightPayload` ditandai `[JsonPropertyName("appId"|"stamp"|"height")]` agar mapping payload JS stabil.
-  - Klarifikasi lokasi trace: log ditemukan di output runtime aktif, contoh `bin\x64\Debug\net8.0-windows10.0.19041.0\win-x64\about_webview_trace.log` (bisa berbeda dari `Debug-preview` tergantung cara run).
-- Build: gagal sementara karena file lock `CS2012` (`Microsoft.UI.Xaml.Markup.Compiler`), bukan error logic code.
-- Next: stop proses run/watch yang masih aktif lalu build ulang; retest About dan cek trace apakah `WebMessage apply` sudah muncul.
-
-### 2026-05-19 (Cleanup final: hapus tracing debug WebView2 About)
-
-- Fokus: kembalikan implementasi Smart Height Cache ke mode final (tanpa disk I/O tambahan).
-- Perubahan:
-  - `GameDetailPage.xaml.cs`: hapus seluruh tracing debug `about_webview_trace.log` (`LogAbout`, `Truncate`, field trace path/lock, dan seluruh call log di render/navigation/message/watchdog).
-  - Parser JSON payload `WebMessageReceived` yang sudah diperbaiki tetap dipertahankan (`PropertyNameCaseInsensitive` + `[JsonPropertyName]`) agar height callback stabil.
-  - Alur `Tier 1 / Tier 2 / Tier 3` tetap dipertahankan apa adanya.
-- Build: `Build succeeded`, `0 Error(s)`, `70 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
-- Next: smoke test ulang `A→A`, `A→B→A`, dan cold open setelah restart app untuk memastikan behavior final tetap smooth.
-
-### 2026-05-19 (Stabilkan glitch WebView2 + native-only scroll)
-
-- Fokus: kurangi glitch/flicker pada About WebView2 dan pastikan scroll selalu mengikuti ScrollViewer native.
-- Perubahan:
-  - `GameDetailPage.xaml.cs`: hentikan render prematur saat `OnNavigatedTo` (sebelum `LoadAsync` selesai) dan render dilakukan setelah data detail siap, untuk mengurangi transisi kosong→isi yang memicu glitch visual.
-  - `GameDetailPage.xaml`: `AboutGameWebView` di-set `IsHitTestVisible="False"` agar WebView2 tidak menangkap wheel/pointer scroll; hasilnya scroll tetap pure native dari `ScrollViewer` parent.
-  - Mekanisme Smart Height Cache (Tier1/Tier2/Tier3) tetap dipertahankan.
-- Build: `Build succeeded`, `0 Error(s)`, `68 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
-- Next: verifikasi UX bahwa area About tetap terbaca mulus saat scroll cepat; catatan: karena hit test dimatikan, link/interaksi di dalam konten WebView2 tidak bisa diklik (sesuai mode pure native scroll).
-
-### 2026-05-19 (Hotfix crash spam-load Game Detail)
-
-- Fokus: crash acak saat user spam klik/navigasi cepat (load detail bertumpuk, pindah game cepat, dan scroll/media update bersamaan).
-- Perubahan:
-  - `GameDetailPage.xaml.cs`: tambah guard lifecycle (`_isPageActive`), navigation session gate, dan cancellation token per navigasi agar async lama tidak meneruskan update UI setelah page berpindah.
-  - `GameDetailPage.xaml.cs`: event WebView2 `WebMessageReceived` sekarang validasi payload JSON (`appId`, `stamp`, `height`) untuk menolak message lama/stale dari render sebelumnya.
-  - `GameDetailPage.xaml.cs`: timer carousel diberi guard saat page tidak aktif / belum loaded / detail masih loading.
-  - `GameDetailViewModel.cs`: `LoadAsync` diberi versi request (`_loadVersion`) + cancellation checks agar hasil fetch lama tidak menimpa state fetch terbaru saat klik cepat.
-  - Entry tambahan non-fokus yang sempat ditulis sebelumnya sudah dihapus agar log kembali murni mengikuti alur fokus kamu.
-- Build: `Build succeeded`, `0 Error(s)`, `68 Warning(s)` (non-blocking), Debug x64.
-- Next: stress-test runtime dengan skenario spam (A→list→A, A→B→A, scroll+klik media cepat) dan cek apakah `crash.txt` masih terisi.
-
-### 2026-05-19 (Smart Height Cache + Fix 4 masalah WebView2)
-
-- Fokus: (1) Konten bawah terpotong. (2) Heading "About the Game" duplikat dari HTML Steam. (3) Spacing heading terlalu rapat. (4) Flash loading ring setiap revisit — implementasi smart height cache.
-
-- Root cause terpotong: Buffer height kurang + timeout terlalu pendek.
-- Root cause heading duplikat: Steam `detailed_description` mengandung `<h2>About the Game</h2>` sebagai heading pertama, sementara kita sudah punya section divider native XAML. Fix: `StripAboutGameHeading()` regex strip.
-- Root cause flash loading: `IsAboutContentLoading=true` selalu di-set tanpa cek apakah height sudah diketahui.
-
-- Perubahan utama:
-  1. `GameDetailPage.xaml.cs` — Static `_heightCache: Dictionary<int, double>` + `_renderedForAppId: int` sebagai field class.
-  2. `RenderAboutGameWebView()` — Logika 3-tier:
-     - **Tier 1**: AppId sama + WebView2 sudah punya height → `return` sepenuhnya (0ms, skip NavigateToString).
-     - **Tier 2**: AppId pernah dikunjungi → `_heightCache.TryGetValue()` → set height instan, `IsAboutContentLoading = false`, render di background tanpa loading ring.
-     - **Tier 3**: Cold open → `IsAboutContentLoading = true` seperti biasa.
-  3. `AboutGameWebView_WebMessageReceived()` — Setelah height diterima dari JS: simpan `_heightCache[appId] = height` + update `_renderedForAppId = appId`.
-  4. `OnNavigatedFrom()` — Hapus `AboutGameWebView.Close()` agar WebView2 instance tetap hidup (mendukung Tier 1).
-  5. `GameDetailPage.xaml` — Tambah ProgressRing overlay untuk about section (visible saat `IsAboutContentLoading`), hapus native TextBlock "ABOUT THE GAME" (sudah terkandung di HTML Steam sebagai h2 heading).
-  6. CSS update: `line-height: 1.85`, heading `margin: 28px 0 16px 0`, `p margin: 0 0 14px 0`, `li margin-bottom: 6px`.
-  7. JS height measurement: buffer `+32px`, timeout `1500ms`, `window.onload` + `setTimeout(100ms)`.
-  8. `StripAboutGameHeading()` — Regex strip `<h1/h2/h3>About the/this Game</h1/h2/h3>` dari HTML sebelum render.
-
-- Source WebView2: `DisplayRichDescription` = `DetailedDescription ?? AboutTheGame` (tidak ada filter comparison).
-- Memory overhead _heightCache: `~12 byte` per game pernah dikunjungi — tidak signifikan.
-- Build: `0 Error(s)`, `68 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
-- Next: Test revisit flow (A→list→A, A→B→A), pastikan Tier1 dan Tier2 berjalan smooth.
-
-### 2026-05-19 (Fix About duplikat + heading NexaPlay style + gap bawah)
-
-- Fokus: (1) Konten "About the Game" tampil dua kali. (2) Heading di dalam WebView2 tidak berformat NexaPlay. (3) Gap besar antara konten dan "Additional Information".
-- Root cause duplikat: `RenderAboutGameWebView()` menggabungkan `about_the_game` + `detailed_description`. Untuk beberapa game, `detailed_description` berisi subset dari `about_the_game` (bukan identik) sehingga keduanya ikut tampil. Fix: hapus `detailed_description` dari render — `about_the_game` sudah berisi seluruh konten.
-- Root cause gap bawah: JS mengukur `document.documentElement.scrollHeight` yang include extra viewport space. Fix: wrap konten dalam `div#nexacontent`, ukur `scrollHeight` dari div itu saja.
-- Perubahan:
-  1. `GameDetailPage.xaml.cs` `RenderAboutGameWebView()`: Hapus `detailedHtml` — hanya render `aboutHtml`. Content dibungkus `<div id="nexacontent">`.
-  2. CSS heading baru: `h1,h2,h3,h4,.bb_h1,.bb_h2,.bb_h3` → `text-transform: uppercase`, `letter-spacing: 2px`, `border-left: 4px solid #FFFFFF`, `padding-left: 12px` — sesuai NexaPlay section header style.
-  3. JS `NavigationCompleted`: Ukur `el.scrollHeight` dari `#nexacontent` untuk tinggi yang akurat.
-- Build: `0 Error(s)`, `68 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
-- Next: Restart app, validasi heading UPPERCASE + garis putih kiri, tidak ada duplikat konten, gap bawah berkurang.
-
-### 2026-05-19 (Refactor WebView2 About — gabung konten + fix crash)
-
-- Fokus: Fix konten "About the Game" kosong, gabungkan `about_the_game` + `detailed_description` dalam satu WebView2, dan fix crash `XamlParseException` saat launch.
-- Root cause konten kosong: WebView2 mendengarkan `DisplayDetailedDescription` yang return empty jika `detailed_description == about_the_game` (mayoritas game Steam).
-- Root cause crash: Stale build artifact (`obj/`) dari perubahan sebelumnya. Diselesaikan dengan `Clean` + rebuild.
-- Perubahan:
-  1. `GameDetailViewModel.cs`: Property baru `DisplayAboutTheGame` → `Detail?.AboutTheGame`. `DisplayDetailedDescription` tetap ada untuk konten bonus yang berbeda. `_isAboutContentLoading` masih ada di ViewModel tapi tidak digunakan di UI (page-level `IsDetailLoading` yang handle loading).
-  2. `GameDetailPage.xaml.cs`: Trigger berubah ke `DisplayAboutTheGame`. Handler baru `RenderAboutGameWebView()` menggabungkan about + detailed (jika berbeda) dalam satu HTML. CSS heading diperbaiki: h1=20px, h2=17px, h3=15px, bb_h1/bb_h2/bb_h3 sesuai. Separator `.nexa-separator` antar konten. Hapus referensi `IsAboutContentLoading`.
-  3. `GameDetailPage.xaml`: Hapus ProgressRing about terpisah — loading sudah di-handle page-level `IsDetailLoading` (ProgressRing di baris 98-106). WebView2 langsung visible tanpa binding loading.
-  4. `GameDetailPage.xaml`: Grid GAME OVERVIEW `Height` dari 520 → 480 (dari batch sebelumnya).
-- Catatan: Tidak ada API call ganda — `LoadAsync` → `GetDetailAsync(appId)` fetch semuanya (about, detailed, screenshots, metadata) dalam satu panggilan. WebView2 hanya merender data dari `Detail` yang sudah tersedia.
-- Build: Clean + rebuild `Build succeeded`, `0 Error(s)`, `68 Warning(s)` (non-blocking).
-- Next: Restart app, validasi konten "About the Game" tampil untuk semua game.
-
-### 2026-05-19 (Fix WebView2 konten terpotong — LayoutCycle-safe height)
-
-- Fokus: WebView2 "About the Game" konten terpotong karena JS height feedback dihapus di batch sebelumnya.
-- Root cause sesi sebelumnya: JS `postMessage(scrollHeight)` → `sender.Height = height` dilakukan secara langsung di `WebMessageReceived` (masih dalam layout pass yang sama) → WinUI 3 mendeteksi layout cycle.
-- Fix proper: Kembalikan JS height feedback, tapi defer `sender.Height = height` via `DispatcherQueue.TryEnqueue()`. Assignment sekarang terjadi di frame berikutnya, di luar layout pass aktif — sehingga tidak ada layout cycle.
-- Tambahan: `NavigationCompleted` kini menjalankan JS `reportHeight()` langsung + `window.onload` + `setTimeout(600ms)` sebagai fallback untuk gambar lambat. Dengan ini, konten "About the Game" selalu menampilkan tinggi penuh meskipun ada gambar embedded.
-- Perubahan:
-  1. `GameDetailPage.xaml.cs`: `AboutGameWebView_NavigationCompleted` memanggil JS multi-trigger (`reportHeight()`, `onload`, `setTimeout 600ms`).
-  2. `GameDetailPage.xaml.cs`: `AboutGameWebView_WebMessageReceived` mengeset `sender.Height` via `DispatcherQueue.TryEnqueue()` — deferred, aman dari layout cycle.
-  3. `GameDetailPage.xaml`: `MaxHeight="1200"` dihapus dari WebView2, hanya `MinHeight="300"` yang dipertahankan sebagai placeholder saat loading.
-- Build: `Build succeeded`, `0 Error(s)`, `67 Warning(s)` (non-blocking), `OutDir=Debug-preview`.
-- Next: Restart app dan validasi bahwa "About the Game" menampilkan konten lengkap tanpa terpotong. Jika ada LayoutCycle lagi, cek `RootLayout_SizeChanged` sebagai kandidat berikutnya.
-
-### 2026-05-19 (WebView2 Migration for "About the Game")
-
-- Fokus: Migrasi parser Native HTML ke WebView2 untuk sesi "About the Game" demi mencapai 100% UI Parity dengan Steam.
-- Perubahan: 
-  - Menghapus parser `RichBlock` dari `GameDetailViewModel.cs` dan menghapus `RichBlock.cs` serta `RichBlockTemplateSelector.cs`.
-  - Mengimplementasikan `<WebView2>` di `GameDetailPage.xaml` untuk merender konten HTML kotor langsung.
-  - Menyuntikkan CSS gelap via C# agar *background* WebView transparan dan *scrollbar* tersembunyi.
-  - Mengimplementasikan komunikasi JavaScript (`window.chrome.webview.postMessage`) ke C# (`WebMessageReceived`) untuk membuat tinggi `WebView2` dinamis tanpa *double scrollbar*.
-  - Menerapkan pembersihan memori ketat (`WebView2.Close()`) pada `OnNavigatedFrom` untuk menghindari *memory leak*.
-- Build: Succeeded, 0 Error(s).
-- Next: Evaluasi performa navigasi halaman detail game, atau melanjutkan prioritas navigasi ("Home data parity" / "Update system parity").
-
-### 2026-05-19 (Rich Content & Crash Fixes)
-
-- Fokus: Implementasi parser "Native Rich HTML Renderer" dan perbaikan crash UI.
-- Perubahan: 
-  - Membuat `RichBlockTemplateSelector` dan `RichBlock` model untuk merender teks, gambar, video, list, dan header native WinUI 3.
-  - Memperbaiki parser Regex di `GameDetailViewModel` untuk menerjemahkan `<br>`, `<p>`, dan `<li>` menjadi baris teks native.
-  - Mengganti `ItemsRepeater` dengan `ItemsControl` untuk mengatasi *Layout Cycle Crash* (`0xC000027B`) saat men-scroll gambar dinamis.
-  - Menyatukan sesi "About the Game" dan "Detailed Description" menjadi satu layout komprehensif.
-- Build: Succeeded, verified XAML parsing.
-- Next: Evaluasi stabilitas keseluruhan halaman detail game dan optimasi caching gambar jika diperlukan.
-
-### 2026-05-19 (polish ABOUT THE GAME section)
-
-- Fokus: merapikan layout teks "ABOUT THE GAME" dan menyisipkan "GAME OVERVIEW" di halaman Game Detail.
-- Perubahan: 
-  - Mengubah logika `FormatAboutText` agar mengganti tag `<br>` dengan `\n` (newline) dan bukannya spasi. Hal ini menjaga struktur paragraf asli dari Steam API.
-  - Memperbaiki binding `DisplayDetailedDescription` di `GameDetailViewModel` untuk mengembalikan string kosong apabila isinya identik dengan "About The Game", sehingga section "DETAILED DESCRIPTION" ganda tidak dirender di layar.
-  - Menambahkan section "GAME OVERVIEW" di atas "ABOUT THE GAME" yang memuat deskripsi pendek dan 3-image grid layout screenshot dengan efek _hover scale_.
-- Build: `Build succeeded`, 0 Error(s).
-- Next: Menyambungkan navigasi UI "Cek Bypass" ke halaman Bypass Games atau melanjut prioritas UI selanjutnya.
-
-### 2026-05-19 (fix crash System Requirement x:Bind NullReferenceException)
-
-- Fokus: crash `0xC000027B` persisten yang membuat app tertutup sendiri.
-- Root cause: Bukan di MEDIA, melainkan di `SystemRequirement`. `x:Bind` WinUI 3 mengalami crash diam-diam (stowed exception) saat mengevaluasi path bersarang sebagai argumen fungsi (contoh: `FormatRequirementItems(ViewModel.Detail.PcRequirementsMinimum)`) ketika objek parent (`ViewModel.Detail`) bernilai `null` saat proses load pertama kali.
-- Perubahan:
-  - Membuat helper method statis `FormatRequirementsMin(GameDetailEntry? detail)` dan `FormatRequirementsMax(GameDetailEntry? detail)` di `GameDetailPage.xaml.cs`.
-  - Mengubah argumen fungsi `x:Bind` di `GameDetailPage.xaml` pada ItemsRepeater System Requirements menjadi passing keseluruhan objek `ViewModel.Detail`, sehingga jika null akan di-_pass_ sebagai null dengan aman tanpa error _null-propagation_.
-- Build: `Build succeeded`, `0 Error(s)`.
-- Next: Restart app, lalu buka Game Detail. Seharusnya tidak akan ada crash sama sekali dan UI tampil secara penuh.
-
-### 2026-05-19 (pendekatan binding chain ViewModel.Detail.Screenshots)
-
-- Fokus: crash `0xC000027B` persisten meski sudah pakai DispatcherQueue defer.
-- Perubahan: Hapus `OnDetailChanged` sepenuhnya dari `GameDetailViewModel.cs`. Ganti binding XAML MEDIA `ItemsRepeater` dari `ViewModel.Screenshots` → `ViewModel.Detail.Screenshots`. x:Bind chain WinUI 3 otomatis update saat `PropertyChanged("Detail")` tanpa perlu `OnPropertyChanged("Screenshots")` manual. WinUI 3 x:Bind juga handle null-propagation jika `Detail` null.
-- Build: `Build succeeded`, `0 Error(s)`, `OutDir=Debug-preview`.
-- Next: Restart app, test navigasi ke Game Detail — harus tidak crash dan MEDIA carousel muncul.
-
-### 2026-05-19 (fix crash MEDIA + DispatcherQueue defer)
-
-- Fokus: crash `0xC000027B` saat masuk Game Detail setelah fix OnDetailChanged sebelumnya.
-- Root cause: `OnDetailChanged` memicu `OnPropertyChanged("Screenshots")` saat `IsDetailLoading = true` → ScrollViewer masih `Collapsed`. WinUI 3 ItemsRepeater crash saat parent di-reveal ke `Visible`. Ini adalah `STATUS_STOWED_EXCEPTION` — exception di dalam binding/realization pipeline yang di-stow lalu re-throw.
-- Perubahan: `OnDetailChanged` di `GameDetailViewModel.cs` diubah agar defer notifikasi via `DispatcherQueue.TryEnqueue`. Notifikasi `Screenshots`/`Movies`/`Categories` sekarang baru dikirim di frame berikutnya, setelah `IsDetailLoading = false` dan ScrollViewer sudah `Visible`.
-- Build: `Build succeeded`, `0 Error(s)`, `OutDir=Debug-preview`.
-- Next: Restart app dan validasi runtime — carousel MEDIA harus muncul tanpa crash.
-
-### 2026-05-19 (fix MEDIA carousel kosong)
-
-- Fokus: MEDIA section di GameDetailPage tidak menampilkan screenshot setelah hotfix crash sebelumnya.
-- Root cause: `Screenshots`, `Movies`, `Categories` adalah computed property (`Detail?.Screenshots`, dst). Ketika `Detail` di-assign dari `LoadAsync`, `OnPropertyChanged("Screenshots")` tidak pernah dipanggil — sehingga `ItemsRepeater` MEDIA tidak refresh.
-- Perubahan: Tambah `partial void OnDetailChanged(GameDetailEntry? value)` di `GameDetailViewModel.cs` yang memanggil `OnPropertyChanged` untuk `Screenshots`, `Movies`, dan `Categories` setiap kali `Detail` berubah. Ini menangani semua titik assignment sekaligus (LoadAsync dan SelectScreenshot).
-- Build: `Build succeeded`, `0 Error(s)`, `67 Warning(s)` (MVVMTK0045 + NU1902, non-blocking), `OutDir=Debug-preview`.
-- Next: Validasi visual runtime — screenshot carousel harus muncul di MEDIA section. Jika sudah oke, lanjut polish area lain di GameDetailPage.
-
-### 2026-05-19
-
-- Fokus: hotfix kedua untuk crash `0xc000027b` saat masuk Game Detail.
-- Perubahan:
-  1. Di `GameDetailPage.xaml`: Mengubah `Mode=OneWay` menjadi `Mode=OneTime` pada _binding_ `IsSelected` di `DataTemplate` `ScreenshotEntry` untuk mencegah _crash_ XAML akibat properti statis.
-  2. Di `GameDetailViewModel.cs`: Memperbaiki _double-assignment_ pada properti `Detail` saat `LoadAsync` yang memicu _layout cycle crash_ di WinUI 3 `ItemsRepeater`. `Detail` sekarang dimutasi sebelum di-_assign_ ke _ObservableProperty_.
-- Build: `Build succeeded`, `0 Error(s)`.
-- Next: Validasi visual ulang di runtime. Jika aman, lanjut penataan `ABOUT THE GAME` dan `SYSTEM REQUIREMENT`.
-
-### 2026-05-19
-
-- Fokus: hotfix crash saat masuk Game Detail setelah perubahan carousel media.
-- Perubahan: card carousel `MEDIA` diganti dari `Button` dengan `PopularGameCardStyle` menjadi `Border` interaktif (`Tapped`, hover scale manual). Ini mengurangi risiko runtime crash WinUI dari template/style global saat item media direalisasi. Output Debug normal juga dibuild ulang, bukan hanya Debug-preview.
-- Build: `Build succeeded`, `0 Error(s)`, `2 Warning(s)` dengan build Debug normal.
-- Next: user perlu retest masuk Game Detail; jika masih crash, cek Event Viewer Application untuk event NexaPlay terbaru.
-
-### 2026-05-19
-
-- Fokus: ubah media Game Detail sesuai referensi carousel teman user.
-- Perubahan: label section `SCREENSHOTS` diganti `MEDIA`; preview screenshot besar lama dihapus; daftar screenshot dibuat carousel horizontal full-width dengan panah kiri/kanan, hover scale kecil, dan klik gambar membuka overlay/lightbox; section `TRAILERS` dihapus sementara dari UI.
-- Build: `Build succeeded`, `0 Error(s)`, `2 Warning(s)` dengan `OutDir=Debug-preview`.
-- Next: validasi visual runtime untuk ukuran carousel, crop thumbnail, dan posisi overlay; jika sudah pas lanjut polish `ABOUT THE GAME` dan `SYSTEM REQUIREMENT`.
-
-### 2026-05-19
-
-- Fokus: polish lanjutan Game Detail layout.
-- Perubahan: metadata strip (`APP ID`, `RELEASE DATE`, `DEVELOPER`, `PUBLISHER`, `PRICE`) dibuat rata kanan; badge `STANDARD/PREMIUM` dan `DENUVO` dipindahkan ke kolom kanan; khusus Denuvo ditambahkan tombol UI-only `Cek Bypass`; judul `SYSTEM` diganti `SYSTEM REQUIREMENT` dan dikeluarkan dari kotak; isi requirements dibuat lebih rapat, tanpa label teks `MINIMUM/RECOMMENDED` tambahan di bawah tombol, dan formatter menghapus awalan `Minimum:`/`Recommended:` dari isi spec.
-- Build: `Build succeeded`, `0 Error(s)`, `68 Warning(s)` dengan `OutDir=Debug-preview`.
-- Next: validasi visual runtime; nanti tombol `Cek Bypass` diarahkan ke halaman Bypass Games setelah behavior detail disepakati.
-
-### 2026-05-19
-
-- Fokus: polish layout Game Detail sesuai arahan user.
-- Perubahan: metadata `APP ID`, `RELEASE DATE`, `DEVELOPER`, `PUBLISHER`, `PRICE` dipindah menjadi strip horizontal di atas screenshot; panel kanan diganti menjadi `SYSTEM` requirements card dengan toggle `Minimum`/`Recommended`; badge `STANDARD/PREMIUM` dan `DENUVO` dipindah ke bawah genre di hero; sticky action bar dibuat compact di tengah dan hanya membungkus tiga tombol `Add Game`, `Online-Fix`, `Restart Steam`; teks unavailable pada tombol Online-Fix dihapus.
-- Build: `Build succeeded`, `0 Error(s)`, `68 Warning(s)` dengan `OutDir=Debug-preview`.
-- Next: validasi visual runtime, lalu poles spacing/tinggi requirements dan action bar bila screenshot runtime masih belum pas.
-
-### 2026-05-19
-
-- Fokus: membuat handoff/prompt AI baru lebih detail.
-- Perubahan: dokumen ini diperluas dengan status aktif, aturan UI wajib, metadata rules, workflow build, dan instruksi auto-update handoff.
-- Build: `Build succeeded`, `0 Error(s)`, `2 Warning(s)` dengan `OutDir=Debug-preview`.
-- Next: lanjut polish Game Detail sticky action bar dan label `STANDARD/PREMIUM/DENUVO`, lalu lanjut konten About Game/media.
-
-### 2026-05-18
-
-- Fokus: Game Detail metadata dan UI.
-- Perubahan: protection/Denuvo dihitung dari `fix_games.json`, `new_fix_games.json`, dan `steam_games/steam_games.json`; sticky action/status bar ditambahkan; price diarahkan dari runtime catalog.
-- Build: `Build succeeded`, `0 Error(s)` dengan output preview.
-- Next: validasi visual runtime dan poles detail layout/action behavior.
+  - Fix crash `NullReferenceException` di `GamesViewModel` saat constructor (urutan inisialisasi `SelectedGenres` vs `SearchQuery` + guard null di `ApplyFiltersAndPagination`).
+  - Fix crash `XamlParseException` di `GamesPage` karena resource key `NexaPrimaryButtonStyle` tidak ditemukan (style reference dihapus).
+  - Crash logger dipindah ke path tetap `D:\My Project\NexaPlay\crash.txt` dan diubah overwrite per crash terbaru (tidak append historis panjang).
+  - Hotfix defensif UI `Games`: binding genre via handler + converter URL image aman untuk mencegah crash parsing image.
+- Build: `Build succeeded` (`0 Error(s)`).
+- Next: lanjut wiring data `Games` ke metadata source besar (160k) dengan query ringan + cache, tanpa menurunkan performa.

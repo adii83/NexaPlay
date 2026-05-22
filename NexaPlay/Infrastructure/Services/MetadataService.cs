@@ -2,6 +2,7 @@ using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Constants;
 using NexaPlay.Core.Models;
 using System.IO.Compression;
+using System.Net;
 using System.Text.Json;
 
 namespace NexaPlay.Infrastructure.Services;
@@ -14,6 +15,7 @@ namespace NexaPlay.Infrastructure.Services;
 public sealed class MetadataService : IMetadataService
 {
     private readonly IAppLogService _log;
+    private readonly INexaPlayOverrideService _nexaPlayOverride;
     private readonly HttpClient _http;
     private readonly SemaphoreSlim _loadLock = new(1, 1);
     private readonly SemaphoreSlim _sourceSyncLock = new(1, 1);
@@ -31,11 +33,20 @@ public sealed class MetadataService : IMetadataService
     private DateTime _lastLoaded = DateTime.MinValue;
     private IReadOnlyList<int>? _popularAppIdsCache;
     private DateTime _popularLastLoaded = DateTime.MinValue;
+    private IReadOnlyList<int>? _newFixAppIdsCache;
+    private DateTime _newFixLastLoaded = DateTime.MinValue;
+    private string? _popularEtag;
+    private string? _newFixEtag;
+    private readonly string _popularAppIdsCacheFile;
+    private readonly string _newFixAppIdsCacheFile;
+    private readonly string _popularEtagFile;
+    private readonly string _newFixEtagFile;
     private DateTime _lastBackgroundCheckUtc = DateTime.MinValue;
 
-    public MetadataService(IAppLogService log)
+    public MetadataService(IAppLogService log, INexaPlayOverrideService nexaPlayOverride)
     {
         _log = log;
+        _nexaPlayOverride = nexaPlayOverride;
         _http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("NexaPlay/1.0");
         _http.DefaultRequestVersion = System.Net.HttpVersion.Version11;
@@ -52,8 +63,16 @@ public sealed class MetadataService : IMetadataService
         _fixGamesFile = Path.Combine(_catalogDir, AppConstants.BypassGamesCacheFileName);
         _newFixGamesFile = Path.Combine(_catalogDir, AppConstants.NewFixGamesCacheFileName);
         _steamGamesFile = Path.Combine(_catalogDir, AppConstants.SteamGamesCacheFileName);
+        _popularAppIdsCacheFile = Path.Combine(_catalogDir, "appid_populer_cache.json");
+        _newFixAppIdsCacheFile = Path.Combine(_catalogDir, "new_fix_appids_cache.json");
+        _popularEtagFile = Path.Combine(_catalogDir, "appid_populer.etag");
+        _newFixEtagFile = Path.Combine(_catalogDir, "new_fix_games.etag");
 
         Directory.CreateDirectory(_catalogDir);
+        _popularEtag = TryReadText(_popularEtagFile);
+        _newFixEtag = TryReadText(_newFixEtagFile);
+        _popularAppIdsCache = TryReadAppIdArray(_popularAppIdsCacheFile);
+        _newFixAppIdsCache = TryReadAppIdArray(_newFixAppIdsCacheFile);
     }
 
     public bool IsCacheAvailable =>
@@ -81,21 +100,63 @@ public sealed class MetadataService : IMetadataService
 
     public async Task<IReadOnlyList<int>> GetPopularAppIdsAsync(CancellationToken ct = default)
     {
-        if (_popularAppIdsCache is not null && DateTime.UtcNow - _popularLastLoaded < AppConstants.SafetyNetTtl)
+        if (_popularAppIdsCache is not null && _popularAppIdsCache.Count > 0)
+        {
+            _ = RefreshPopularAppIdsWithEtagAsync();
             return _popularAppIdsCache;
+        }
 
         try
         {
-            var json = await DownloadStringAsync(AppConstants.PopularGamesUrl, ct);
-            var arr = JsonSerializer.Deserialize<int[]>(json) ?? Array.Empty<int>();
-            _popularAppIdsCache = arr;
-            _popularLastLoaded = DateTime.UtcNow;
-            return arr;
+            var arr = await FetchAppIdsWithEtagAsync(
+                AppConstants.PopularGamesUrl,
+                _popularAppIdsCacheFile,
+                _popularEtagFile,
+                _popularEtag,
+                "Popular AppIds",
+                ct);
+            if (arr.Count > 0)
+            {
+                _popularAppIdsCache = arr;
+                _popularLastLoaded = DateTime.UtcNow;
+            }
+            return _popularAppIdsCache ?? Array.Empty<int>();
         }
         catch (Exception ex)
         {
             _log.Log("Metadata", $"Popular AppIds download error: {ex.Message}");
             return _popularAppIdsCache ?? Array.Empty<int>();
+        }
+    }
+
+    public async Task<IReadOnlyList<int>> GetNewFixAppIdsAsync(CancellationToken ct = default)
+    {
+        if (_newFixAppIdsCache is not null && _newFixAppIdsCache.Count > 0)
+        {
+            _ = RefreshNewFixAppIdsWithEtagAsync();
+            return _newFixAppIdsCache;
+        }
+
+        try
+        {
+            var arr = await FetchAppIdsWithEtagAsync(
+                AppConstants.NewFixGamesUrl,
+                _newFixAppIdsCacheFile,
+                _newFixEtagFile,
+                _newFixEtag,
+                "NewFix AppIds",
+                ct);
+            if (arr.Count > 0)
+            {
+                _newFixAppIdsCache = arr;
+                _newFixLastLoaded = DateTime.UtcNow;
+            }
+            return _newFixAppIdsCache ?? Array.Empty<int>();
+        }
+        catch (Exception ex)
+        {
+            _log.Log("Metadata", $"NewFix AppIds download error: {ex.Message}");
+            return _newFixAppIdsCache ?? Array.Empty<int>();
         }
     }
 
@@ -333,12 +394,64 @@ public sealed class MetadataService : IMetadataService
                 PriceNormalized = e.PriceNormalized,
                 Protection = e.Protection || protectedAppIds.Contains(e.AppId),
                 HeaderImageUrl = e.HeaderImageUrl ?? string.Empty,
+                LibraryCapsule2xUrl = e.LibraryCapsule2xUrl,
                 Genre = e.Genre
             })
             .ToDictionary(e => e.AppId);
 
+        await ApplyNexaPlayCatalogOverridesAsync(ct);
+
         _lastLoaded = DateTime.UtcNow;
         _log.Log("Metadata", $"Runtime catalog built: {_index.Count:N0} unique appids, protected={protectedAppIds.Count:N0}");
+    }
+
+    private async Task ApplyNexaPlayCatalogOverridesAsync(CancellationToken ct)
+    {
+        if (_index is null) return;
+
+        try
+        {
+            var overriddenIds = await _nexaPlayOverride.GetOverriddenAppIdsAsync(ct);
+            var applied = 0;
+
+            foreach (var appId in overriddenIds)
+            {
+                var ov = await _nexaPlayOverride.GetCatalogOverrideAsync(appId, ct);
+                if (ov is null) continue;
+
+                if (!_index.TryGetValue(appId, out var existing))
+                {
+                    existing = new GameEntry { AppId = appId, Name = $"App {appId}" };
+                    _index[appId] = existing;
+                }
+
+                if (ov.Title is not null) existing.Name = ov.Title;
+                if (ov.Developer is not null) existing.Developer = ov.Developer;
+                if (ov.Publisher is not null) existing.Publisher = ov.Publisher;
+                if (ov.Developers is not null) existing.Developers = ov.Developers;
+                if (ov.Publishers is not null) existing.Publishers = ov.Publishers;
+                if (ov.Genre is not null) existing.Genre = ov.Genre;
+                if (ov.ShortDescription is not null) existing.ShortDescription = ov.ShortDescription;
+                if (ov.ReleaseDate is not null) existing.ReleaseDate = ov.ReleaseDate;
+                if (ov.PriceNormalized is not null) existing.PriceNormalized = ov.PriceNormalized.Value;
+                if (ov.PriceDisplay is not null) existing.PriceDisplay = ov.PriceDisplay;
+                if (ov.Protection is not null) existing.Protection = ov.Protection.Value;
+                if (ov.Header is not null) existing.HeaderImageUrl = ov.Header;
+                if (ov.Icon is not null) existing.IconImageUrl = ov.Icon;
+                if (ov.LibraryCapsule2x is not null) existing.LibraryCapsule2xUrl = ov.LibraryCapsule2x;
+                if (ov.LibraryHero2x is not null) existing.LibraryHero2xUrl = ov.LibraryHero2x;
+                if (ov.BackgroundRaw is not null) existing.BackgroundRawImageUrl = ov.BackgroundRaw;
+
+                applied++;
+            }
+
+            if (applied > 0)
+                _log.Log("Metadata", $"NexaPlay catalog overrides applied: {applied}");
+        }
+        catch (Exception ex)
+        {
+            _log.Log("Metadata", $"NexaPlay catalog override failed (non-blocking): {ex.Message}");
+        }
     }
 
     private async Task<bool> MergeSourceSafeAsync(
@@ -456,7 +569,8 @@ public sealed class MetadataService : IMetadataService
                 PriceDisplay = ReadString(node, "price_display") ?? existing?.PriceDisplay,
                 PriceNormalized = ReadInt(node, "price_normalized") ?? existing?.PriceNormalized ?? 0,
                 Protection = ReadProtection(node) ?? existing?.Protection ?? false,
-                HeaderImageUrl = ReadString(node, "header") ?? existing?.HeaderImageUrl,
+                LibraryCapsule2xUrl = ReadAssetUrl(node, "library_capsule_2x") ?? existing?.LibraryCapsule2xUrl,
+                HeaderImageUrl = ReadAssetUrl(node, "header") ?? existing?.HeaderImageUrl,
                 Genre = ReadString(node, "genre") ?? existing?.Genre
             };
         }
@@ -620,6 +734,130 @@ public sealed class MetadataService : IMetadataService
         return IsFileUsable(_steamDataGzFile) || IsFileUsable(_steamDataFile);
     }
 
+    private async Task RefreshPopularAppIdsWithEtagAsync()
+    {
+        try
+        {
+            if (DateTime.UtcNow - _popularLastLoaded < TimeSpan.FromMinutes(5))
+                return;
+
+            var latest = await FetchAppIdsWithEtagAsync(
+                AppConstants.PopularGamesUrl,
+                _popularAppIdsCacheFile,
+                _popularEtagFile,
+                _popularEtag,
+                "Popular AppIds",
+                CancellationToken.None);
+
+            if (latest.Count > 0)
+            {
+                _popularAppIdsCache = latest;
+                _popularLastLoaded = DateTime.UtcNow;
+            }
+        }
+        catch { }
+    }
+
+    private async Task RefreshNewFixAppIdsWithEtagAsync()
+    {
+        try
+        {
+            if (DateTime.UtcNow - _newFixLastLoaded < TimeSpan.FromMinutes(2))
+                return;
+
+            var latest = await FetchAppIdsWithEtagAsync(
+                AppConstants.NewFixGamesUrl,
+                _newFixAppIdsCacheFile,
+                _newFixEtagFile,
+                _newFixEtag,
+                "NewFix AppIds",
+                CancellationToken.None);
+
+            if (latest.Count > 0)
+            {
+                _newFixAppIdsCache = latest;
+                _newFixLastLoaded = DateTime.UtcNow;
+            }
+        }
+        catch { }
+    }
+
+    private async Task<IReadOnlyList<int>> FetchAppIdsWithEtagAsync(
+        string url,
+        string cacheFile,
+        string etagFile,
+        string? currentEtag,
+        string logScope,
+        CancellationToken ct)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        if (!string.IsNullOrWhiteSpace(currentEtag))
+            req.Headers.TryAddWithoutValidation("If-None-Match", currentEtag);
+
+        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (resp.StatusCode == HttpStatusCode.NotModified)
+        {
+            var cached = TryReadAppIdArray(cacheFile);
+            if (cached is not null && cached.Count > 0)
+                return cached;
+
+            return Array.Empty<int>();
+        }
+
+        resp.EnsureSuccessStatusCode();
+        var json = await resp.Content.ReadAsStringAsync(ct);
+        await File.WriteAllTextAsync(cacheFile, json, ct);
+
+        var etag = resp.Headers.ETag?.Tag;
+        if (!string.IsNullOrWhiteSpace(etag))
+        {
+            await File.WriteAllTextAsync(etagFile, etag!, ct);
+            if (logScope.StartsWith("Popular", StringComparison.OrdinalIgnoreCase))
+                _popularEtag = etag;
+            else
+                _newFixEtag = etag;
+        }
+
+        var parsed = ParseAppIdsFromJson(json);
+        _log.Log("Metadata", $"{logScope} fetched: {parsed.Count} appids");
+        return parsed;
+    }
+
+    private static IReadOnlyList<int> ParseAppIdsFromJson(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var ids = new HashSet<int>();
+            CollectAppIds(doc.RootElement, ids);
+            return ids.ToList();
+        }
+        catch
+        {
+            return Array.Empty<int>();
+        }
+    }
+
+    private static IReadOnlyList<int>? TryReadAppIdArray(string path)
+    {
+        if (!File.Exists(path))
+            return null;
+        var json = TryReadText(path);
+        return string.IsNullOrWhiteSpace(json) ? null : ParseAppIdsFromJson(json);
+    }
+
+    private static string? TryReadText(string path)
+    {
+        try
+        {
+            return File.Exists(path) ? File.ReadAllText(path).Trim() : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private async Task PerformBackgroundUpdateAsync()
     {
         if (_lastBackgroundCheckUtc != DateTime.MinValue &&
@@ -698,6 +936,58 @@ public sealed class MetadataService : IMetadataService
         };
     }
 
+    private static string? ReadAssetUrl(JsonElement node, string key)
+    {
+        if (node.TryGetProperty(key, out var topLevel))
+        {
+            var topLevelUrl = ReadUrlFromElement(topLevel);
+            if (!string.IsNullOrWhiteSpace(topLevelUrl))
+                return topLevelUrl;
+        }
+
+        if (node.TryGetProperty("assets", out var assets) &&
+            assets.ValueKind == JsonValueKind.Object &&
+            assets.TryGetProperty(key, out var nested))
+        {
+            var nestedUrl = ReadUrlFromElement(nested);
+            if (!string.IsNullOrWhiteSpace(nestedUrl))
+                return nestedUrl;
+        }
+
+        return null;
+    }
+
+    private static string? ReadUrlFromElement(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.String)
+            return element.GetString();
+
+        if (element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty("url", out var directUrl) &&
+            directUrl.ValueKind == JsonValueKind.String)
+        {
+            return directUrl.GetString();
+        }
+
+        if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.String)
+                    return item.GetString();
+
+                if (item.ValueKind == JsonValueKind.Object &&
+                    item.TryGetProperty("url", out var itemUrl) &&
+                    itemUrl.ValueKind == JsonValueKind.String)
+                {
+                    return itemUrl.GetString();
+                }
+            }
+        }
+
+        return null;
+    }
+
     private sealed class RuntimeCatalogEntry
     {
         public int AppId { get; init; }
@@ -705,6 +995,7 @@ public sealed class MetadataService : IMetadataService
         public string? PriceDisplay { get; init; }
         public int PriceNormalized { get; init; }
         public bool Protection { get; init; }
+        public string? LibraryCapsule2xUrl { get; init; }
         public string? HeaderImageUrl { get; init; }
         public string? Genre { get; init; }
     }

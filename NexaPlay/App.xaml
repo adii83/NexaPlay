@@ -226,7 +226,8 @@
                             <!-- RenderTransformOrigin="0.5,0.5" agar scale dari tengah card -->
                             <Grid x:Name="RootGrid"
                                   RenderTransformOrigin="0.5,0.5"
-                                  Height="160"
+                                  Height="{TemplateBinding Height}"
+                                  Width="{TemplateBinding Width}"
                                   CornerRadius="12">
 
                                 <Grid.RenderTransform>
@@ -245,8 +246,8 @@
                                 -->
                                 <Border x:Name="HoverBorderOverlay"
                                         CornerRadius="12"
-                                        BorderThickness="1.5"
-                                        BorderBrush="#70FFFFFF"
+                                        BorderThickness="2.2"
+                                        BorderBrush="#CCFFFFFF"
                                         Opacity="0"
                                         IsHitTestVisible="False"/>
 
@@ -269,7 +270,7 @@
                                                     <DoubleAnimation
                                                         Storyboard.TargetName="CardScale"
                                                         Storyboard.TargetProperty="ScaleX"
-                                                        To="1.03" Duration="0:0:0.18">
+                                                        To="1.008" Duration="0:0:0.16">
                                                         <DoubleAnimation.EasingFunction>
                                                             <CubicEase EasingMode="EaseOut"/>
                                                         </DoubleAnimation.EasingFunction>
@@ -277,7 +278,7 @@
                                                     <DoubleAnimation
                                                         Storyboard.TargetName="CardScale"
                                                         Storyboard.TargetProperty="ScaleY"
-                                                        To="1.03" Duration="0:0:0.18">
+                                                        To="1.008" Duration="0:0:0.16">
                                                         <DoubleAnimation.EasingFunction>
                                                             <CubicEase EasingMode="EaseOut"/>
                                                         </DoubleAnimation.EasingFunction>
@@ -285,7 +286,7 @@
                                                     <DoubleAnimation
                                                         Storyboard.TargetName="HoverBorderOverlay"
                                                         Storyboard.TargetProperty="Opacity"
-                                                        To="1" Duration="0:0:0.18">
+                                                        To="1" Duration="0:0:0.16">
                                                         <DoubleAnimation.EasingFunction>
                                                             <CubicEase EasingMode="EaseOut"/>
                                                         </DoubleAnimation.EasingFunction>
@@ -297,7 +298,7 @@
                                                     <DoubleAnimation
                                                         Storyboard.TargetName="CardScale"
                                                         Storyboard.TargetProperty="ScaleX"
-                                                        To="1.0" Duration="0:0:0.22">
+                                                        To="1.0" Duration="0:0:0.18">
                                                         <DoubleAnimation.EasingFunction>
                                                             <CubicEase EasingMode="EaseOut"/>
                                                         </DoubleAnimation.EasingFunction>
@@ -305,7 +306,7 @@
                                                     <DoubleAnimation
                                                         Storyboard.TargetName="CardScale"
                                                         Storyboard.TargetProperty="ScaleY"
-                                                        To="1.0" Duration="0:0:0.22">
+                                                        To="1.0" Duration="0:0:0.18">
                                                         <DoubleAnimation.EasingFunction>
                                                             <CubicEase EasingMode="EaseOut"/>
                                                         </DoubleAnimation.EasingFunction>
@@ -313,7 +314,7 @@
                                                     <DoubleAnimation
                                                         Storyboard.TargetName="HoverBorderOverlay"
                                                         Storyboard.TargetProperty="Opacity"
-                                                        To="0" Duration="0:0:0.22">
+                                                        To="0" Duration="0:0:0.18">
                                                         <DoubleAnimation.EasingFunction>
                                                             <CubicEase EasingMode="EaseOut"/>
                                                         </DoubleAnimation.EasingFunction>
@@ -325,7 +326,7 @@
                                                     <DoubleAnimation
                                                         Storyboard.TargetName="CardScale"
                                                         Storyboard.TargetProperty="ScaleX"
-                                                        To="0.98" Duration="0:0:0.08">
+                                                        To="0.994" Duration="0:0:0.07">
                                                         <DoubleAnimation.EasingFunction>
                                                             <CubicEase EasingMode="EaseIn"/>
                                                         </DoubleAnimation.EasingFunction>
@@ -333,7 +334,7 @@
                                                     <DoubleAnimation
                                                         Storyboard.TargetName="CardScale"
                                                         Storyboard.TargetProperty="ScaleY"
-                                                        To="0.98" Duration="0:0:0.08">
+                                                        To="0.994" Duration="0:0:0.07">
                                                         <DoubleAnimation.EasingFunction>
                                                             <CubicEase EasingMode="EaseIn"/>
                                                         </DoubleAnimation.EasingFunction>
@@ -341,7 +342,7 @@
                                                     <DoubleAnimation
                                                         Storyboard.TargetName="PressedOverlay"
                                                         Storyboard.TargetProperty="Opacity"
-                                                        To="1" Duration="0:0:0.08"/>
+                                                        To="0.7" Duration="0:0:0.07"/>
                                                 </Storyboard>
                                             </VisualTransition>
                                             <VisualTransition From="Pressed" To="PointerOver">
@@ -349,7 +350,7 @@
                                                     <DoubleAnimation
                                                         Storyboard.TargetName="CardScale"
                                                         Storyboard.TargetProperty="ScaleX"
-                                                        To="1.03" Duration="0:0:0.14">
+                                                        To="1.008" Duration="0:0:0.12">
                                                         <DoubleAnimation.EasingFunction>
                                                             <CubicEase EasingMode="EaseOut"/>
                                                         </DoubleAnimation.EasingFunction>
@@ -357,7 +358,7 @@
                                                     <DoubleAnimation
                                                         Storyboard.TargetName="CardScale"
                                                         Storyboard.TargetProperty="ScaleY"
-                                                        To="1.03" Duration="0:0:0.14">
+                                                        To="1.008" Duration="0:0:0.12">
                                                         <DoubleAnimation.EasingFunction>
                                                             <CubicEase EasingMode="EaseOut"/>
                                                         </DoubleAnimation.EasingFunction>
@@ -365,7 +366,7 @@
                                                     <DoubleAnimation
                                                         Storyboard.TargetName="PressedOverlay"
                                                         Storyboard.TargetProperty="Opacity"
-                                                        To="0" Duration="0:0:0.14"/>
+                                                        To="0" Duration="0:0:0.12"/>
                                                 </Storyboard>
                                             </VisualTransition>
                                         </VisualStateGroup.Transitions>
@@ -373,16 +374,16 @@
                                         <VisualState x:Name="Normal"/>
                                         <VisualState x:Name="PointerOver">
                                             <VisualState.Setters>
-                                                <Setter Target="CardScale.ScaleX"          Value="1.03"/>
-                                                <Setter Target="CardScale.ScaleY"          Value="1.03"/>
+                                                <Setter Target="CardScale.ScaleX"          Value="1.008"/>
+                                                <Setter Target="CardScale.ScaleY"          Value="1.008"/>
                                                 <Setter Target="HoverBorderOverlay.Opacity" Value="1"/>
                                             </VisualState.Setters>
                                         </VisualState>
                                         <VisualState x:Name="Pressed">
                                             <VisualState.Setters>
-                                                <Setter Target="CardScale.ScaleX"    Value="0.98"/>
-                                                <Setter Target="CardScale.ScaleY"    Value="0.98"/>
-                                                <Setter Target="PressedOverlay.Opacity" Value="1"/>
+                                                <Setter Target="CardScale.ScaleX"    Value="0.994"/>
+                                                <Setter Target="CardScale.ScaleY"    Value="0.994"/>
+                                                <Setter Target="PressedOverlay.Opacity" Value="0.7"/>
                                             </VisualState.Setters>
                                         </VisualState>
                                         <VisualState x:Name="Disabled"/>
@@ -397,4 +398,3 @@
         </ResourceDictionary>
     </Application.Resources>
 </Application>
-

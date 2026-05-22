@@ -12,9 +12,12 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
 {
     private readonly IAppLogService _log;
     private readonly string _cacheFile;
+    private readonly string _newCacheFile;
     private readonly HttpClient _http;
     private IReadOnlyList<FixEntry>? _cached;
+    private IReadOnlyList<FixEntry>? _newCached;
     private DateTime _lastLoaded = DateTime.MinValue;
+    private DateTime _newLastLoaded = DateTime.MinValue;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     public BypassGamesDataService(IAppLogService log)
@@ -24,6 +27,7 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
             AppConstants.AppDataFolder);
         Directory.CreateDirectory(dir);
         _cacheFile = Path.Combine(dir, AppConstants.BypassGamesCacheFileName);
+        _newCacheFile = Path.Combine(dir, AppConstants.NewFixGamesCacheFileName);
         _http = new HttpClient { Timeout = AppConstants.HttpDefaultTimeout };
     }
 
@@ -39,11 +43,20 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
         return all.FirstOrDefault(f => f.AppId == appId);
     }
 
+    public async Task<IReadOnlyList<FixEntry>> GetNewFixesAsync(CancellationToken ct = default)
+    {
+        await EnsureNewLoadedAsync(ct);
+        return _newCached!;
+    }
+
     public async Task RefreshAsync(CancellationToken ct = default)
     {
         _cached = null;
+        _newCached = null;
         _lastLoaded = DateTime.MinValue;
+        _newLastLoaded = DateTime.MinValue;
         await EnsureLoadedAsync(ct);
+        await EnsureNewLoadedAsync(ct);
     }
 
     private async Task EnsureLoadedAsync(CancellationToken ct)
@@ -87,6 +100,49 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
             _log.Log("FixData", $"Download failed: {ex.Message}. Using disk cache.");
             _cached = File.Exists(_cacheFile) ? ParseFromFile(_cacheFile) : Array.Empty<FixEntry>();
             _lastLoaded = DateTime.UtcNow;
+        }
+    }
+
+    private async Task EnsureNewLoadedAsync(CancellationToken ct)
+    {
+        if (_newCached is not null && DateTime.UtcNow - _newLastLoaded < AppConstants.SafetyNetTtl) return;
+        await _lock.WaitAsync(ct);
+        try
+        {
+            if (_newCached is not null && DateTime.UtcNow - _newLastLoaded < AppConstants.SafetyNetTtl) return;
+            await LoadNewAsync(ct);
+        }
+        finally { _lock.Release(); }
+    }
+
+    private async Task LoadNewAsync(CancellationToken ct)
+    {
+        if (File.Exists(_newCacheFile) && DateTime.UtcNow - File.GetLastWriteTimeUtc(_newCacheFile) < AppConstants.SafetyNetTtl)
+        {
+            _newCached = ParseFromFile(_newCacheFile);
+            _newLastLoaded = DateTime.UtcNow;
+            _log.Log("FixData", $"Loaded {_newCached.Count} new fixes from disk cache");
+            return;
+        }
+
+        _log.Log("FixData", "Downloading new_fix_games.json...");
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, AppConstants.NewFixGamesUrl);
+            req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            resp.EnsureSuccessStatusCode();
+            var json = await resp.Content.ReadAsStringAsync(ct);
+            await File.WriteAllTextAsync(_newCacheFile, json, ct);
+            _newCached = ParseJson(json);
+            _newLastLoaded = DateTime.UtcNow;
+            _log.Log("FixData", $"Downloaded {_newCached.Count} new fixes");
+        }
+        catch (Exception ex)
+        {
+            _log.Log("FixData", $"Download new_fix_games failed: {ex.Message}. Using disk cache.");
+            _newCached = File.Exists(_newCacheFile) ? ParseFromFile(_newCacheFile) : Array.Empty<FixEntry>();
+            _newLastLoaded = DateTime.UtcNow;
         }
     }
 

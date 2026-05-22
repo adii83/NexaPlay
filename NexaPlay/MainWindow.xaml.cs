@@ -256,9 +256,9 @@ public sealed partial class MainWindow : Window
         }
 
         WindowTopRow.Height = new GridLength(40);
-        ContentTopBarRow.Height = new GridLength(60);
+        ContentTopBarRow.Height = new GridLength(0);
         SidebarShell.Visibility = Visibility.Visible;
-        PageTopBar.Visibility = Visibility.Visible;
+        PageTopBar.Visibility = Visibility.Collapsed;
         RootSplitView.CompactPaneLength = 68;
         RootSplitView.OpenPaneLength = 200;
     }
@@ -275,17 +275,15 @@ public sealed partial class MainWindow : Window
         SetNavStyle(NavSettings, LblSettings, rb == NavSettings);
 
         Type? targetPage = null;
-        string title = "Home";
 
-        if (rb == NavHome)      { targetPage = typeof(HomePage);     title = "Home"; }
-        else if (rb == NavGames)    { targetPage = typeof(GamesPage);    title = "Games"; }
-        else if (rb == NavLibrary)  { targetPage = typeof(LibraryPage);  title = "Library"; }
-        else if (rb == NavBypass) { targetPage = typeof(BypassGamesPage); title = "Fix Games"; }
-        else if (rb == NavSettings) { targetPage = typeof(SettingsPage); title = "Settings"; }
+        if (rb == NavHome)      { targetPage = typeof(HomePage); }
+        else if (rb == NavGames)    { targetPage = typeof(GamesPage); }
+        else if (rb == NavLibrary)  { targetPage = typeof(LibraryPage); }
+        else if (rb == NavBypass) { targetPage = typeof(BypassGamesPage); }
+        else if (rb == NavSettings) { targetPage = typeof(SettingsPage); }
 
-        if (targetPage is not null && PageTitleText is not null)
+        if (targetPage is not null)
         {
-            PageTitleText.Text = title;
             ContentFrame.Navigate(targetPage, null, new SlideNavigationTransitionInfo
             {
                 Effect = SlideNavigationTransitionEffect.FromRight

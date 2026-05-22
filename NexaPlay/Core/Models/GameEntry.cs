@@ -33,17 +33,28 @@ public sealed class GameEntry
     private string? _headerImageUrl;
     public string HeaderImageUrl
     {
-        get => _headerImageUrl ?? $"https://cdn.cloudflare.steamstatic.com/steam/apps/{AppId}/header.jpg";
+        get => _headerImageUrl ?? string.Empty;
         set => _headerImageUrl = value;
     }
+    public string? RawHeaderImageUrl => _headerImageUrl;
 
     public string CapsuleImageUrl =>
         $"https://cdn.cloudflare.steamstatic.com/steam/apps/{AppId}/capsule_231x87.jpg";
 
     // Optional rich assets from prebuilt metadata chunks.
     public string? IconImageUrl { get; set; }
+    public string? LibraryCapsule2xUrl { get; set; }
     public string? LibraryHero2xUrl { get; set; }
     public string? BackgroundRawImageUrl { get; set; }
+
+    public string? PopularCoverImageUrl =>
+        !string.IsNullOrWhiteSpace(LibraryCapsule2xUrl)
+            ? LibraryCapsule2xUrl
+            : !string.IsNullOrWhiteSpace(RawHeaderImageUrl)
+                ? RawHeaderImageUrl
+                : null;
+
+    public bool HasPopularCover => !string.IsNullOrWhiteSpace(PopularCoverImageUrl);
 
     // Full raw metadata payload for future UI expansion without changing fetch layer.
     public string? RawMetadataJson { get; set; }

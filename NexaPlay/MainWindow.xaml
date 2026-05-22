@@ -212,12 +212,12 @@
             <Grid BorderBrush="#232323"
               BorderThickness="1,0,0,0">
             <Grid.RowDefinitions>
-                <RowDefinition x:Name="ContentTopBarRow" Height="60"/>
+                <RowDefinition x:Name="ContentTopBarRow" Height="0"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
             <!-- Top Bar -->
-            <Border x:Name="PageTopBar"
+            <Border x:Name="PageTopBar" Visibility="Collapsed"
                     Grid.Row="0"
                     Background="#080808"
                     BorderBrush="{ThemeResource NexaBorderBrush}"

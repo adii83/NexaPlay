@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:NexaPlay.Core.Models"
     xmlns:local="using:NexaPlay.Presentation.Views.Pages"
+    NavigationCacheMode="Required"
     mc:Ignorable="d"
     Background="#080808">
 
@@ -26,7 +27,7 @@
 
                 <!-- SECTION 1: NEW BYPASS GAMES (Horizontal Scroll) -->
                 <StackPanel Spacing="16">
-                    <Grid>
+                    <Grid x:Name="PopularGamesHeaderGrid">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -38,7 +39,12 @@
                         <Button Grid.Column="1" Content="Lihat Semua" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="14" FontWeight="Medium" />
                     </Grid>
 
-                    <Grid Height="420" CornerRadius="12" Background="{ThemeResource NexaCardBrush}" BorderBrush="{ThemeResource NexaCardBorderBrush}" BorderThickness="1">
+                    <Grid x:Name="NewBypassHeroContainer"
+                          Height="560"
+                          CornerRadius="12"
+                          Background="{ThemeResource NexaCardBrush}"
+                          BorderBrush="{ThemeResource NexaCardBorderBrush}"
+                          BorderThickness="1">
                         <FlipView x:Name="HeroCarousel" ItemsSource="{x:Bind ViewModel.RecentFixes, Mode=OneWay}" SelectionChanged="HeroCarousel_SelectionChanged" UseTouchAnimationsForAllNavigation="True">
                             <FlipView.Resources>
                                 <!-- Hack pamungkas: Panah bawaan FlipView adalah komponen Button. Kita sembunyikan semua Button di level ini! -->
@@ -54,7 +60,10 @@
                                         <!-- Background Image -->
                                         <Border CornerRadius="12">
                                             <Border.Background>
-                                                <ImageBrush ImageSource="{x:Bind local:HomePage.SafeImageSource(PosterUrl), Mode=OneWay}" Stretch="UniformToFill" />
+                                                <ImageBrush ImageSource="{x:Bind local:HomePage.SafeImageSource(PosterUrl), Mode=OneWay}"
+                                                            Stretch="UniformToFill"
+                                                            AlignmentX="Center"
+                                                            AlignmentY="Center" />
                                             </Border.Background>
                                         </Border>
                                         
@@ -134,12 +143,41 @@
                         <Button Grid.Column="1" Content="Jelajahi Games" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="14" FontWeight="Medium" />
                     </Grid>
 
-                    <ItemsRepeater ItemsSource="{x:Bind ViewModel.PopularGames, Mode=OneWay}">
-                        <ItemsRepeater.Layout>
-                            <!-- ItemsStretch="Fill", MinItemWidth="220", dan MaximumRowsOrColumns="4" menjamin: MAKSIMAL 4 card yang merenggang, turun ke 3 card jika layar terlalu sempit -->
-                            <UniformGridLayout MinItemWidth="220" MaximumRowsOrColumns="4" MinRowSpacing="16" MinColumnSpacing="16" ItemsStretch="Fill" />
-                        </ItemsRepeater.Layout>
-                        <ItemsRepeater.ItemTemplate>
+                    <GridView x:Name="PopularGamesGrid"
+                              SizeChanged="PopularGamesGrid_SizeChanged"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{x:Bind ViewModel.PopularGames, Mode=OneWay}"
+                              IsItemClickEnabled="False"
+                              SelectionMode="None"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              ScrollViewer.HorizontalScrollMode="Disabled"
+                              ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                              ScrollViewer.VerticalScrollMode="Disabled"
+                              Padding="0"
+                              Background="Transparent"
+                              BorderThickness="0">
+                        <GridView.ItemContainerStyle>
+                            <Style TargetType="GridViewItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="8" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </GridView.ItemContainerStyle>
+                        <GridView.ItemContainerTransitions>
+                            <TransitionCollection>
+                                <EntranceThemeTransition IsStaggeringEnabled="True" />
+                            </TransitionCollection>
+                        </GridView.ItemContainerTransitions>
+                        <GridView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <ItemsWrapGrid Orientation="Horizontal"
+                                               ItemWidth="220"
+                                               ItemHeight="330"
+                                               MaximumRowsOrColumns="5" />
+                            </ItemsPanelTemplate>
+                        </GridView.ItemsPanel>
+                        <GridView.ItemTemplate>
                             <DataTemplate x:DataType="models:GameEntry">
                                 <!--
                                     PopularGameCardStyle membungkus seluruh card.
@@ -149,16 +187,31 @@
                                 -->
                                 <Button Style="{StaticResource PopularGameCardStyle}"
                                         Click="OnPopularGameCardClicked"
-                                        Tag="{x:Bind AppId}">
-                                    <Grid Height="160" CornerRadius="12"
+                                        PointerEntered="PopularGameCard_PointerEntered"
+                                        PointerExited="PopularGameCard_PointerExited"
+                                        Tag="{x:Bind AppId}"
+                                        HorizontalAlignment="Stretch">
+                                    <Grid CornerRadius="12"
                                           BorderBrush="{ThemeResource NexaCardBorderBrush}"
                                           BorderThickness="1">
 
                                         <!-- Header Image Area -->
                                         <Border CornerRadius="12">
                                             <Border.Background>
-                                                <ImageBrush ImageSource="{x:Bind local:HomePage.SafeImageSource(HeaderImageUrl), Mode=OneWay}" Stretch="UniformToFill" />
+                                                <ImageBrush ImageSource="{x:Bind local:HomePage.SafeImageSource(PopularCoverImageUrl), Mode=OneWay}" Stretch="UniformToFill" />
                                             </Border.Background>
+                                        </Border>
+
+                                        <Border CornerRadius="12"
+                                                Background="#101418"
+                                                Visibility="{x:Bind local:HomePage.InverseBoolToVis(HasPopularCover), Mode=OneWay}">
+                                            <TextBlock Text="NO CONTENT"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="14"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="#CCFFFFFF"
+                                                       CharacterSpacing="120" />
                                         </Border>
 
                                         <!-- Gradient Overlay for readability -->
@@ -172,7 +225,7 @@
                                         </Border>
 
                                         <!-- Badges (Top-Left) -->
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Spacing="8">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" Spacing="8">
                                             <Grid>
                                                 <!-- PREMIUM Badge -->
                                                 <Border Visibility="{x:Bind local:HomePage.BoolToVis(IsPremium)}"
@@ -191,7 +244,7 @@
                                         </StackPanel>
 
                                         <!-- DENUVO Badge (Top-Right) -->
-                                        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12"
+                                        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10"
                                                 Visibility="{x:Bind local:HomePage.BoolToVis(HasDenuvo)}"
                                                 Background="#EAB308"
                                                 BorderBrush="#FEF08A" BorderThickness="1.5"
@@ -203,17 +256,38 @@
                                             </StackPanel>
                                         </Border>
 
-                                        <!-- Title (Bottom-Left) -->
-                                        <TextBlock Text="{x:Bind Name}"
-                                                   HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                                                   Margin="16" FontSize="16" FontWeight="Medium"
-                                                   Foreground="{ThemeResource NexaTextPrimaryBrush}"
-                                                   TextTrimming="CharacterEllipsis" MaxLines="2" TextWrapping="Wrap" />
+                                        <!-- Hover Title Layer (default hidden, slide-up on hover) -->
+                                        <Border x:Name="HoverTitleLayer"
+                                                HorizontalAlignment="Stretch"
+                                                VerticalAlignment="Bottom"
+                                                Margin="0,0,0,1"
+                                                Padding="12,30,12,14"
+                                                Opacity="0"
+                                                IsHitTestVisible="False">
+                                            <Border.RenderTransform>
+                                                <TranslateTransform Y="14" />
+                                            </Border.RenderTransform>
+                                            <Border.Background>
+                                                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                                                    <GradientStop Color="#00000000" Offset="0.0" />
+                                                    <GradientStop Color="#99000000" Offset="1.0" />
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                            <TextBlock Text="{x:Bind Name}"
+                                                       HorizontalAlignment="Left"
+                                                       VerticalAlignment="Bottom"
+                                                       FontSize="15"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="2"
+                                                       TextWrapping="Wrap" />
+                                        </Border>
                                     </Grid>
                                 </Button>
                             </DataTemplate>
-                        </ItemsRepeater.ItemTemplate>
-                    </ItemsRepeater>
+                        </GridView.ItemTemplate>
+                    </GridView>
                     <Button Content="Tampilkan Lebih Banyak" Command="{x:Bind ViewModel.LoadMorePopularGamesCommand}" HorizontalAlignment="Center" Margin="0,16,0,0" Height="40" Padding="24,0" Background="Transparent" BorderBrush="{ThemeResource NexaBorderBrush}" BorderThickness="1" CornerRadius="8" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
                 </StackPanel>
             </StackPanel>

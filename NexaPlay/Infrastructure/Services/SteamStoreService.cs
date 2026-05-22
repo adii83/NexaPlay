@@ -26,12 +26,14 @@ public sealed partial class SteamStoreService : ISteamStoreService
     };
 
     private readonly IAppLogService _log;
+    private readonly INexaPlayOverrideService _nexaPlayOverride;
     private readonly string _cacheDir;
     private readonly HttpClient _http;
 
-    public SteamStoreService(IAppLogService log)
+    public SteamStoreService(IAppLogService log, INexaPlayOverrideService nexaPlayOverride)
     {
         _log = log;
+        _nexaPlayOverride = nexaPlayOverride;
         _cacheDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             AppConstants.AppDataFolder,
@@ -53,7 +55,7 @@ public sealed partial class SteamStoreService : ISteamStoreService
             if (!string.IsNullOrWhiteSpace(cachedJson) && age < CacheTtl)
             {
                 _log.Log("StoreService", $"Detail cache hit appId={appId} age={age.TotalHours:F1}h");
-                return ParseMergedDetail(appId, cachedJson, isFromCache: true);
+                return await ApplyDetailOverrideAsync(ParseMergedDetail(appId, cachedJson, isFromCache: true), appId, ct);
             }
         }
 
@@ -62,7 +64,7 @@ public sealed partial class SteamStoreService : ISteamStoreService
             _log.Log("StoreService", $"Resolving merged detail appId={appId}");
             var raw = await BuildMergedMetadataJsonAsync(appId, ct);
             await File.WriteAllTextAsync(cacheFile, raw, ct);
-            return ParseMergedDetail(appId, raw, isFromCache: false);
+            return await ApplyDetailOverrideAsync(ParseMergedDetail(appId, raw, isFromCache: false), appId, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -70,7 +72,7 @@ public sealed partial class SteamStoreService : ISteamStoreService
             var stale = await ReadRawCacheAsync(cacheFile, ct);
             return string.IsNullOrWhiteSpace(stale)
                 ? null
-                : ParseMergedDetail(appId, stale, isFromCache: true);
+                : await ApplyDetailOverrideAsync(ParseMergedDetail(appId, stale, isFromCache: true), appId, ct);
         }
     }
 
@@ -720,6 +722,73 @@ public sealed partial class SteamStoreService : ISteamStoreService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(d => Path.Combine(d!, ".env"));
     }
+    private async Task<GameDetailEntry?> ApplyDetailOverrideAsync(GameDetailEntry? detail, int appId, CancellationToken ct)
+    {
+        if (detail is null) return null;
+
+        try
+        {
+            var ov = await _nexaPlayOverride.GetDetailOverrideAsync(appId, ct);
+            if (ov is null) return detail;
+
+            _log.Log("StoreService", $"Applying NexaPlay detail override for appId={appId}");
+
+            return new GameDetailEntry
+            {
+                AppId = detail.AppId,
+                ShortDescription = ov.ShortDescription ?? detail.ShortDescription,
+                AboutTheGame = ov.AboutTheGame ?? detail.AboutTheGame,
+                DetailedDescription = ov.DetailedDescription ?? detail.DetailedDescription,
+                SupportedLanguages = ov.SupportedLanguages ?? detail.SupportedLanguages,
+                Website = ov.Website ?? detail.Website,
+                Developers = ov.Developers ?? detail.Developers,
+                Publishers = ov.Publishers ?? detail.Publishers,
+                ReleaseDate = ov.ReleaseDate ?? detail.ReleaseDate,
+                Screenshots = ov.Screenshots is not null
+                    ? ov.Screenshots.Select((s, i) => new ScreenshotEntry
+                      {
+                          Id = s.Id > 0 ? s.Id : i,
+                          ThumbnailUrl = s.Thumbnail,
+                          FullUrl = s.Full
+                      }).ToArray()
+                    : detail.Screenshots,
+                Movies = ov.Movies is not null
+                    ? ov.Movies.Select((m, i) => new MovieEntry
+                      {
+                          Id = m.Id > 0 ? m.Id : i,
+                          Name = m.Name,
+                          ThumbnailUrl = m.Thumbnail,
+                          HlsUrl = m.HlsUrl,
+                          DashH264Url = m.DashH264Url,
+                          IsHighlight = m.IsHighlight
+                      }).ToArray()
+                    : detail.Movies,
+                BackgroundImageUrl = ov.BackgroundImage ?? detail.BackgroundImageUrl,
+                PcRequirementsMinimum = ov.PcRequirementsMinimum ?? detail.PcRequirementsMinimum,
+                PcRequirementsRecommended = ov.PcRequirementsRecommended ?? detail.PcRequirementsRecommended,
+                MacRequirementsMinimum = ov.MacRequirementsMinimum ?? detail.MacRequirementsMinimum,
+                MacRequirementsRecommended = ov.MacRequirementsRecommended ?? detail.MacRequirementsRecommended,
+                LinuxRequirementsMinimum = ov.LinuxRequirementsMinimum ?? detail.LinuxRequirementsMinimum,
+                LinuxRequirementsRecommended = ov.LinuxRequirementsRecommended ?? detail.LinuxRequirementsRecommended,
+                Categories = ov.Categories ?? detail.Categories,
+                SupportUrl = ov.SupportUrl ?? detail.SupportUrl,
+                SupportEmail = ov.SupportEmail ?? detail.SupportEmail,
+                LegalNotice = ov.LegalNotice ?? detail.LegalNotice,
+                DrmNotice = ov.DrmNotice ?? detail.DrmNotice,
+                StorePriceFinalFormatted = ov.StorePriceFinalFormatted ?? detail.StorePriceFinalFormatted,
+                StorePriceCurrency = ov.StorePriceCurrency ?? detail.StorePriceCurrency,
+                CachedAt = detail.CachedAt,
+                IsFromCache = detail.IsFromCache,
+                RawMetadataJson = detail.RawMetadataJson
+            };
+        }
+        catch (Exception ex)
+        {
+            _log.Log("StoreService", $"NexaPlay detail override failed (non-blocking) appId={appId}: {ex.Message}");
+            return detail;
+        }
+    }
+
 
     private string CacheFilePath(int appId) => Path.Combine(_cacheDir, $"{appId}.json");
 
