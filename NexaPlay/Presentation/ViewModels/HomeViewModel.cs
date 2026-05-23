@@ -77,7 +77,7 @@ public sealed partial class HomeViewModel : ObservableObject
                         Title = meta?.Name ?? $"App {appId}",
                         Publisher = meta?.PublisherDisplay ?? string.Empty,
                         Category = GameCategory.Other,
-                        PosterUrl = meta?.LibraryHero2xUrl ?? meta?.LibraryCapsule2xUrl ?? meta?.RawHeaderImageUrl,
+                        PosterUrl = meta?.LibraryHero2xUrl ?? meta?.LibraryCapsuleUrl ?? meta?.RawHeaderImageUrl,
                         IsPremium = meta?.IsPremium ?? false
                     });
                 }
@@ -324,12 +324,15 @@ public sealed partial class HomeViewModel : ObservableObject
                 await gate.WaitAsync();
                 try
                 {
-                    var overrideCover = (await _nexaPlayOverride.GetCatalogOverrideAsync(c.game.AppId))?.LibraryCapsule2x;
+                    var overrideCover = (await _nexaPlayOverride.GetCatalogOverrideAsync(c.game.AppId))?.LibraryCapsule;
                     var detail = await _storeService.GetDetailAsync(c.game.AppId);
-                    var apiCover = detail?.LibraryCapsule2xUrl
-                        ?? ReadFirstAssetUrl(detail?.RawMetadataJson, "library_capsule");
+                    var apiCover = detail?.LibraryCapsuleUrl;
 
-                    var preferredCover = string.IsNullOrWhiteSpace(overrideCover) ? apiCover : overrideCover;
+                    var sgdbGrid = detail?.SgdbGridUrl;
+
+                    var preferredCover = !string.IsNullOrWhiteSpace(overrideCover) ? overrideCover 
+                        : !string.IsNullOrWhiteSpace(apiCover) ? apiCover 
+                        : sgdbGrid;
                     if (string.IsNullOrWhiteSpace(preferredCover))
                         return;
 
@@ -337,7 +340,7 @@ public sealed partial class HomeViewModel : ObservableObject
                     if (current is null)
                         return;
 
-                    if (string.Equals(current.LibraryCapsule2xUrl, preferredCover, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(current.LibraryCapsuleUrl, preferredCover, StringComparison.OrdinalIgnoreCase))
                         return;
 
                     var idx = PopularGames.IndexOf(current);
@@ -360,7 +363,7 @@ public sealed partial class HomeViewModel : ObservableObject
                         Protection = current.Protection,
                         HeaderImageUrl = current.HeaderImageUrl,
                         IconImageUrl = current.IconImageUrl,
-                        LibraryCapsule2xUrl = preferredCover,
+                        LibraryCapsuleUrl = preferredCover,
                         LibraryHero2xUrl = current.LibraryHero2xUrl,
                         BackgroundRawImageUrl = current.BackgroundRawImageUrl,
                         RawMetadataJson = current.RawMetadataJson,
@@ -450,7 +453,7 @@ public sealed partial class HomeViewModel : ObservableObject
 
                 var catalogOv = await _nexaPlayOverride.GetCatalogOverrideAsync(fix.AppId);
                 var hasHeroOverride = catalogOv?.LibraryHero2x is not null;
-                var hasCapsuleOverride = catalogOv?.LibraryCapsule2x is not null;
+                var hasCapsuleOverride = catalogOv?.LibraryCapsule is not null;
 
                 if (hasHeroOverride)
                 {
@@ -459,9 +462,9 @@ public sealed partial class HomeViewModel : ObservableObject
                 else
                 {
                     var detail = await _storeService.GetDetailAsync(fix.AppId);
-                    if (!hasCapsuleOverride && !string.IsNullOrWhiteSpace(detail?.LibraryCapsule2xUrl))
+                    if (!hasCapsuleOverride && !string.IsNullOrWhiteSpace(detail?.LibraryCapsuleUrl))
                     {
-                        heroCover = detail.LibraryCapsule2xUrl;
+                        heroCover = detail.LibraryCapsuleUrl;
                     }
                     if (!string.IsNullOrWhiteSpace(detail?.RawMetadataJson))
                     {

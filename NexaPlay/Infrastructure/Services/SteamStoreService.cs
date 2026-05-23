@@ -54,17 +54,28 @@ public sealed partial class SteamStoreService : ISteamStoreService
             var cachedJson = await ReadRawCacheAsync(cacheFile, ct);
             if (!string.IsNullOrWhiteSpace(cachedJson) && age < CacheTtl)
             {
-                _log.Log("StoreService", $"Detail cache hit appId={appId} age={age.TotalHours:F1}h");
-                return await ApplyDetailOverrideAsync(ParseMergedDetail(appId, cachedJson, isFromCache: true), appId, ct);
+                if (!cachedJson.Contains("\"stage\":\"steam_appdetails\""))
+                {
+                    _log.Log("StoreService", $"Detail cache hit appId={appId} age={age.TotalHours:F1}h");
+                    return await ApplyDetailOverrideAsync(ParseMergedDetail(appId, cachedJson, isFromCache: true), appId, ct);
+                }
+                else
+                {
+                    _log.Log("StoreService", $"Detail cache ignored appId={appId} due to previous transient appdetails failure");
+                    try { File.Delete(cacheFile); } catch { }
+                }
             }
         }
 
         try
         {
             _log.Log("StoreService", $"Resolving merged detail appId={appId}");
-            var raw = await BuildMergedMetadataJsonAsync(appId, ct);
-            await File.WriteAllTextAsync(cacheFile, raw, ct);
-            return await ApplyDetailOverrideAsync(ParseMergedDetail(appId, raw, isFromCache: false), appId, ct);
+            var result = await BuildMergedMetadataJsonAsync(appId, ct);
+            if (!result.HasTransientError)
+            {
+                await File.WriteAllTextAsync(cacheFile, result.Json, ct);
+            }
+            return await ApplyDetailOverrideAsync(ParseMergedDetail(appId, result.Json, isFromCache: false), appId, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -83,11 +94,12 @@ public sealed partial class SteamStoreService : ISteamStoreService
         return Task.CompletedTask;
     }
 
-    private async Task<string> BuildMergedMetadataJsonAsync(int appId, CancellationToken ct)
+    private async Task<(string Json, bool HasTransientError)> BuildMergedMetadataJsonAsync(int appId, CancellationToken ct)
     {
         var failures = new JsonArray();
         JsonObject? storeData = null;
         JsonObject originalAssets = BuildOriginalAssetsFailure(appId, "not_started", "Not fetched");
+        bool hasTransientError = false;
 
         try
         {
@@ -97,6 +109,7 @@ public sealed partial class SteamStoreService : ISteamStoreService
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            hasTransientError = true;
             failures.Add(BuildFailure(appId, "steam_appdetails", ex.Message));
         }
 
@@ -104,10 +117,20 @@ public sealed partial class SteamStoreService : ISteamStoreService
         {
             originalAssets = await FetchOriginalAssetsBySteamAppidAsync(appId, ct);
             if (originalAssets["success"]?.GetValue<bool>() != true)
-                failures.Add(BuildFailure(appId, ReadString(originalAssets, "error_stage") ?? "steam_original_assets", ReadString(originalAssets, "error") ?? "Unknown error"));
+            {
+                var error = ReadString(originalAssets, "error") ?? "Unknown error";
+                if (error.Contains("status code", StringComparison.OrdinalIgnoreCase) || 
+                    error.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
+                    error.Contains("connection", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasTransientError = true;
+                }
+                failures.Add(BuildFailure(appId, ReadString(originalAssets, "error_stage") ?? "steam_original_assets", error));
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            hasTransientError = true;
             originalAssets = BuildOriginalAssetsFailure(appId, "steam_original_assets", ex.Message);
             failures.Add(BuildFailure(appId, "steam_original_assets", ex.Message));
         }
@@ -151,7 +174,7 @@ public sealed partial class SteamStoreService : ISteamStoreService
         if (failures.Count > 0)
             payload["failures"] = failures;
 
-        return payload.ToJsonString(CompactJson);
+        return (payload.ToJsonString(CompactJson), hasTransientError);
     }
 
     private async Task<JsonObject?> FetchSteamAppDetailsAsync(int appId, CancellationToken ct)
@@ -190,8 +213,14 @@ public sealed partial class SteamStoreService : ISteamStoreService
 
         try
         {
-            var publicPayload = await FetchPublicGameAsync(sgdbGameId.Value, ct);
-            var extracted = ExtractOriginalAssets(publicPayload);
+            var publicPayloadTask = FetchPublicGameAsync(sgdbGameId.Value, ct);
+            var gridTask = FetchSgdbFirstAssetAsync(sgdbGameId.Value, "grids", apiKey, ct);
+            var heroTask = FetchSgdbFirstAssetAsync(sgdbGameId.Value, "heroes", apiKey, ct);
+            var iconTask = FetchSgdbFirstAssetAsync(sgdbGameId.Value, "icons", apiKey, ct);
+
+            await Task.WhenAll(publicPayloadTask, gridTask, heroTask, iconTask);
+
+            var extracted = ExtractOriginalAssets(publicPayloadTask.Result);
             if (extracted is null)
             {
                 return new JsonObject
@@ -208,6 +237,13 @@ public sealed partial class SteamStoreService : ISteamStoreService
             }
 
             extracted["name"] ??= ReadString(sgdbGame, "name");
+
+            var assets = extracted["assets"] as JsonObject ?? new JsonObject();
+            if (!string.IsNullOrWhiteSpace(gridTask.Result)) assets["sgdb_grid"] = new JsonArray { new JsonObject { ["url"] = gridTask.Result } };
+            if (!string.IsNullOrWhiteSpace(heroTask.Result)) assets["sgdb_hero"] = new JsonArray { new JsonObject { ["url"] = heroTask.Result } };
+            if (!string.IsNullOrWhiteSpace(iconTask.Result)) assets["sgdb_icon"] = new JsonArray { new JsonObject { ["url"] = iconTask.Result } };
+            extracted["assets"] = assets;
+
             return extracted;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -242,6 +278,30 @@ public sealed partial class SteamStoreService : ISteamStoreService
         return root?["success"]?.GetValue<bool>() == true
             ? root["data"] as JsonObject
             : null;
+    }
+
+    private async Task<string?> FetchSgdbFirstAssetAsync(int sgdbGameId, string assetType, string apiKey, CancellationToken ct)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{SteamGridDbApiV2}/{assetType}/game/{sgdbGameId}?page=0&limit=1");
+            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {apiKey}");
+            request.Headers.TryAddWithoutValidation("Accept", "application/json");
+
+            using var response = await _http.SendAsync(request, ct);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return null;
+
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var root = JsonNode.Parse(json) as JsonObject;
+            if (root?["success"]?.GetValue<bool>() == true && root["data"] is JsonArray dataArr && dataArr.Count > 0)
+            {
+                return dataArr[0]?["url"]?.GetValue<string>();
+            }
+        }
+        catch { }
+        return null;
     }
 
     private async Task<JsonObject> FetchPublicGameAsync(int sgdbGameId, CancellationToken ct)

@@ -67,11 +67,36 @@ public sealed class GameDetailEntry
     /// <summary>Full merged detail payload generated from Steam appdetails + original Steam assets.</summary>
     public string? RawMetadataJson { get; init; }
 
+    public string? SgdbGridUrl => ReadSgdbUrl("sgdb_grid");
+    public string? SgdbHeroUrl => ReadSgdbUrl("sgdb_hero");
+    public string? SgdbIconUrl => ReadSgdbUrl("sgdb_icon");
+
+    private string? ReadSgdbUrl(string key)
+    {
+        if (string.IsNullOrWhiteSpace(RawMetadataJson)) return null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(RawMetadataJson);
+            if (doc.RootElement.TryGetProperty("assets", out var assets) &&
+                assets.TryGetProperty(key, out var arr) &&
+                arr.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                foreach (var item in arr.EnumerateArray())
+                {
+                    if (item.TryGetProperty("url", out var urlProp) && urlProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                        return urlProp.GetString();
+                }
+            }
+        }
+        catch { }
+        return null;
+    }
+
     /// <summary>
-    /// The library_capsule_2x URL from the merged API payload (portrait 600x900 poster).
+    /// The library_capsule URL from the merged API payload (portrait 600x900 poster).
     /// Extracted lazily from RawMetadataJson assets block.
     /// </summary>
-    public string? LibraryCapsule2xUrl
+    public string? LibraryCapsuleUrl
     {
         get
         {
@@ -81,7 +106,7 @@ public sealed class GameDetailEntry
             {
                 using var doc = System.Text.Json.JsonDocument.Parse(RawMetadataJson);
                 if (doc.RootElement.TryGetProperty("assets", out var assets) &&
-                    assets.TryGetProperty("library_capsule_2x", out var arr) &&
+                    assets.TryGetProperty("library_capsule", out var arr) &&
                     arr.ValueKind == System.Text.Json.JsonValueKind.Array)
                 {
                     foreach (var item in arr.EnumerateArray())

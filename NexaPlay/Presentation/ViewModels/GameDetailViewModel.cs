@@ -235,6 +235,13 @@ public sealed partial class GameDetailViewModel : ObservableObject
             var fetched = await _storeService.GetDetailAsync(appId, ct);
             ct.ThrowIfCancellationRequested();
             if (loadVersion != _loadVersion) return;
+
+            var screenshotCount = fetched?.Screenshots?.Count ?? 0;
+            var hasAbout = !string.IsNullOrWhiteSpace(fetched?.AboutTheGame);
+            var hasDetailed = !string.IsNullOrWhiteSpace(fetched?.DetailedDescription);
+            var hasRaw = !string.IsNullOrWhiteSpace(fetched?.RawMetadataJson);
+            _log.Log("GameDetail", $"Detail fetch appId={appId} null={fetched is null} screenshots={screenshotCount} about={hasAbout} detailed={hasDetailed} raw={hasRaw}");
+
             CurrentScreenshotUrl = fetched?.Screenshots.FirstOrDefault()?.FullUrl
                 ?? Game?.HeaderImageUrl
                 ?? string.Empty;
@@ -257,6 +264,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
             HeroBackgroundUrl = heroOverride
                 ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "library_hero_2x")
                 ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "library_hero")
+                ?? Detail?.SgdbHeroUrl
                 ?? Game?.LibraryHero2xUrl
                 ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "background_raw")
                 ?? Game?.BackgroundRawImageUrl
@@ -267,6 +275,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
             var iconOverride = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId))?.Icon;
             GameIconUrl = iconOverride
                 ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "icon")
+                ?? Detail?.SgdbIconUrl
                 ?? Game?.IconImageUrl
                 ?? Game?.HeaderImageUrl
                 ?? string.Empty;

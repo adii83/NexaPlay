@@ -12,6 +12,8 @@ namespace NexaPlay.Presentation.ViewModels;
 public sealed partial class GamesViewModel : ObservableObject
 {
     private readonly IMetadataService _metadata;
+    private readonly ISteamStoreService _storeService;
+    private readonly INexaPlayOverrideService _nexaPlayOverride;
     private const int RowsPerPage = 10;
 
     [ObservableProperty] public partial string SearchQuery { get; set; }
@@ -49,6 +51,7 @@ public sealed partial class GamesViewModel : ObservableObject
     private int PageSize => _gridColumns * RowsPerPage;
     private readonly Dictionary<int, FixEntry> _cardCache = new();
     private CancellationTokenSource? _searchDebounceCts;
+    private CancellationTokenSource? _coverEnrichCts;
     private readonly string _gamesIndexCachePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "NexaPlay",
@@ -57,9 +60,14 @@ public sealed partial class GamesViewModel : ObservableObject
 
     public bool IsEmpty => !IsLoading && Games.Count == 0;
 
-    public GamesViewModel(IMetadataService metadata)
+    public GamesViewModel(
+        IMetadataService metadata,
+        ISteamStoreService storeService,
+        INexaPlayOverrideService nexaPlayOverride)
     {
         _metadata = metadata;
+        _storeService = storeService;
+        _nexaPlayOverride = nexaPlayOverride;
 
         // Default values for partial properties
         Games = new ObservableCollection<FixEntry>();
@@ -304,20 +312,25 @@ public sealed partial class GamesViewModel : ObservableObject
 
     private async Task<IReadOnlyList<FixEntry>> BuildPageItemsAsync(IReadOnlyList<int> pageIds)
     {
+        _coverEnrichCts?.Cancel();
+        _coverEnrichCts?.Dispose();
+        _coverEnrichCts = new CancellationTokenSource();
+
         var results = new List<FixEntry>(pageIds.Count);
         foreach (var appId in pageIds)
         {
-            var card = await GetOrBuildCardAsync(appId);
+            var card = await GetOrBuildCardFastAsync(appId);
             if (card is not null)
             {
                 results.Add(card);
             }
         }
 
+        _ = EnrichPageCoverAsync(pageIds, _coverEnrichCts.Token);
         return results;
     }
 
-    private async Task<FixEntry?> GetOrBuildCardAsync(int appId)
+    private async Task<FixEntry?> GetOrBuildCardFastAsync(int appId)
     {
         if (_cardCache.TryGetValue(appId, out var cached))
         {
@@ -330,12 +343,23 @@ public sealed partial class GamesViewModel : ObservableObject
             return null;
         }
 
+        var selectedCover = FirstNonEmpty(
+            metadata.PopularCoverImageUrl,
+            metadata.HeaderImageUrl,
+            metadata.RawHeaderImageUrl,
+            null);
+
+        if (string.IsNullOrWhiteSpace(selectedCover))
+        {
+            selectedCover = "NO CONTENT";
+        }
+
         var card = new FixEntry
         {
             AppId = metadata.AppId,
             Title = metadata.Name,
             Publisher = metadata.PublisherDisplay,
-            PosterUrl = metadata.PopularCoverImageUrl ?? metadata.HeaderImageUrl,
+            PosterUrl = selectedCover,
             IsPremium = metadata.IsPremium,
             HasDenuvo = metadata.HasDenuvo,
             Category = ParseCategory(metadata.Genre)
@@ -343,6 +367,90 @@ public sealed partial class GamesViewModel : ObservableObject
 
         _cardCache[appId] = card;
         return card;
+    }
+
+    private async Task EnrichPageCoverAsync(IReadOnlyList<int> pageIds, CancellationToken ct)
+    {
+        using var gate = new SemaphoreSlim(4, 4);
+        var tasks = pageIds.Select(async appId =>
+        {
+            await gate.WaitAsync(ct);
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var card = await GetOrBuildCardFastAsync(appId);
+                if (card is null)
+                {
+                    return;
+                }
+
+                var metadata = await _metadata.GetMetadataAsync(appId);
+                if (metadata is null)
+                {
+                    return;
+                }
+
+                var overrideCover = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId, ct))?.LibraryCapsule;
+                var detail = await _storeService.GetDetailAsync(appId, ct);
+                var detailApiCover = detail?.LibraryCapsuleUrl;
+
+                var selectedCover = FirstNonEmpty(
+                    overrideCover,
+                    detailApiCover,
+                    detail?.SgdbGridUrl,
+                    metadata.PopularCoverImageUrl,
+                    metadata.HeaderImageUrl,
+                    metadata.RawHeaderImageUrl,
+                    null);
+
+                if (string.IsNullOrWhiteSpace(selectedCover))
+                {
+                    selectedCover = "NO CONTENT";
+                }
+
+                if (string.Equals(card.PosterUrl, selectedCover, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                var updatedCard = new FixEntry
+                {
+                    AppId = card.AppId,
+                    Title = card.Title,
+                    Publisher = card.Publisher,
+                    PosterUrl = selectedCover,
+                    IsPremium = card.IsPremium,
+                    HasDenuvo = card.HasDenuvo,
+                    Category = card.Category
+                };
+                _cardCache[appId] = updatedCard;
+
+                var index = Games.IndexOf(card);
+                if (index >= 0)
+                {
+                    Games[index] = updatedCard;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch
+            {
+            }
+            finally
+            {
+                gate.Release();
+            }
+        });
+
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
     private static GameCategory ParseCategory(string? genre)
@@ -488,6 +596,65 @@ public sealed partial class GamesViewModel : ObservableObject
         }
     }
 
+
+
+    private static string? ReadFirstAssetUrl(string? rawMetadataJson, string assetKey)
+    {
+        if (string.IsNullOrWhiteSpace(rawMetadataJson))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(rawMetadataJson);
+            JsonElement node;
+
+            if (doc.RootElement.TryGetProperty("assets", out var assets) &&
+                assets.TryGetProperty(assetKey, out var nestedNode))
+            {
+                node = nestedNode;
+            }
+            else if (doc.RootElement.TryGetProperty(assetKey, out var rootNode))
+            {
+                node = rootNode;
+            }
+            else
+            {
+                return null;
+            }
+
+            if (node.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in node.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.Object &&
+                        item.TryGetProperty("url", out var url) &&
+                        url.ValueKind == JsonValueKind.String)
+                    {
+                        return url.GetString();
+                    }
+                }
+            }
+        }
+        catch
+        {
+        }
+
+        return null;
+    }
+
+    private static string? FirstNonEmpty(params string?[] candidates)
+    {
+        foreach (var candidate in candidates)
+        {
+            if (!string.IsNullOrWhiteSpace(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
     private static readonly Dictionary<string, string[]> GenreAliasMap = new(StringComparer.Ordinal)
     {
         ["role-playing"] = ["rpg"],
@@ -505,3 +672,5 @@ public sealed partial class GamesViewModel : ObservableObject
         ["mmorpg"] = ["mmo", "rpg", "massively multiplayer"]
     };
 }
+
+

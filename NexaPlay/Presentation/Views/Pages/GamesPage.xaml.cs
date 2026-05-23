@@ -33,7 +33,12 @@ public sealed partial class GamesPage : Page
     protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        await ViewModel.LoadAsync();
+        
+        if (e.NavigationMode != NavigationMode.Back && ViewModel.Games.Count == 0)
+        {
+            await ViewModel.LoadAsync();
+        }
+
         if (ApplyGamesGridLayout() && _lastColumns > 0)
         {
             ViewModel.UpdateGridColumns(_lastColumns);

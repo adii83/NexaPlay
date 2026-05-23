@@ -43,13 +43,13 @@ public sealed class GameEntry
 
     // Optional rich assets from prebuilt metadata chunks.
     public string? IconImageUrl { get; set; }
-    public string? LibraryCapsule2xUrl { get; set; }
+    public string? LibraryCapsuleUrl { get; set; }
     public string? LibraryHero2xUrl { get; set; }
     public string? BackgroundRawImageUrl { get; set; }
 
     public string? PopularCoverImageUrl =>
-        !string.IsNullOrWhiteSpace(LibraryCapsule2xUrl)
-            ? LibraryCapsule2xUrl
+        !string.IsNullOrWhiteSpace(LibraryCapsuleUrl)
+            ? LibraryCapsuleUrl
             : !string.IsNullOrWhiteSpace(RawHeaderImageUrl)
                 ? RawHeaderImageUrl
                 : null;

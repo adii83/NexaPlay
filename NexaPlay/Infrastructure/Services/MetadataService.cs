@@ -408,7 +408,7 @@ public sealed class MetadataService : IMetadataService
                 PriceNormalized = e.PriceNormalized,
                 Protection = e.Protection || protectedAppIds.Contains(e.AppId),
                 HeaderImageUrl = e.HeaderImageUrl ?? string.Empty,
-                LibraryCapsule2xUrl = e.LibraryCapsule2xUrl,
+                LibraryCapsuleUrl = e.LibraryCapsuleUrl,
                 Genre = e.Genre
             })
             .ToDictionary(e => e.AppId);
@@ -452,7 +452,7 @@ public sealed class MetadataService : IMetadataService
                 if (ov.Protection is not null) existing.Protection = ov.Protection.Value;
                 if (ov.Header is not null) existing.HeaderImageUrl = ov.Header;
                 if (ov.Icon is not null) existing.IconImageUrl = ov.Icon;
-                if (ov.LibraryCapsule2x is not null) existing.LibraryCapsule2xUrl = ov.LibraryCapsule2x;
+                if (ov.LibraryCapsule is not null) existing.LibraryCapsuleUrl = ov.LibraryCapsule;
                 if (ov.LibraryHero2x is not null) existing.LibraryHero2xUrl = ov.LibraryHero2x;
                 if (ov.BackgroundRaw is not null) existing.BackgroundRawImageUrl = ov.BackgroundRaw;
 
@@ -583,7 +583,7 @@ public sealed class MetadataService : IMetadataService
                 PriceDisplay = ReadString(node, "price_display") ?? existing?.PriceDisplay,
                 PriceNormalized = ReadInt(node, "price_normalized") ?? existing?.PriceNormalized ?? 0,
                 Protection = ReadProtection(node) ?? existing?.Protection ?? false,
-                LibraryCapsule2xUrl = ReadAssetUrl(node, "library_capsule_2x") ?? existing?.LibraryCapsule2xUrl,
+                LibraryCapsuleUrl = ReadAssetUrl(node, "library_capsule") ?? ReadAssetUrl(node, "library_capsule_2x") ?? existing?.LibraryCapsuleUrl,
                 HeaderImageUrl = ReadAssetUrl(node, "header") ?? existing?.HeaderImageUrl,
                 Genre = ReadString(node, "genre") ?? existing?.Genre
             };
@@ -1009,7 +1009,7 @@ public sealed class MetadataService : IMetadataService
         public string? PriceDisplay { get; init; }
         public int PriceNormalized { get; init; }
         public bool Protection { get; init; }
-        public string? LibraryCapsule2xUrl { get; init; }
+        public string? LibraryCapsuleUrl { get; init; }
         public string? HeaderImageUrl { get; init; }
         public string? Genre { get; init; }
     }

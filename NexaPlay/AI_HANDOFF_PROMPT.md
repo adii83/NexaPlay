@@ -37,9 +37,8 @@ Jangan redesign semua halaman sekaligus.
 Jangan mengurangi feature parity GameHub.
 Jangan mengubah behavior inti tanpa alasan kuat dan tanpa cek referensi GameHub.
 
-Jangan lupa ## 10. Update Log Ringkas
-
-Tambahkan catatan baru di atas bagian ini setiap selesai batch penting.
+Jangan lupa 
+Tambahkan catatan baru di atas bagian ## 10. Update Log Ringkas setiap selesai batch penting.
 Format:
 
 ```text
@@ -328,6 +327,24 @@ Tanggal:
 - Next:
 ```
 
+
+### 2026-05-23
+- Fokus: Perbaikan bug caching transient error (429 Too Many Requests) di `SteamStoreService` & Navigation Cache GamesPage.
+- Perubahan:
+  - Mengubah `GetDetailAsync` dan `BuildMergedMetadataJsonAsync` agar tidak menyimpan ke cache jika terjadi error jaringan/transient dari Steam API.
+  - Menambahkan pengecekan pada cache lama: jika file cache menyimpan status error (misal: `"stage":"steam_appdetails"`), cache akan diabaikan dan dihapus sehingga metadata bisa di-fetch ulang (menyelesaikan masalah "nyangkut" tanpa screenshots & about).
+  - Menambahkan `NavigationCacheMode="Required"` pada `GamesPage.xaml` agar tidak kembali ke page 1 dan scroll awal saat user melakukan back navigation dari halaman Game Detail.
+  - Memodifikasi urutan prioritas gambar cover di `HomeViewModel.cs` dan `GamesViewModel.cs` dengan menukar prioritas sehingga `assets.library_capsule` dari metadata mentah sekarang diprioritaskan di atas `detail.LibraryCapsule2xUrl`.
+- Build: `Build succeeded` (`0 Error(s)`, `0 Warning(s)`).
+- Next: Menunggu instruksi selanjutnya.
+
+### 2026-05-23
+- Fokus: checkpoint awal sesi (sinkronisasi konteks + baseline verification sebelum edit kode).
+- Perubahan:
+  - Membaca dokumen wajib berurutan: `README.md` -> `AGENTS.md` -> `ONBOARDING_ZERO_TO_PARITY.md` -> `MIGRATION_PARITY_MATRIX.md` -> `AI_HANDOFF_PROMPT.md` -> `AI_HANDOFF_HOME_HISTORY.md`.
+  - Menetapkan guardrail sesi: tidak redesign lintas halaman, tidak menurunkan parity GameHub, dan tetap page-by-page.
+- Build: baseline build gate `Debug x64` sukses (`0 Error(s)`, `0 Warning(s)`).
+- Next: menunggu instruksi pengguna untuk mulai modifikasi.
 
 ### 2026-05-23
 - Fokus: hardening performa `Games` skala 160k + clean warning build.

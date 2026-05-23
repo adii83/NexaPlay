@@ -1,4 +1,4 @@
-﻿namespace NexaPlay.Core.Models;
+namespace NexaPlay.Core.Models;
 
 /// <summary>
 /// Sparse catalog-level override from nexaplay_override.json.
@@ -19,7 +19,7 @@ public sealed class NexaPlayCatalogOverride
     public bool? Protection { get; init; }
     public string? Header { get; init; }
     public string? Icon { get; init; }
-    public string? LibraryCapsule2x { get; init; }
+    public string? LibraryCapsule { get; init; }
     public string? LibraryHero2x { get; init; }
     public string? BackgroundRaw { get; init; }
 }

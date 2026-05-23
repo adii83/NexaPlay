@@ -1,4 +1,4 @@
-﻿using NexaPlay.Contracts.Services;
+using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Constants;
 using NexaPlay.Core.Models;
 using System.Net;
@@ -194,7 +194,7 @@ public sealed class NexaPlayOverrideService : INexaPlayOverrideService
             Protection = ReadNullableBool(node, "protection"),
             Header = ReadStr(node, "header"),
             Icon = ReadStr(node, "icon"),
-            LibraryCapsule2x = ReadStr(node, "library_capsule_2x"),
+            LibraryCapsule = ReadStr(node, "library_capsule") ?? ReadStr(node, "library_capsule_2x"),
             LibraryHero2x = ReadStr(node, "library_hero_2x"),
             BackgroundRaw = ReadStr(node, "background_raw")
         };
