@@ -21,6 +21,8 @@ public sealed class FixEntry
     public string? PosterUrl { get; init; }
     public string? Password { get; init; }
     public bool IsPremium { get; init; }
+    public bool HasDenuvo { get; init; }
+    public bool HasPopularCover => !string.IsNullOrWhiteSpace(PosterUrl);
     public string? ExeHint { get; init; }
     public bool UseShortcut { get; init; }
     public IReadOnlyList<FixFile> Files { get; init; } = Array.Empty<FixFile>();

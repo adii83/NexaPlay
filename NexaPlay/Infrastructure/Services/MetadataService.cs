@@ -98,6 +98,20 @@ public sealed class MetadataService : IMetadataService
             .ToList();
     }
 
+    public async Task<IReadOnlyList<int>> GetAllCatalogAppIdsAsync(CancellationToken ct = default)
+    {
+        await EnsureIndexedAsync(ct);
+        return _index!.Keys
+            .OrderBy(id => id)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<GameEntry>> GetCatalogSnapshotAsync(CancellationToken ct = default)
+    {
+        await EnsureIndexedAsync(ct);
+        return _index!.Values.ToList();
+    }
+
     public async Task<IReadOnlyList<int>> GetPopularAppIdsAsync(CancellationToken ct = default)
     {
         if (_popularAppIdsCache is not null && _popularAppIdsCache.Count > 0)

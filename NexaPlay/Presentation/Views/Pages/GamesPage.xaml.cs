@@ -135,6 +135,36 @@ public sealed partial class GamesPage : Page
             _nav.Navigate<GameDetailPage>(fix.AppId);
     }
 
+    private void OnGameCardClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is int appId)
+        {
+            _nav.Navigate<GameDetailPage>(appId);
+        }
+    }
+
+    private void DenuvoBadge_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is Border border)
+        {
+            var storyboard = new Storyboard
+            {
+                RepeatBehavior = RepeatBehavior.Forever,
+                AutoReverse = true
+            };
+            var animation = new DoubleAnimation
+            {
+                From = 1.0,
+                To = 0.3,
+                Duration = new Duration(TimeSpan.FromMilliseconds(700))
+            };
+            Storyboard.SetTarget(animation, border);
+            Storyboard.SetTargetProperty(animation, "Opacity");
+            storyboard.Children.Add(animation);
+            storyboard.Begin();
+        }
+    }
+
     private void OnGenreChecked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         if (sender is CheckBox cb && cb.Tag is string genre)

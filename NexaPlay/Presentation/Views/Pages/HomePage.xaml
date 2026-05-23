@@ -60,7 +60,7 @@
                                         <!-- Background Image -->
                                         <Border CornerRadius="12">
                                             <Border.Background>
-                                                <ImageBrush ImageSource="{x:Bind local:HomePage.SafeImageSource(PosterUrl), Mode=OneWay}"
+                                                <ImageBrush ImageSource="{x:Bind local:HomePage.SafeImageSource(PosterUrl), Mode=OneTime}"
                                                             Stretch="UniformToFill"
                                                             AlignmentX="Center"
                                                             AlignmentY="Center" />
@@ -198,13 +198,13 @@
                                         <!-- Header Image Area -->
                                         <Border CornerRadius="12">
                                             <Border.Background>
-                                                <ImageBrush ImageSource="{x:Bind local:HomePage.SafeImageSource(PopularCoverImageUrl), Mode=OneWay}" Stretch="UniformToFill" />
+                                                <ImageBrush ImageSource="{x:Bind local:HomePage.SafeImageSource(PopularCoverImageUrl), Mode=OneTime}" Stretch="UniformToFill" />
                                             </Border.Background>
                                         </Border>
 
                                         <Border CornerRadius="12"
                                                 Background="#101418"
-                                                Visibility="{x:Bind local:HomePage.InverseBoolToVis(HasPopularCover), Mode=OneWay}">
+                                                Visibility="{x:Bind local:HomePage.InverseBoolToVis(HasPopularCover), Mode=OneTime}">
                                             <TextBlock Text="NO CONTENT"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center"

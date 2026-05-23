@@ -182,8 +182,7 @@
                       SizeChanged="GamesGrid_SizeChanged"
                       Margin="20,14,20,10"
                       ItemsSource="{x:Bind ViewModel.Games, Mode=OneWay}"
-                      IsItemClickEnabled="True"
-                      ItemClick="OnGameItemClicked"
+                      IsItemClickEnabled="False"
                       SelectionMode="None"
                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                       ScrollViewer.HorizontalScrollMode="Disabled"
@@ -204,28 +203,59 @@
                 <GridView.ItemTemplate>
                     <DataTemplate x:DataType="models:FixEntry">
                         <Button Style="{StaticResource PopularGameCardStyle}"
+                                Click="OnGameCardClicked"
                                 Tag="{x:Bind AppId}"
-                                HorizontalAlignment="Stretch"
-                                VerticalAlignment="Stretch">
+                                HorizontalAlignment="Stretch">
                             <Grid CornerRadius="12" BorderBrush="{ThemeResource NexaCardBorderBrush}" BorderThickness="1">
                                 <Border CornerRadius="12">
                                     <Border.Background>
-                                        <ImageBrush ImageSource="{x:Bind local:GamesPage.ToImageSource(PosterUrl)}" Stretch="UniformToFill" />
+                                        <ImageBrush ImageSource="{x:Bind local:GamesPage.ToImageSource(PosterUrl), Mode=OneTime}" Stretch="UniformToFill" />
                                     </Border.Background>
                                 </Border>
-                                <Border CornerRadius="12" VerticalAlignment="Bottom" Height="100">
+                                <Border CornerRadius="12"
+                                        Background="#101418"
+                                        Visibility="{x:Bind local:GamesPage.InverseBoolToVis(HasPopularCover), Mode=OneTime}">
+                                    <TextBlock Text="NO CONTENT"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Foreground="#CCFFFFFF"
+                                               CharacterSpacing="120" />
+                                </Border>
+                                <Border CornerRadius="12">
                                     <Border.Background>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                            <GradientStop Color="#00000000" Offset="0" />
-                                            <GradientStop Color="#F0000000" Offset="1" />
+                                        <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                                            <GradientStop Color="#00000000" Offset="0.2" />
+                                            <GradientStop Color="#E6000000" Offset="1.0" />
                                         </LinearGradientBrush>
                                     </Border.Background>
                                 </Border>
-                                <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" CornerRadius="4" Padding="8,3" Background="{ThemeResource NexaTextPrimaryBrush}" Visibility="{x:Bind local:GamesPage.BoolToVis(IsPremium)}">
-                                    <TextBlock Text="PREMIUM" FontSize="10" FontWeight="Bold" Foreground="#000000" />
-                                </Border>
-                                <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" CornerRadius="4" Padding="8,3" Background="#000000" BorderBrush="#4DFFFFFF" BorderThickness="1" Visibility="{x:Bind local:GamesPage.InverseBoolToVis(IsPremium)}">
-                                    <TextBlock Text="STANDARD" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" Spacing="8">
+                                    <Grid>
+                                        <Border Visibility="{x:Bind local:GamesPage.BoolToVis(IsPremium)}"
+                                                Background="{ThemeResource NexaTextPrimaryBrush}"
+                                                CornerRadius="4" Padding="8,4">
+                                            <TextBlock Text="PREMIUM" FontSize="10" FontWeight="Bold" Foreground="#000000" />
+                                        </Border>
+                                        <Border Visibility="{x:Bind local:GamesPage.InverseBoolToVis(IsPremium)}"
+                                                Background="#000000"
+                                                BorderBrush="#4DFFFFFF" BorderThickness="1"
+                                                CornerRadius="4" Padding="8,4">
+                                            <TextBlock Text="STANDARD" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                                        </Border>
+                                    </Grid>
+                                </StackPanel>
+                                <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10"
+                                        Visibility="{x:Bind local:GamesPage.BoolToVis(HasDenuvo)}"
+                                        Background="#EAB308"
+                                        BorderBrush="#FEF08A" BorderThickness="1.5"
+                                        CornerRadius="4" Padding="6,4"
+                                        Loaded="DenuvoBadge_Loaded">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE7BA;" FontSize="10" Foreground="#FFFFFF" FontWeight="Bold" />
+                                        <TextBlock Text="DENUVO" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,1,0,0" />
+                                    </StackPanel>
                                 </Border>
                                 <StackPanel VerticalAlignment="Bottom" Margin="12,0,12,12" Spacing="2">
                                     <TextBlock Text="{x:Bind Title}" FontSize="13" FontWeight="SemiBold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis" MaxLines="2" TextWrapping="Wrap" />
@@ -263,9 +293,9 @@
                                     Padding="12,6"
                                     IsEnabled="{x:Bind ViewModel.CanGoPrevious, Mode=OneWay}" />
                             <Button Grid.Column="1"
-                                    Content="1"
+                                    Content="{x:Bind ViewModel.PageSlot1, Mode=OneWay}"
                                     Command="{x:Bind ViewModel.GoToPageCommand}"
-                                    CommandParameter="1"
+                                    CommandParameter="{x:Bind ViewModel.PageSlot1, Mode=OneWay}"
                                     Background="{x:Bind local:GamesPage.PageButtonBackground(ViewModel.IsPage1Selected), Mode=OneWay}"
                                     BorderBrush="#24FFFFFF"
                                     BorderThickness="1"
@@ -274,9 +304,9 @@
                                     Foreground="{x:Bind local:GamesPage.PageButtonForeground(ViewModel.IsPage1Selected), Mode=OneWay}"
                                     Visibility="{x:Bind local:GamesPage.BoolToVis(ViewModel.ShowPage1), Mode=OneWay}" />
                             <Button Grid.Column="2"
-                                    Content="2"
+                                    Content="{x:Bind ViewModel.PageSlot2, Mode=OneWay}"
                                     Command="{x:Bind ViewModel.GoToPageCommand}"
-                                    CommandParameter="2"
+                                    CommandParameter="{x:Bind ViewModel.PageSlot2, Mode=OneWay}"
                                     Background="{x:Bind local:GamesPage.PageButtonBackground(ViewModel.IsPage2Selected), Mode=OneWay}"
                                     BorderBrush="#24FFFFFF"
                                     BorderThickness="1"
@@ -285,9 +315,9 @@
                                     Foreground="{x:Bind local:GamesPage.PageButtonForeground(ViewModel.IsPage2Selected), Mode=OneWay}"
                                     Visibility="{x:Bind local:GamesPage.BoolToVis(ViewModel.ShowPage2), Mode=OneWay}" />
                             <Button Grid.Column="3"
-                                    Content="3"
+                                    Content="{x:Bind ViewModel.PageSlot3, Mode=OneWay}"
                                     Command="{x:Bind ViewModel.GoToPageCommand}"
-                                    CommandParameter="3"
+                                    CommandParameter="{x:Bind ViewModel.PageSlot3, Mode=OneWay}"
                                     Background="{x:Bind local:GamesPage.PageButtonBackground(ViewModel.IsPage3Selected), Mode=OneWay}"
                                     BorderBrush="#24FFFFFF"
                                     BorderThickness="1"

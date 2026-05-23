@@ -330,6 +330,39 @@ Tanggal:
 
 
 ### 2026-05-23
+- Fokus: hardening performa `Games` skala 160k + clean warning build.
+- Perubahan:
+  - Terapkan **genre alias-map** di `GamesViewModel` agar variasi label genre tetap ter-filter akurat tanpa ubah UI.
+  - Tambah **precomputed filter-index cache** ke disk (`%LocalAppData%\\NexaPlay\\runtime_catalog_sources\\games_filter_index_cache.json`) untuk percepat cold start halaman `Games`.
+  - Strategi load `Games` menjadi cache-first: baca index cache dulu, fallback build dari snapshot metadata jika cache belum ada/invalid.
+  - Filter/search tetap lightweight lewat index (`appid`, `nameLower`, `isPremium`, `hasDenuvo`, `genreTokens`) dan hydrate card hanya untuk page aktif.
+  - Rapikan warning `WMC1506` aman di `HomePage.xaml` dengan mengubah beberapa `x:Bind` statik ke `Mode=OneTime`.
+- Build: `Build succeeded` (`0 Warning(s)`, `0 Error(s)`).
+- Next: validasi runtime cold-start vs warm-start `Games` serta akurasi filter genre untuk label alias (`RPG/Role-Playing`, `MMO/Massively Multiplayer`, dll).
+
+### 2026-05-23
+- Fokus: optimasi performa `Games` untuk dataset besar (160k) pada search/filter/genre-status.
+- Perubahan:
+  - `IMetadataService` ditambah `GetCatalogSnapshotAsync()`; `MetadataService` expose snapshot index in-memory supaya `Games` tidak hydrate metadata per-item saat filtering.
+  - `GamesViewModel` memakai **lightweight filter index** (`appid`, `nameLower`, `isPremium`, `hasDenuvo`, `genreTokens`) yang dibangun sekali saat load.
+  - Filter `Status Game` (`STANDARD/PREMIUM`) dan `Protection` (`DENUVO/NON-DENUVO`) sekarang dieksekusi langsung di index ringan (tanpa fetch metadata berulang).
+  - Filter `Genres` diubah ke token overlap berbasis `GameEntry.Genre` (normalisasi split `,` + lowercase), agar konsisten dengan sumber metadata yang juga dipakai GameDetail.
+  - Search diberi debounce `220ms` agar tidak men-trigger re-filter berat pada setiap ketikan.
+  - Hydrate `FixEntry` untuk UI card tetap lazy hanya pada item halaman aktif (`kolom x 10`), sehingga layout/pager existing tidak berubah.
+- Build: `Build succeeded` (`0 Error(s)`, `3 Warning(s)` WMC1506 lama di `HomePage.xaml`).
+- Next: validasi runtime khusus beban nyata (search cepat, kombinasi filter genre+status, resize fullscreen/windowed, dan klik ke GameDetail) untuk cek latency UI dan akurasi hasil.
+
+### 2026-05-23
+- Fokus: remap sumber data `Games` ke baseline katalog metadata (`steam_data.json.gz`) tanpa mengubah layout/pola pagination.
+- Perubahan:
+  - `GamesViewModel` tidak lagi mengambil list dari `IBypassGamesDataService`; source awal diganti ke `IMetadataService` agar list berasal dari katalog penuh (160k baseline).
+  - Ditambahkan kontrak baru `IMetadataService.GetAllCatalogAppIdsAsync()` dan implementasinya di `MetadataService` untuk expose daftar appid dari index runtime katalog.
+  - `GamesViewModel` kini mengelola page secara lazy per appid: hydrate card hanya untuk item halaman aktif (`kolom x 10 baris`), mempertahankan layout card dan mekanik pager saat ini.
+  - Mapping card tetap menggunakan metadata yang sama (title/publisher/poster/premium) dan tetap klik ke `GameDetailPage` dengan appid yang sama, sehingga alur detail/parity tidak berubah.
+- Build: `Build succeeded` (`0 Error(s)`, `3 Warning(s)` WMC1506 lama di `HomePage.xaml`).
+- Next: validasi runtime `Games` untuk search/filter di dataset besar (160k) dan cek respons pagination/resize tetap mulus.
+
+### 2026-05-23
 - Fokus: checkpoint awal sesi (sinkronisasi konteks + baseline verification sebelum edit kode).
 - Perubahan:
   - Membaca dokumen wajib berurutan: `README.md` -> `AGENTS.md` -> `ONBOARDING_ZERO_TO_PARITY.md` -> `MIGRATION_PARITY_MATRIX.md` -> `AI_HANDOFF_PROMPT.md` -> `AI_HANDOFF_HOME_HISTORY.md`.

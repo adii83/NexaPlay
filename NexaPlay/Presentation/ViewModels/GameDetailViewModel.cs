@@ -256,6 +256,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
             var heroOverride = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId))?.LibraryHero2x;
             HeroBackgroundUrl = heroOverride
                 ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "library_hero_2x")
+                ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "library_hero")
                 ?? Game?.LibraryHero2xUrl
                 ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "background_raw")
                 ?? Game?.BackgroundRawImageUrl
@@ -486,9 +487,20 @@ public sealed partial class GameDetailViewModel : ObservableObject
         try
         {
             using var doc = JsonDocument.Parse(rawMetadataJson);
-            if (!doc.RootElement.TryGetProperty("assets", out var assets) ||
-                !assets.TryGetProperty(assetKey, out var node))
+            JsonElement node;
+            if (doc.RootElement.TryGetProperty("assets", out var assets) &&
+                assets.TryGetProperty(assetKey, out var nestedNode))
+            {
+                node = nestedNode;
+            }
+            else if (doc.RootElement.TryGetProperty(assetKey, out var rootNode))
+            {
+                node = rootNode;
+            }
+            else
+            {
                 return null;
+            }
 
             if (node.ValueKind == JsonValueKind.Array)
             {

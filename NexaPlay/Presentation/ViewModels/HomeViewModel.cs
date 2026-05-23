@@ -313,10 +313,6 @@ public sealed partial class HomeViewModel : ObservableObject
         {
             var candidates = scope
                 .Select((game, index) => new { game, index })
-                .Where(x =>
-                    string.IsNullOrWhiteSpace(x.game.LibraryCapsule2xUrl) ||
-                    (!string.IsNullOrWhiteSpace(x.game.RawHeaderImageUrl) &&
-                     string.Equals(x.game.PopularCoverImageUrl, x.game.RawHeaderImageUrl, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
 
             if (candidates.Count == 0)
@@ -328,16 +324,20 @@ public sealed partial class HomeViewModel : ObservableObject
                 await gate.WaitAsync();
                 try
                 {
+                    var overrideCover = (await _nexaPlayOverride.GetCatalogOverrideAsync(c.game.AppId))?.LibraryCapsule2x;
                     var detail = await _storeService.GetDetailAsync(c.game.AppId);
-                    var apiCover = detail?.LibraryCapsule2xUrl;
-                    if (string.IsNullOrWhiteSpace(apiCover))
+                    var apiCover = detail?.LibraryCapsule2xUrl
+                        ?? ReadFirstAssetUrl(detail?.RawMetadataJson, "library_capsule");
+
+                    var preferredCover = string.IsNullOrWhiteSpace(overrideCover) ? apiCover : overrideCover;
+                    if (string.IsNullOrWhiteSpace(preferredCover))
                         return;
 
                     var current = PopularGames.FirstOrDefault(g => g.AppId == c.game.AppId);
                     if (current is null)
                         return;
 
-                    if (string.Equals(current.LibraryCapsule2xUrl, apiCover, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(current.LibraryCapsule2xUrl, preferredCover, StringComparison.OrdinalIgnoreCase))
                         return;
 
                     var idx = PopularGames.IndexOf(current);
@@ -360,7 +360,7 @@ public sealed partial class HomeViewModel : ObservableObject
                         Protection = current.Protection,
                         HeaderImageUrl = current.HeaderImageUrl,
                         IconImageUrl = current.IconImageUrl,
-                        LibraryCapsule2xUrl = apiCover,
+                        LibraryCapsule2xUrl = preferredCover,
                         LibraryHero2xUrl = current.LibraryHero2xUrl,
                         BackgroundRawImageUrl = current.BackgroundRawImageUrl,
                         RawMetadataJson = current.RawMetadataJson,
@@ -388,6 +388,50 @@ public sealed partial class HomeViewModel : ObservableObject
         {
             _apiEnrichLock.Release();
         }
+    }
+
+    private static string? ReadFirstAssetUrl(string? rawMetadataJson, string assetKey)
+    {
+        if (string.IsNullOrWhiteSpace(rawMetadataJson))
+            return null;
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(rawMetadataJson);
+            System.Text.Json.JsonElement node;
+
+            if (doc.RootElement.TryGetProperty("assets", out var assets) &&
+                assets.TryGetProperty(assetKey, out var nestedNode))
+            {
+                node = nestedNode;
+            }
+            else if (doc.RootElement.TryGetProperty(assetKey, out var rootNode))
+            {
+                node = rootNode;
+            }
+            else
+            {
+                return null;
+            }
+
+            if (node.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                foreach (var item in node.EnumerateArray())
+                {
+                    if (item.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                        item.TryGetProperty("url", out var url) &&
+                        url.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        return url.GetString();
+                    }
+                }
+            }
+        }
+        catch
+        {
+        }
+
+        return null;
     }
 
     private async Task<List<FixEntry>> EnrichRecentFixesHeroCoverAsync(List<FixEntry> recent)
