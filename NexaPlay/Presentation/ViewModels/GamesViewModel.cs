@@ -48,6 +48,7 @@ public sealed partial class GamesViewModel : ObservableObject
     private List<int> _filteredAppIds = new();
     private int _currentPage = 1;
     private int _gridColumns = 5;
+    private bool _isUpdatingFilters;
     private int PageSize => _gridColumns * RowsPerPage;
     private readonly Dictionary<int, FixEntry> _cardCache = new();
     private CancellationTokenSource? _searchDebounceCts;
@@ -56,7 +57,7 @@ public sealed partial class GamesViewModel : ObservableObject
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "NexaPlay",
         "runtime_catalog_sources",
-        "games_filter_index_cache.json");
+        "games_filter_index_cache_v2.json");
 
     public bool IsEmpty => !IsLoading && Games.Count == 0;
 
@@ -111,6 +112,7 @@ public sealed partial class GamesViewModel : ObservableObject
             .Select(game => new GameFilterIndex(
                 game.AppId,
                 (game.Name ?? string.Empty).ToLowerInvariant(),
+                game.PriceNormalized,
                 game.IsPremium,
                 game.Protection,
                 ParseGenreTokens(game.Genre)))
@@ -185,7 +187,16 @@ public sealed partial class GamesViewModel : ObservableObject
             query = query.Where(x => x.GenreTokens.Overlaps(selected));
         }
 
-        _filteredAppIds = query.Select(x => x.AppId).ToList();
+        if (string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            query = query.Where(x => x.PriceNormalized >= 100000);
+        }
+
+        var daysSinceEpoch = (DateTime.UtcNow - DateTime.UnixEpoch).TotalDays;
+        int seed = (int)(daysSinceEpoch / 2);
+        var random = new Random(seed);
+
+        _filteredAppIds = query.OrderBy(x => random.Next()).Select(x => x.AppId).ToList();
         TotalCount = _filteredAppIds.Count;
 
         if (resetPage)
@@ -267,22 +278,64 @@ public sealed partial class GamesViewModel : ObservableObject
     private void ToggleFilter() => IsFilterOpen = !IsFilterOpen;
 
     [RelayCommand]
-    private void ToggleGenre(string genre)
+    private void ClearFilters()
     {
-        var set = SelectedGenres.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (!set.Add(genre))
-        {
-            set.Remove(genre);
-        }
-        SelectedGenres = set.ToList();
+        _isUpdatingFilters = true;
+        FilterStandard = false;
+        FilterPremium = false;
+        FilterDenuvo = false;
+        FilterNonDenuvo = false;
+        _isUpdatingFilters = false;
+        SelectedGenres = Array.Empty<string>();
+        SearchQuery = string.Empty;
         _ = ApplyFiltersAndPaginationAsync();
     }
 
+    public void SetGenreFilter(string genre, bool isIncluded)
+    {
+        var set = SelectedGenres.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        bool changed = false;
+        
+        if (isIncluded)
+            changed = set.Add(genre);
+        else
+            changed = set.Remove(genre);
+
+        if (changed)
+        {
+            SelectedGenres = set.ToList();
+            _ = ApplyFiltersAndPaginationAsync();
+        }
+    }
+
     partial void OnSearchQueryChanged(string value) => DebounceSearch();
-    partial void OnFilterStandardChanged(bool value) => _ = ApplyFiltersAndPaginationAsync();
-    partial void OnFilterPremiumChanged(bool value) => _ = ApplyFiltersAndPaginationAsync();
-    partial void OnFilterDenuvoChanged(bool value) => _ = ApplyFiltersAndPaginationAsync();
-    partial void OnFilterNonDenuvoChanged(bool value) => _ = ApplyFiltersAndPaginationAsync();
+    partial void OnFilterStandardChanged(bool value) 
+    {
+        if (_isUpdatingFilters) return;
+        if (value) { _isUpdatingFilters = true; FilterPremium = false; _isUpdatingFilters = false; }
+        _ = ApplyFiltersAndPaginationAsync();
+    }
+    
+    partial void OnFilterPremiumChanged(bool value) 
+    {
+        if (_isUpdatingFilters) return;
+        if (value) { _isUpdatingFilters = true; FilterStandard = false; _isUpdatingFilters = false; }
+        _ = ApplyFiltersAndPaginationAsync();
+    }
+    
+    partial void OnFilterDenuvoChanged(bool value) 
+    {
+        if (_isUpdatingFilters) return;
+        if (value) { _isUpdatingFilters = true; FilterNonDenuvo = false; _isUpdatingFilters = false; }
+        _ = ApplyFiltersAndPaginationAsync();
+    }
+    
+    partial void OnFilterNonDenuvoChanged(bool value) 
+    {
+        if (_isUpdatingFilters) return;
+        if (value) { _isUpdatingFilters = true; FilterDenuvo = false; _isUpdatingFilters = false; }
+        _ = ApplyFiltersAndPaginationAsync();
+    }
 
     partial void OnGamesChanged(ObservableCollection<FixEntry> value) => OnPropertyChanged(nameof(IsEmpty));
     partial void OnIsLoadingChanged(bool value) => OnPropertyChanged(nameof(IsEmpty));
@@ -529,6 +582,7 @@ public sealed partial class GamesViewModel : ObservableObject
     private sealed record GameFilterIndex(
         int AppId,
         string NameLower,
+        int PriceNormalized,
         bool IsPremium,
         bool HasDenuvo,
         HashSet<string> GenreTokens);
@@ -536,6 +590,7 @@ public sealed partial class GamesViewModel : ObservableObject
     private sealed record GameFilterIndexCacheItem(
         int AppId,
         string NameLower,
+        int PriceNormalized,
         bool IsPremium,
         bool HasDenuvo,
         string[] GenreTokens);
@@ -559,6 +614,7 @@ public sealed partial class GamesViewModel : ObservableObject
             return cached.Select(x => new GameFilterIndex(
                 x.AppId,
                 x.NameLower ?? string.Empty,
+                x.PriceNormalized,
                 x.IsPremium,
                 x.HasDenuvo,
                 (x.GenreTokens ?? Array.Empty<string>()).ToHashSet(StringComparer.Ordinal)))
@@ -583,6 +639,7 @@ public sealed partial class GamesViewModel : ObservableObject
             var payload = source.Select(x => new GameFilterIndexCacheItem(
                 x.AppId,
                 x.NameLower,
+                x.PriceNormalized,
                 x.IsPremium,
                 x.HasDenuvo,
                 x.GenreTokens.ToArray()))

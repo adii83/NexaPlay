@@ -148,6 +148,76 @@ public sealed partial class GamesPage : Page
         }
     }
 
+    private void GameCard_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Content is FrameworkElement root)
+        {
+            if (root.FindName("HoverTitleLayer") is UIElement titleLayer)
+            {
+                var fade = new DoubleAnimation
+                {
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(200),
+                    EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
+                };
+                var storyboard = new Storyboard();
+                Storyboard.SetTarget(fade, titleLayer);
+                Storyboard.SetTargetProperty(fade, "Opacity");
+
+                if (titleLayer.RenderTransform is TranslateTransform trans)
+                {
+                    var slide = new DoubleAnimation
+                    {
+                        To = 0,
+                        Duration = TimeSpan.FromMilliseconds(250),
+                        EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
+                    };
+                    Storyboard.SetTarget(slide, trans);
+                    Storyboard.SetTargetProperty(slide, "Y");
+                    storyboard.Children.Add(slide);
+                }
+
+                storyboard.Children.Add(fade);
+                storyboard.Begin();
+            }
+        }
+    }
+
+    private void GameCard_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Content is FrameworkElement root)
+        {
+            if (root.FindName("HoverTitleLayer") is UIElement titleLayer)
+            {
+                var fade = new DoubleAnimation
+                {
+                    To = 0,
+                    Duration = TimeSpan.FromMilliseconds(200),
+                    EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseIn }
+                };
+                var storyboard = new Storyboard();
+                Storyboard.SetTarget(fade, titleLayer);
+                Storyboard.SetTargetProperty(fade, "Opacity");
+
+                if (titleLayer.RenderTransform is TranslateTransform trans)
+                {
+                    var slide = new DoubleAnimation
+                    {
+                        To = 14,
+                        Duration = TimeSpan.FromMilliseconds(250),
+                        EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseIn }
+                    };
+                    Storyboard.SetTarget(slide, trans);
+                    Storyboard.SetTargetProperty(slide, "Y");
+                    storyboard.Children.Add(slide);
+                }
+
+                storyboard.Children.Add(fade);
+                storyboard.Begin();
+            }
+        }
+    }
+
     private void DenuvoBadge_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is Border border)
@@ -174,7 +244,7 @@ public sealed partial class GamesPage : Page
     {
         if (sender is CheckBox cb && cb.Tag is string genre)
         {
-            ViewModel.ToggleGenreCommand.Execute(genre);
+            ViewModel.SetGenreFilter(genre, true);
         }
     }
 
@@ -182,11 +252,16 @@ public sealed partial class GamesPage : Page
     {
         if (sender is CheckBox cb && cb.Tag is string genre)
         {
-            ViewModel.ToggleGenreCommand.Execute(genre);
+            ViewModel.SetGenreFilter(genre, false);
         }
     }
 
     // ── Static converters for x:Bind ────────────────────────────────────────
+
+    public static bool IsGenreChecked(IReadOnlyList<string> selectedGenres, string genre)
+    {
+        return selectedGenres is not null && selectedGenres.Contains(genre, StringComparer.OrdinalIgnoreCase);
+    }
 
     public static Microsoft.UI.Xaml.Visibility BoolToVis(bool v) =>
         v ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
@@ -219,6 +294,15 @@ public sealed partial class GamesPage : Page
             if (_suppressPageTransitionAnimation)
                 return;
             AnimatePageTransition();
+        }
+
+        if (e.PropertyName == nameof(GamesViewModel.SelectedGenres) && ViewModel.SelectedGenres.Count == 0)
+        {
+            var checkboxes = FindDescendants<CheckBox>(GenreItemsControl);
+            foreach (var cb in checkboxes)
+            {
+                cb.IsChecked = false;
+            }
         }
     }
 
@@ -313,5 +397,27 @@ public sealed partial class GamesPage : Page
         }
 
         return null;
+    }
+
+    private static IEnumerable<T> FindDescendants<T>(DependencyObject? root) where T : DependencyObject
+    {
+        if (root is null)
+            yield break;
+
+        var queue = new Queue<DependencyObject>();
+        queue.Enqueue(root);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (current is T match && current != root)
+                yield return match;
+
+            var childCount = VisualTreeHelper.GetChildrenCount(current);
+            for (var i = 0; i < childCount; i++)
+            {
+                queue.Enqueue(VisualTreeHelper.GetChild(current, i));
+            }
+        }
     }
 }

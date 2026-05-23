@@ -34,12 +34,17 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <Image Grid.Column="0"
-                           Source="/Assets/logo.svg"
-                           Width="20"
-                           Height="20"
-                           VerticalAlignment="Center"
-                           Margin="2,0,10,0" />
+                    <Button Grid.Column="0"
+                            Command="{x:Bind ViewModel.ToggleFilterCommand}"
+                            Height="38"
+                            MinWidth="80"
+                            Padding="12,0"
+                            Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <FontIcon Glyph="&#xE71C;" FontFamily="Segoe Fluent Icons" FontSize="14" Foreground="White" />
+                            <TextBlock Text="Filter" FontWeight="Bold" FontSize="14" Foreground="White" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
 
                     <TextBox Grid.Column="1"
                              PlaceholderText="Search Games"
@@ -67,13 +72,6 @@
                                   FontSize="15" />
                     </Button>
 
-                    <Button Grid.Column="3"
-                            Content="Filter"
-                            Command="{x:Bind ViewModel.ToggleFilterCommand}"
-                            Height="38"
-                            MinWidth="80"
-                            Padding="16,0"
-                            Margin="4,0,0,0" />
                 </Grid>
 
                 <TextBlock Margin="2,2,0,0"
@@ -103,11 +101,29 @@
                 <TranslateTransform x:Name="FilterOverlayTranslate" Y="-8" />
             </Border.RenderTransform>
             <StackPanel Spacing="12">
-                <TextBlock Text="Status Game"
-                           FontSize="13"
-                           FontWeight="SemiBold"
-                           Foreground="{ThemeResource NexaTextPrimaryBrush}" />
-
+                <Grid>
+                    <TextBlock Text="Status Game"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                        <Button Content="Clear Filter"
+                                Command="{x:Bind ViewModel.ClearFiltersCommand}"
+                                Background="Transparent" BorderThickness="0"
+                                Foreground="#AAAAAA"
+                                FontSize="12"
+                                VerticalAlignment="Center" />
+                        <Button Background="Transparent"
+                                BorderThickness="0"
+                                Padding="4"
+                                Width="28" Height="28"
+                                Command="{x:Bind ViewModel.ToggleFilterCommand}"
+                                ToolTipService.ToolTip="Close Filter">
+                            <FontIcon Glyph="&#xE711;" FontSize="12" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
                 <ItemsControl>
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -142,7 +158,7 @@
                            FontWeight="SemiBold"
                            Foreground="{ThemeResource NexaTextPrimaryBrush}" />
 
-                <ItemsControl ItemsSource="{x:Bind ViewModel.GenreMaster, Mode=OneWay}">
+                <ItemsControl x:Name="GenreItemsControl" ItemsSource="{x:Bind ViewModel.GenreMaster, Mode=OneWay}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapGrid Orientation="Horizontal"
@@ -205,6 +221,8 @@
                     <DataTemplate x:DataType="models:FixEntry">
                         <Button Style="{StaticResource PopularGameCardStyle}"
                                 Click="OnGameCardClicked"
+                                PointerEntered="GameCard_PointerEntered"
+                                PointerExited="GameCard_PointerExited"
                                 Tag="{x:Bind AppId}"
                                 HorizontalAlignment="Stretch">
                             <Grid CornerRadius="12" BorderBrush="{ThemeResource NexaCardBorderBrush}" BorderThickness="1">
@@ -258,10 +276,32 @@
                                         <TextBlock Text="DENUVO" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,1,0,0" />
                                     </StackPanel>
                                 </Border>
-                                <StackPanel VerticalAlignment="Bottom" Margin="12,0,12,12" Spacing="2">
-                                    <TextBlock Text="{x:Bind Title}" FontSize="13" FontWeight="SemiBold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis" MaxLines="2" TextWrapping="Wrap" />
-                                    <TextBlock Text="{x:Bind Publisher}" FontSize="11" Foreground="#AAAAAA" TextTrimming="CharacterEllipsis" />
-                                </StackPanel>
+                                <Border x:Name="HoverTitleLayer"
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Bottom"
+                                        Margin="0,0,0,1"
+                                        Padding="12,30,12,14"
+                                        Opacity="0"
+                                        IsHitTestVisible="False">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform Y="14" />
+                                    </Border.RenderTransform>
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                                            <GradientStop Color="#00000000" Offset="0.0" />
+                                            <GradientStop Color="#99000000" Offset="1.0" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <TextBlock Text="{x:Bind Title}"
+                                               HorizontalAlignment="Left"
+                                               VerticalAlignment="Bottom"
+                                               FontSize="15"
+                                               FontWeight="SemiBold"
+                                               Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxLines="2"
+                                               TextWrapping="Wrap" />
+                                </Border>
                             </Grid>
                         </Button>
                     </DataTemplate>
