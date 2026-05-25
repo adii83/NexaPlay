@@ -327,6 +327,34 @@ Tanggal:
 - Next:
 ```
 
+### 2026-05-26
+- Fokus: Finalisasi Layout List & Deteksi Library GameHub
+- Perubahan:
+  - Mengubah layout `LibraryPage` menjadi format List modern dengan penempatan AppID sejajar Genre, serta memodifikasi ikon Remove menjadi putih berlatar putih.
+  - Mengintegrasikan fungsi pendeteksi game (ListLibraryGames) membaca `.lua` di folder `stplug-in` agar cara deteksinya sama persis 100% dengan internal GameHub.
+  - Mengadaptasi desain label Denuvo dan Premium/Standard agar identik dengan `GamesPage`.
+  - Membersihkan kode sisa (_build error/warning_) peninggalan formasi Grid, serta membatasi Pagination ke 10 item.
+- Build: MSBuild bersih tanpa error ViewModel/CS0649 warning.
+- Next: Menunggu arahan selanjutnya.
+
+### 2026-05-25
+- Fokus: Implementasi paritas UI `LibraryPage` berdasarkan desain `GamesPage` (modern, dark theme).
+- Perubahan:
+  - Menyusun ulang XAML `LibraryPage` agar serasi dengan identitas NexaPlay (membuang emoji, memperbaiki penempatan action bar, tombol _Restart Steam_ dll).
+  - Mengimplementasikan `LibraryGameCard` UI model pada `LibraryViewModel` yang mem-parsing `InstalledGame`.
+  - Mengadaptasi sistem pagination dan _responsive grid view_ dengan _resize debounce_ sama persis dengan `GamesPage`.
+  - Membuat _Empty State_ UI jika tidak ada game yang terdeteksi, dengan _Call to Action_ menuju `GamesPage`.
+  - Menangani _Unknown Game_ secara elegan dengan visual placeholder tanpa cover art.
+- Build: Build sukses untuk verifikasi _C# code behind_ (meski _Architecture Warning_ untuk self-contained MSBuild muncul, tidak mempengaruhi code behavior).
+- Next: Menunggu instruksi selanjutnya untuk fitur tambahan Library atau area lain.
+
+### 2026-05-25
+- Fokus: Checkpoint awal sesi (sinkronisasi konteks + baseline verification sebelum edit kode).
+- Perubahan:
+  - Membaca dokumen wajib berurutan: `README.md` -> `AGENTS.md` -> `ONBOARDING_ZERO_TO_PARITY.md` -> `MIGRATION_PARITY_MATRIX.md` -> `AI_HANDOFF_PROMPT.md` -> `AI_HANDOFF_HOME_HISTORY.md`.
+  - Menetapkan guardrail sesi: tidak redesign lintas halaman, tidak menurunkan parity GameHub, dan tetap page-by-page.
+- Build: baseline build gate `Debug x64` sukses (`0 Error(s)`, `0 Warning(s)`).
+- Next: Menunggu instruksi pengguna untuk mulai modifikasi.
 
 ### 2026-05-23
 - Fokus: Perbaikan bug caching transient error (429 Too Many Requests) di `SteamStoreService` & Navigation Cache GamesPage.
@@ -336,6 +364,19 @@ Tanggal:
   - Menambahkan `NavigationCacheMode="Required"` pada `GamesPage.xaml` agar tidak kembali ke page 1 dan scroll awal saat user melakukan back navigation dari halaman Game Detail.
   - Memodifikasi urutan prioritas gambar cover di `HomeViewModel.cs` dan `GamesViewModel.cs` dengan menukar prioritas sehingga `assets.library_capsule` dari metadata mentah sekarang diprioritaskan di atas `detail.LibraryCapsule2xUrl`.
 - Build: `Build succeeded` (`0 Error(s)`, `0 Warning(s)`).
+- Next: Menunggu instruksi selanjutnya.
+
+### 2026-05-26
+- Fokus: Redesign Library Page parity dengan GameHub + Polish UI.
+- Perubahan:
+  - Mengubah logika deteksi library di `LibraryViewModel` untuk memakai `_addGame.ListLibraryGames()` yang memindai script `.lua` config stplug-in GameHub, bukan ACF Steam.
+  - Menyelaraskan tampilan kartu di `LibraryPage` (cover vertikal, badge label Denuvo, dan tipe Premium/Standard) persis dengan UI halaman Home dan Games.
+  - Memperbaiki tombol hapus (tong sampah) dengan background putih yang rapi dan penempatan AppID agar selaras dengan tata letak genre.
+  - Mematikan animasi internal per-item `ListView` saat paginasi di `LibraryPage` untuk menghilangkan efek 'card berguguran' dan menggantinya dengan animasi kustom mulus se-halaman.
+  - Mengatur padding agar scrollbar `LibraryPage` tepat menempel pada tepi ujung layar (seperti di halaman Home).
+  - Menambahkan animasi sci-fi "Laser Scanner/Sweep" berulang memutari keseluruhan *border* dan *background* pada bar pencarian Library.
+  - Mengubah tombol `Clear Filter` dan penutup (X) di `GamesPage` menjadi putih dengan teks/ikon hitam agar kontrasnya lebih terlihat jelas oleh pengguna.
+- Build: `Build succeeded`.
 - Next: Menunggu instruksi selanjutnya.
 
 ### 2026-05-23
