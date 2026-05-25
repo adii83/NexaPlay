@@ -161,39 +161,43 @@ public sealed partial class HomePage : Page
         if (availableWidth <= 0)
             return false;
 
-        const double minCardWidth = 200;
-        const double maxCardWidth = 320;
+        // Breakpoint agresif seperti GameHub xl/lg/md/sm:
+        //   >= 1100 => 6 kolom (sebelumnya >= 1380)
+        //   >= 880  => 5 kolom (sebelumnya >= 1080)
+        //   >= 680  => 4 kolom (sebelumnya >= 800)
+        //   _       => 3 kolom
+        // HomePage StackPanel Padding="28,20,28,60" => usable = screenW - 68(sidebar) - 56(padding L+R)
+        // Layar 1366px fullscreen: usable ≈ 1242 >= 1100 → 6 kolom ✓
+        // Layar 1920px fullscreen: usable ≈ 1796 >= 1100 → 6 kolom ✓
+        const double minCardWidth = 150;
+        const double maxCardWidth = 280;
         const double itemMargin = 8;
-        const double interItemGap = itemMargin * 2;
-        const double outerPadding = 0;
+        const double interItemGap = itemMargin * 2; // 16px
         const int minColumns = 3;
         const int maxColumns = 6;
 
-        var usableWidth = Math.Max(0, availableWidth - (outerPadding * 2));
-        var columns = usableWidth switch
+        var columns = availableWidth switch
         {
-            >= 1380 => 6, // fullscreen (e.g. 1920x1080)
-            >= 1080 => 5, // default windowed / 1366x768 fullscreen
-            >= 800 => 4,
-            _ => 3
+            >= 1100 => 6, // fullscreen >= ~1366px
+            >= 880  => 5, // windowed / 1280px
+            >= 680  => 4,
+            _       => 3
         };
         columns = Math.Clamp(columns, minColumns, maxColumns);
 
-        // Gunakan pembagian fraksional sedikit dikurangi (-0.2) agar ukuran slot presisi dan mulus saat drag resize
-        // (menghilangkan efek jitter/staircase Math.Floor) namun tetap muat dan tidak tumpah ke baris berikutnya
-        var slotWidth = (usableWidth / columns) - 0.2;
-        var minSlotWidth = minCardWidth + interItemGap;
-        var maxSlotWidth = maxCardWidth + interItemGap;
-        slotWidth = Math.Clamp(slotWidth, minSlotWidth, maxSlotWidth);
+        // Slot width fluid (mirip CSS grid %) — hanya clamp dari atas agar tidak overflow.
+        // Tidak di-clamp dari bawah supaya card tidak force lebar dan merusak grid.
+        var slotWidth = (availableWidth / columns) - 0.2;
+        slotWidth = Math.Min(slotWidth, maxCardWidth + interItemGap);
+        slotWidth = Math.Max(slotWidth, minCardWidth + interItemGap); // safety floor
 
-        var cardWidth = slotWidth - interItemGap;
-        cardWidth = Math.Clamp(cardWidth, minCardWidth, maxCardWidth);
+        var cardWidth = Math.Clamp(slotWidth - interItemGap, minCardWidth, maxCardWidth);
         var cardHeight = Math.Round(cardWidth * 1.5, 2);
 
         if (PopularGamesGrid.ItemsPanelRoot is not ItemsWrapGrid wrapGrid)
             return false;
 
-        wrapGrid.ItemWidth = slotWidth;
+        wrapGrid.ItemWidth  = slotWidth;
         wrapGrid.ItemHeight = cardHeight + interItemGap;
         wrapGrid.MaximumRowsOrColumns = columns;
 

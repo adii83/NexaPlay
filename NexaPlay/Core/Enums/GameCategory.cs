@@ -7,5 +7,7 @@ public enum GameCategory
     EA,
     Rockstar,
     PlayStation,
-    Activision
+    Activision,
+    SteamAccount,
+    SteamSharing
 }

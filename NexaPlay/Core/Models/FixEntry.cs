@@ -11,7 +11,7 @@ public sealed class FixFile
     public string GDriveUrl { get; init; } = string.Empty;
 }
 
-/// <summary>A fix entry from fix_games.json</summary>
+/// <summary>A fix entry from fix_games.json or steam_games.json</summary>
 public sealed class FixEntry
 {
     public int AppId { get; init; }
@@ -22,7 +22,14 @@ public sealed class FixEntry
     public string? Password { get; init; }
     public bool IsPremium { get; init; }
     public bool HasDenuvo { get; init; }
+    public bool AktivasiOffline { get; init; }
+
+    // Computed helpers
     public bool HasPopularCover => !string.IsNullOrWhiteSpace(PosterUrl);
+    public bool IsSteamType => Category == GameCategory.SteamAccount || Category == GameCategory.SteamSharing;
+    public bool ShowAktivasiOfflineBadge => AktivasiOffline;
+    public bool ShowSteamSharingBadge => Category == GameCategory.SteamSharing;
+
     public string? ExeHint { get; init; }
     public bool UseShortcut { get; init; }
     public IReadOnlyList<FixFile> Files { get; init; } = Array.Empty<FixFile>();

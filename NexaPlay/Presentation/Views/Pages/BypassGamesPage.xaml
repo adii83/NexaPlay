@@ -1,14 +1,244 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Page
+    x:Name="RootPage"
     x:Class="NexaPlay.Presentation.Views.Pages.BypassGamesPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:NexaPlay.Core.Models"
+    xmlns:local="using:NexaPlay.Presentation.Views.Pages"
+    NavigationCacheMode="Required"
     mc:Ignorable="d"
     Background="#080808">
 
     <Grid>
-        <TextBlock Text="Bypass Games Page" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header: Search + Filter -->
+        <Border Grid.Row="0"
+                Margin="20,16,20,0"
+                Padding="16,14,16,12"
+                CornerRadius="14"
+                BorderBrush="#2CFFFFFF"
+                BorderThickness="1"
+                Background="#D10A0A0A">
+            <StackPanel Spacing="10">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox Grid.Column="0"
+                             PlaceholderText="Search Games..."
+                             Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             Height="42"
+                             Background="#0D0D0D"
+                             BorderBrush="#22FFFFFF"
+                             BorderThickness="1"
+                             CornerRadius="8"
+                             FontSize="14"
+                             Padding="14,8,14,4"
+                             VerticalContentAlignment="Center"
+                             PlaceholderForeground="#B8C6D8"
+                             Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                        <CheckBox Content="Standard" IsChecked="{x:Bind ViewModel.FilterStandard, Mode=TwoWay}" Foreground="White" FontWeight="Bold">
+                            <CheckBox.Resources>
+                                <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="White" />
+                                <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#E5E5E5" />
+                                <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="#CCCCCC" />
+                                <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="Black" />
+                                <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" Color="Black" />
+                                <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPressed" Color="Black" />
+                            </CheckBox.Resources>
+                        </CheckBox>
+                        <CheckBox Content="Premium" IsChecked="{x:Bind ViewModel.FilterPremium, Mode=TwoWay}" Foreground="White" FontWeight="Bold">
+                            <CheckBox.Resources>
+                                <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="White" />
+                                <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#E5E5E5" />
+                                <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="#CCCCCC" />
+                                <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="Black" />
+                                <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" Color="Black" />
+                                <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPressed" Color="Black" />
+                            </CheckBox.Resources>
+                        </CheckBox>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Category Tabs -->
+        <ScrollViewer Grid.Row="1" HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Hidden" Margin="20,16,20,0">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Semua" Tag="all" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
+                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'all'), Mode=OneWay}"
+                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'all'), Mode=OneWay}" />
+                <Button Content="Ubisoft" Tag="ubisoft" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
+                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'ubisoft'), Mode=OneWay}"
+                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'ubisoft'), Mode=OneWay}" />
+                <Button Content="EA" Tag="ea" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
+                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'ea'), Mode=OneWay}"
+                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'ea'), Mode=OneWay}" />
+                <Button Content="Rockstar" Tag="rockstar" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
+                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'rockstar'), Mode=OneWay}"
+                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'rockstar'), Mode=OneWay}" />
+                <Button Content="PlayStation" Tag="playstation" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
+                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'playstation'), Mode=OneWay}"
+                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'playstation'), Mode=OneWay}" />
+                <Button Content="Other" Tag="other" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
+                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'other'), Mode=OneWay}"
+                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'other'), Mode=OneWay}" />
+                <Button Content="Steam Sharing" Tag="steam-sharing" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
+                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'steam-sharing'), Mode=OneWay}"
+                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'steam-sharing'), Mode=OneWay}" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Grid -->
+        <Grid Grid.Row="2">
+            <ProgressBar IsIndeterminate="True"
+                         Visibility="{x:Bind local:BypassGamesPage.BoolToVis(ViewModel.IsLoading), Mode=OneWay}"
+                         VerticalAlignment="Top" Height="2" Margin="20,8,20,0" Canvas.ZIndex="10" />
+
+            <StackPanel Visibility="{x:Bind local:BypassGamesPage.BoolToVis(ViewModel.IsEmpty), Mode=OneWay}" 
+                        HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
+                <FontIcon Glyph="&#xE721;" FontSize="48" Foreground="#88FFFFFF" />
+                <TextBlock Text="Tidak ada game ditemukan" FontSize="18" Foreground="#88FFFFFF" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                <TextBlock Text="Coba ubah filter atau kata kunci pencarian" FontSize="14" Foreground="#66FFFFFF" HorizontalAlignment="Center" />
+            </StackPanel>
+
+            <GridView x:Name="GamesGrid"
+                      SizeChanged="GamesGrid_SizeChanged"
+                      Margin="20,14,20,10"
+                      ItemsSource="{x:Bind ViewModel.DisplayGames, Mode=OneWay}"
+                      IsItemClickEnabled="False"
+                      SelectionMode="None"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                      ScrollViewer.HorizontalScrollMode="Disabled"
+                      ScrollViewer.VerticalScrollMode="Enabled">
+                <GridView.ItemContainerTransitions>
+                    <TransitionCollection>
+                        <AddDeleteThemeTransition />
+                        <ContentThemeTransition />
+                        <ReorderThemeTransition />
+                        <EntranceThemeTransition IsStaggeringEnabled="True" />
+                    </TransitionCollection>
+                </GridView.ItemContainerTransitions>
+                <GridView.ItemContainerStyle>
+                    <Style TargetType="GridViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="8" />
+                    </Style>
+                </GridView.ItemContainerStyle>
+                <GridView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <ItemsWrapGrid Orientation="Horizontal" MaximumRowsOrColumns="5" />
+                    </ItemsPanelTemplate>
+                </GridView.ItemsPanel>
+                <GridView.ItemTemplate>
+                    <DataTemplate x:DataType="models:FixEntry">
+                        <Button Style="{StaticResource PopularGameCardStyle}"
+                                Click="OnGameCardClicked"
+                                PointerEntered="GameCard_PointerEntered"
+                                PointerExited="GameCard_PointerExited"
+                                Tag="{x:Bind AppId}"
+                                HorizontalAlignment="Stretch">
+                            <Grid CornerRadius="12" BorderBrush="{ThemeResource NexaCardBorderBrush}" BorderThickness="1">
+                                <Border CornerRadius="12">
+                                    <Border.Background>
+                                        <ImageBrush ImageSource="{x:Bind local:BypassGamesPage.ToImageSource(PosterUrl), Mode=OneTime}" Stretch="UniformToFill" />
+                                    </Border.Background>
+                                </Border>
+                                <Border CornerRadius="12"
+                                        Background="#101418"
+                                        Visibility="{x:Bind local:BypassGamesPage.InverseBoolToVis(HasPopularCover), Mode=OneTime}">
+                                    <TextBlock Text="NO CONTENT"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Foreground="#CCFFFFFF"
+                                               CharacterSpacing="120" />
+                                </Border>
+                                <Border CornerRadius="12">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                                            <GradientStop Color="#00000000" Offset="0.2" />
+                                            <GradientStop Color="#E6000000" Offset="1.0" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+                                
+                                <StackPanel Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" Spacing="6">
+                                    <Grid HorizontalAlignment="Left">
+                                        <Border Visibility="{x:Bind local:BypassGamesPage.BoolToVis(IsPremium)}"
+                                                Background="{ThemeResource NexaTextPrimaryBrush}"
+                                                CornerRadius="4" Padding="8,4">
+                                            <TextBlock Text="PREMIUM" FontSize="10" FontWeight="Bold" Foreground="#000000" />
+                                        </Border>
+                                        <Border Visibility="{x:Bind local:BypassGamesPage.InverseBoolToVis(IsPremium)}"
+                                                Background="#000000"
+                                                BorderBrush="#4DFFFFFF" BorderThickness="1"
+                                                CornerRadius="4" Padding="8,4">
+                                            <TextBlock Text="STANDARD" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                                        </Border>
+                                    </Grid>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Vertical" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" Spacing="6">
+                                    <Border Visibility="{x:Bind local:BypassGamesPage.BoolToVis(ShowAktivasiOfflineBadge)}"
+                                            Background="#3B82F6"
+                                            CornerRadius="4" Padding="8,4" HorizontalAlignment="Right">
+                                        <TextBlock Text="AKTIVASI OFFLINE" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
+                                    </Border>
+                                    
+                                    <Border Visibility="{x:Bind local:BypassGamesPage.BoolToVis(ShowSteamSharingBadge)}"
+                                            Background="#3B82F6"
+                                            CornerRadius="4" Padding="8,4" HorizontalAlignment="Right">
+                                        <TextBlock Text="STEAM SHARING" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
+                                    </Border>
+                                </StackPanel>
+
+                                <Border x:Name="HoverTitleLayer"
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Bottom"
+                                        Margin="0,0,0,1"
+                                        Padding="12,30,12,14"
+                                        Opacity="0"
+                                        IsHitTestVisible="False">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform Y="14" />
+                                    </Border.RenderTransform>
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                                            <GradientStop Color="#00000000" Offset="0.0" />
+                                            <GradientStop Color="#99000000" Offset="1.0" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <TextBlock Text="{x:Bind Title}"
+                                               HorizontalAlignment="Left"
+                                               VerticalAlignment="Bottom"
+                                               FontSize="15"
+                                               FontWeight="SemiBold"
+                                               Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxLines="2"
+                                               TextWrapping="Wrap" />
+                                </Border>
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </GridView.ItemTemplate>
+            </GridView>
+        </Grid>
     </Grid>
 </Page>

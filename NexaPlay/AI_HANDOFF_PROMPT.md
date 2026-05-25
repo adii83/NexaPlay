@@ -314,6 +314,16 @@ Docs:
 - `NexaPlay/MIGRATION_PARITY_MATRIX.md`
 - `NexaPlay/AI_HANDOFF_PROMPT.md`
 
+Tanggal: 26 Mei 2026
+- Fokus: UI BypassGamesPage (Replikasi UX GameHub Fix Games)
+- Perubahan: 
+  - Update `GameCategory` enum dan `FixEntry` model (tambah AktivasiOffline & SteamSharing).
+  - Rewrite `BypassGamesDataService` untuk memparsing `steam_games.json` dan properti baru.
+  - Rewrite `BypassGamesViewModel` dengan logika filter (Kategori, Standard/Premium, Search) dan cover enrichment 4 level fallback.
+  - Rewrite `BypassGamesPage.xaml` dan code-behind dengan layout responsif (ItemsWrapGrid), custom badge biru untuk AKTIVASI OFFLINE dan STEAM SHARING, badge Premium/Standard.
+- Build: Pass
+- Next: Menambahkan navigasi dari item ke detail, dan menguji layout di runtime saat membuka halaman BypassGames.
+
 ## 10. Update Log Ringkas
 
 Tambahkan catatan baru di atas bagian ini setiap selesai batch penting.
@@ -326,6 +336,16 @@ Tanggal:
 - Build:
 - Next:
 ```
+
+### 2026-05-26
+- Fokus: Fix jumlah kolom card Home Popular & Games — parity GameHub Fix Games (6 kolom di fullscreen).
+- Perubahan:
+  - **Root cause ditemukan**: `minCardWidth=200` + threshold `>=1380` untuk 6 kolom terlalu ketat. Di layar 1366px fullscreen, usable width hanya ~1258px sehingga tidak pernah masuk breakpoint 6-kolom (sebelumnya hanya 5 kolom).
+  - `GamesPage.xaml.cs` `ApplyGamesGridLayout`: breakpoint diubah `>=1380->6, >=1080->5, >=800->4` menjadi **`>=1100->6, >=880->5, >=680->4`**. `minCardWidth` 200→150, `maxCardWidth` 320→280. SlotWidth hanya di-clamp dari atas (fluid seperti CSS grid GameHub).
+  - `HomePage.xaml.cs` `ApplyPopularGridLayout`: breakpoint dan konstanta disamakan persis dengan `GamesPage`. Referensi: GameHub menggunakan `xl:grid-cols-6` mulai 1280px, sedangkan content area NexaPlay sudah >= 1100px (sidebar 68px + padding 56px dikurangi).
+  - Analisis matematis: layar 1366px fullscreen → usable GamesPage 1258px ≥ 1100 → **6 kolom** ✓; layar 1920px → usable 1812px → **6 kolom** ✓.
+- Build: `Build succeeded`, `0 Error(s)`, `0 Warning(s)`.
+- Next: Validasi runtime visual — cek 6 kolom muncul di fullscreen 1366px dan 1920px, badge PREMIUM/DENUVO masih terbaca di card yang lebih kecil.
 
 ### 2026-05-26
 - Fokus: Finalisasi Layout List & Deteksi Library GameHub

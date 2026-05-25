@@ -6,6 +6,8 @@ public interface IBypassGamesDataService
 {
     Task<IReadOnlyList<FixEntry>> GetAllFixesAsync(CancellationToken ct = default);
     Task<IReadOnlyList<FixEntry>> GetNewFixesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<FixEntry>> GetSteamGamesAsync(CancellationToken ct = default);
     Task<FixEntry?> GetFixAsync(int appId, CancellationToken ct = default);
     Task RefreshAsync(CancellationToken ct = default);
+    void UpdateCacheItem(FixEntry updatedEntry);
 }

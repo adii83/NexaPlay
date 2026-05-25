@@ -93,37 +93,42 @@ public sealed partial class GamesPage : Page
         if (availableWidth <= 0)
             return false;
 
-        const double minCardWidth = 200;
-        const double maxCardWidth = 320;
+        // Breakpoint agresif seperti GameHub xl/lg/md/sm:
+        //   >= 1100 => 6 kolom (sebelumnya >= 1380)
+        //   >= 880  => 5 kolom (sebelumnya >= 1080)
+        //   >= 680  => 4 kolom (sebelumnya >= 800)
+        //   _       => 3 kolom
+        // Layar 1366px fullscreen: usable ≈ 1258 >= 1100 → 6 kolom ✓
+        // Layar 1920px fullscreen: usable ≈ 1812 >= 1100 → 6 kolom ✓
+        const double minCardWidth = 150;
+        const double maxCardWidth = 280;
         const double itemMargin = 8;
-        const double interItemGap = itemMargin * 2;
-        const double outerPadding = 0;
+        const double interItemGap = itemMargin * 2; // 16px
         const int minColumns = 3;
         const int maxColumns = 6;
 
-        var usableWidth = Math.Max(0, availableWidth - (outerPadding * 2));
-        var columns = usableWidth switch
+        var columns = availableWidth switch
         {
-            >= 1380 => 6,
-            >= 1080 => 5,
-            >= 800 => 4,
-            _ => 3
+            >= 1100 => 6,
+            >= 880  => 5,
+            >= 680  => 4,
+            _       => 3
         };
         columns = Math.Clamp(columns, minColumns, maxColumns);
 
-        var slotWidth = (usableWidth / columns) - 0.2;
-        var minSlotWidth = minCardWidth + interItemGap;
-        var maxSlotWidth = maxCardWidth + interItemGap;
-        slotWidth = Math.Clamp(slotWidth, minSlotWidth, maxSlotWidth);
+        // Slot width fluid (mirip CSS grid %) — hanya clamp dari atas agar tidak overflow.
+        // Tidak di-clamp dari bawah supaya card tidak force lebar dan merusak layout.
+        var slotWidth = (availableWidth / columns) - 0.2;
+        slotWidth = Math.Min(slotWidth, maxCardWidth + interItemGap);
+        slotWidth = Math.Max(slotWidth, minCardWidth + interItemGap); // safety floor
 
-        var cardWidth = slotWidth - interItemGap;
-        cardWidth = Math.Clamp(cardWidth, minCardWidth, maxCardWidth);
+        var cardWidth = Math.Clamp(slotWidth - interItemGap, minCardWidth, maxCardWidth);
         var cardHeight = Math.Round(cardWidth * 1.5, 2);
 
         if (GamesGrid.ItemsPanelRoot is not ItemsWrapGrid wrapGrid)
             return false;
 
-        wrapGrid.ItemWidth = slotWidth;
+        wrapGrid.ItemWidth  = slotWidth;
         wrapGrid.ItemHeight = cardHeight + interItemGap;
         wrapGrid.MaximumRowsOrColumns = columns;
 

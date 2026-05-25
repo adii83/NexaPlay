@@ -1,201 +1,263 @@
-using Microsoft.UI;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
-using NexaPlay.Core.Enums;
-using NexaPlay.Core.Models;
+using Microsoft.UI.Xaml;
+using NexaPlay.Contracts.Navigation;
 using NexaPlay.Presentation.ViewModels;
+using System.ComponentModel;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using System;
 
 namespace NexaPlay.Presentation.Views.Pages;
 
 public sealed partial class BypassGamesPage : Page
 {
-    private BypassGamesViewModel? _vm;
+    public BypassGamesViewModel ViewModel { get; }
+    private readonly INavigationService _nav;
+    private int _lastColumns = -1;
+    private DispatcherTimer? _gridResizeDebounceTimer;
 
-    public BypassGamesPage() => InitializeComponent();
+    public BypassGamesPage()
+    {
+        ViewModel = ((App)App.Current).GetRequiredService<BypassGamesViewModel>();
+        _nav      = ((App)App.Current).GetRequiredService<INavigationService>();
+        InitializeComponent();
+        DataContext = ViewModel;
+        SetupGridResizeDebounce();
+    }
 
     protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        _vm = ((App)App.Current).GetRequiredService<BypassGamesViewModel>();
-
-        // Show loading
-        // LoadingIndicator.Visibility = Visibility.Visible;
-        // FixList.Visibility = Visibility.Collapsed;
-
-        await _vm.LoadAsync();
-
-        // FixList.ItemsSource = _vm.FilteredFixes;
-        // LoadingIndicator.Visibility = Visibility.Collapsed;
-        // FixList.Visibility = Visibility.Visible;
-
-        // Scan AV in background
-        _ = Task.Run(async () =>
+        
+        if (e.NavigationMode != NavigationMode.Back && ViewModel.DisplayGames.Count == 0)
         {
-            await _vm.ScanSystemAsync();
-            // DispatcherQueue.TryEnqueue(() => AvList.ItemsSource = _vm.AntivirusList);
-        });
-    }
+            await ViewModel.LoadAsync();
+        }
 
-    private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (_vm is null) return;
-        // _vm.SearchQuery = SearchBox.Text;
-        // FixList.ItemsSource = _vm.FilteredFixes;
-    }
-
-    private async void OnScanSystemClicked(object sender, RoutedEventArgs e)
-    {
-        if (_vm is null) return;
-        // ScanSystemBtn.IsEnabled = false;
-        await _vm.ScanSystemAsync();
-        // AvList.ItemsSource = _vm.AntivirusList;
-        // ScanSystemBtn.IsEnabled = true;
-    }
-
-    private async void OnApplyFixClicked(object sender, RoutedEventArgs e)
-    {
-        if (_vm is null || sender is not Button btn) return;
-        if (btn.Tag is not FixEntry fix) return;
-
-        // Update UI header
-        // SelectedGameTitle.Text     = fix.Title;
-        // SelectedGamePublisher.Text = fix.Publisher;
-
-        // Show progress UI
-        // ShowProgressUI(true);
-        // SetStep(1);
-        // UpdateStatus(BypassStatus.Downloading, "Checking availability...", 0);
-
-        using var cts = new CancellationTokenSource();
-        // CancelFixBtn.Tag = cts;
-
-        var progress = new Progress<BypassProgressState>(state =>
+        if (ApplyGamesGridLayout() && _lastColumns > 0)
         {
-            DispatcherQueue.TryEnqueue(() =>
+            ViewModel.UpdateGridColumns(_lastColumns);
+        }
+    }
+
+    private void GamesGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var changed = ApplyGamesGridLayout(e.NewSize.Width);
+        if (!changed)
+        {
+            return;
+        }
+
+        _gridResizeDebounceTimer?.Stop();
+        _gridResizeDebounceTimer?.Start();
+    }
+
+    private void SetupGridResizeDebounce()
+    {
+        _gridResizeDebounceTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(220)
+        };
+        _gridResizeDebounceTimer.Tick += (s, e) =>
+        {
+            _gridResizeDebounceTimer?.Stop();
+            if (GamesGrid is null || _lastColumns <= 0)
+                return;
+
+            var scrollViewer = FindDescendant<ScrollViewer>(GamesGrid);
+            if (scrollViewer is null)
+                return;
+
+            var previousVerticalOffset = scrollViewer.VerticalOffset;
+            ViewModel.UpdateGridColumns(_lastColumns);
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
             {
-                // UpdateStatus(state.Status, GetStatusMessage(state), state.Percent < 0 ? (int)FixProgressBar.Value : state.Percent);
+                scrollViewer.ChangeView(null, previousVerticalOffset, null, true);
             });
-        });
+        };
+    }
 
-        await _vm.ApplyFixAsync(fix);
+    private bool ApplyGamesGridLayout(double? newWidth = null)
+    {
+        if (GamesGrid is null)
+            return false;
 
-        // Reflect final VM state
-        DispatcherQueue.TryEnqueue(() =>
+        var availableWidth = newWidth ?? GamesGrid.ActualWidth;
+        if (availableWidth <= 0)
+            return false;
+
+        const double minCardWidth = 150;
+        const double maxCardWidth = 280;
+        const double itemMargin = 8;
+        const double interItemGap = itemMargin * 2; // 16px
+        const int minColumns = 3;
+        const int maxColumns = 6;
+
+        var columns = availableWidth switch
         {
-            // UpdateStatus(_vm.CurrentBypassStatus, _vm.BypassStatusMessage, 100);
-            // FixProgressRing.IsActive = false;
-            // if (_vm.CurrentBypassStatus == BypassStatus.Applied) SetAllStepsDone();
-        });
+            >= 1100 => 6,
+            >= 880  => 5,
+            >= 680  => 4,
+            _       => 3
+        };
+        columns = Math.Clamp(columns, minColumns, maxColumns);
 
-        // ShowProgressUI(false);
+        var slotWidth = (availableWidth / columns) - 0.2;
+        slotWidth = Math.Min(slotWidth, maxCardWidth + interItemGap);
+        slotWidth = Math.Max(slotWidth, minCardWidth + interItemGap);
+
+        var cardWidth = Math.Clamp(slotWidth - interItemGap, minCardWidth, maxCardWidth);
+        var cardHeight = Math.Round(cardWidth * 1.5, 2);
+
+        if (GamesGrid.ItemsPanelRoot is not ItemsWrapGrid wrapGrid)
+            return false;
+
+        wrapGrid.ItemWidth  = slotWidth;
+        wrapGrid.ItemHeight = cardHeight + interItemGap;
+        wrapGrid.MaximumRowsOrColumns = columns;
+
+        var changed = _lastColumns != columns;
+        _lastColumns = columns;
+        return changed;
     }
 
-    private void OnCancelFixClicked(object sender, RoutedEventArgs e)
+    // ── Navigation ───────────────────────────────────────────────────────────
+
+    private void OnGameCardClicked(object sender, RoutedEventArgs e)
     {
-        if (sender is Button btn && btn.Tag is CancellationTokenSource cts)
-            cts.Cancel();
-        _vm?.CancelFix();
-        // ShowProgressUI(false);
-        // UpdateStatus(BypassStatus.Cancelled, "Cancelled by user", 0);
-    }
-
-    // ─── UI Helpers ────────────────────────────────────────────────
-
-    private void ShowProgressUI(bool show)
-    {
-        /*
-        ProgressBarPanel.Visibility = show ? Visibility.Visible  : Visibility.Collapsed;
-        StepsPanel.Visibility       = show ? Visibility.Visible  : Visibility.Collapsed;
-        CancelFixBtn.Visibility     = show ? Visibility.Visible  : Visibility.Collapsed;
-        FixProgressRing.IsActive    = show;
-        */
-    }
-
-    private void UpdateStatus(BypassStatus status, string message, int pct)
-    {
-        /*
-        BypassStatusText.Text      = message;
-        FixProgressBar.Value    = pct;
-        FixProgressPct.Text     = $"{pct}%";
-        BypassStatusText.Foreground = StatusColor(status);
-        */
-    }
-
-    private void SetStep(int step)
-    {
-        /*
-        // Step 1=check, 2=download, 3=apply
-        SetStepActive(StepCheck,    step >= 1, step > 1);
-        SetStepActive(StepDownload, step >= 2, step > 2);
-        SetStepActive(StepApply,    step >= 3, false);
-        */
-    }
-
-    private void SetAllStepsDone()
-    {
-        /*
-        SetStepActive(StepCheck,    true, true);
-        SetStepActive(StepDownload, true, true);
-        SetStepActive(StepApply,    true, true);
-        */
-    }
-
-    private static void SetStepActive(Border border, bool active, bool done)
-    {
-        /*
-        var panel = border.Child as StackPanel;
-        if (panel is null) return;
-
-        if (done)
+        if (sender is Button button && button.Tag is int appId)
         {
-            border.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(30, 34, 197, 94));
-            foreach (var child in panel.Children)
+            _nav.Navigate<GameDetailPage>(appId);
+        }
+    }
+
+    // ── Hover Effects ────────────────────────────────────────────────────────
+
+    private void GameCard_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Content is FrameworkElement root)
+        {
+            if (root.FindName("HoverTitleLayer") is UIElement titleLayer)
             {
-                if (child is FontIcon fi) fi.Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 34, 197, 94));
-                if (child is TextBlock tb) tb.Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 34, 197, 94));
+                var fade = new DoubleAnimation
+                {
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(200),
+                    EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
+                };
+                var storyboard = new Storyboard();
+                Storyboard.SetTarget(fade, titleLayer);
+                Storyboard.SetTargetProperty(fade, "Opacity");
+
+                if (titleLayer.RenderTransform is TranslateTransform trans)
+                {
+                    var slide = new DoubleAnimation
+                    {
+                        To = 0,
+                        Duration = TimeSpan.FromMilliseconds(250),
+                        EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
+                    };
+                    Storyboard.SetTarget(slide, trans);
+                    Storyboard.SetTargetProperty(slide, "Y");
+                    storyboard.Children.Add(slide);
+                }
+
+                storyboard.Children.Add(fade);
+                storyboard.Begin();
             }
         }
-        else if (active)
-        {
-            border.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(30, 139, 124, 248));
-            foreach (var child in panel.Children)
-            {
-                if (child is FontIcon fi) fi.Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 139, 124, 248));
-                if (child is TextBlock tb) tb.Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 139, 124, 248));
-            }
-        }
-        else
-        {
-            border.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(48, 34, 34, 34));
-            foreach (var child in panel.Children)
-            {
-                if (child is FontIcon fi) fi.Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 80, 80, 80));
-                if (child is TextBlock tb) tb.Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 80, 80, 80));
-            }
-        }
-        */
     }
 
-    private static SolidColorBrush StatusColor(BypassStatus status) => status switch
+    private void GameCard_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
-        BypassStatus.Applied        => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 34,  197, 94)),
-        BypassStatus.Failed         => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 239, 68,  68)),
-        BypassStatus.Cancelled      => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 245, 158, 11)),
-        BypassStatus.NotAvailable   => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 245, 158, 11)),
-        _                        => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 138, 138, 138)),
-    };
+        if (sender is Button btn && btn.Content is FrameworkElement root)
+        {
+            if (root.FindName("HoverTitleLayer") is UIElement titleLayer)
+            {
+                var fade = new DoubleAnimation
+                {
+                    To = 0,
+                    Duration = TimeSpan.FromMilliseconds(200),
+                    EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseIn }
+                };
+                var storyboard = new Storyboard();
+                Storyboard.SetTarget(fade, titleLayer);
+                Storyboard.SetTargetProperty(fade, "Opacity");
 
-    private static string GetStatusMessage(BypassProgressState state) => state.Phase switch
+                if (titleLayer.RenderTransform is TranslateTransform trans)
+                {
+                    var slide = new DoubleAnimation
+                    {
+                        To = 14,
+                        Duration = TimeSpan.FromMilliseconds(250),
+                        EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseIn }
+                    };
+                    Storyboard.SetTarget(slide, trans);
+                    Storyboard.SetTargetProperty(slide, "Y");
+                    storyboard.Children.Add(slide);
+                }
+
+                storyboard.Children.Add(fade);
+                storyboard.Begin();
+            }
+        }
+    }
+
+    // ── Static converters for x:Bind ────────────────────────────────────────
+
+    public static Microsoft.UI.Xaml.Visibility BoolToVis(bool v) =>
+        v ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    public static Microsoft.UI.Xaml.Visibility InverseBoolToVis(bool v) =>
+        v ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+
+    public static ImageSource? ToImageSource(string? raw)
     {
-        "download" => $"Downloading... {(state.Percent >= 0 ? state.Percent + "%" : "")}",
-        "extract"  => "Extracting files...",
-        "done"     => state.Status == BypassStatus.Applied ? "Fix applied successfully!" : state.Error ?? "Failed",
-        _          => state.Message ?? state.Status.ToString()
-    };
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri)) return null;
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != "ms-appx") return null;
+        try { return new BitmapImage(uri); } catch { return null; }
+    }
+
+    // Category Buttons Styling
+    public static Brush CategoryButtonBackground(string activeCategory, string currentCategory) =>
+        activeCategory == currentCategory ? new SolidColorBrush(Microsoft.UI.Colors.White) : new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x12, 0x12, 0x12));
+
+    public static Brush CategoryButtonForeground(string activeCategory, string currentCategory) =>
+        activeCategory == currentCategory ? new SolidColorBrush(Microsoft.UI.Colors.Black) : new SolidColorBrush(Microsoft.UI.Colors.White);
+
+    private void OnCategoryClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string categoryId)
+        {
+            ViewModel.SetCategory(categoryId);
+        }
+    }
+
+    private static T? FindDescendant<T>(DependencyObject? root) where T : DependencyObject
+    {
+        if (root is null)
+            return null;
+
+        var queue = new Queue<DependencyObject>();
+        queue.Enqueue(root);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (current is T match)
+                return match;
+
+            var childCount = VisualTreeHelper.GetChildrenCount(current);
+            for (var i = 0; i < childCount; i++)
+            {
+                queue.Enqueue(VisualTreeHelper.GetChild(current, i));
+            }
+        }
+        return null;
+    }
 }
