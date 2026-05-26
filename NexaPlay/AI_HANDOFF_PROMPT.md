@@ -411,6 +411,78 @@ Tanggal: 26 Mei 2026
   - Menambahkan catatan yang sama di MIGRATION_PARITY_MATRIX.md bagian Bypass agar konsisten lintas dokumen.
 - Build: Tidak diperlukan (perubahan dokumentasi saja).
 - Next: AI berikutnya mengikuti naming ini agar tidak terjadi mismatch istilah UI vs source data.
+Tanggal: 26 Mei 2026
+- Fokus: BypassGameDetailPage skenario 1 (tanpa status tambahan) - isi konten bawah metadata.
+- Perubahan:
+  - Menambahkan section Informasi Penting khusus kondisi default/no-status di bawah row metadata (BypassGameDetailPage.xaml).
+  - Menambahkan 3 kartu informasi monokrom elegan (Antivirus, Windows Update, Laporkan Masalah) dengan ikon putih (tanpa emoji, tanpa warna-warni ala GameHub).
+  - Menambahkan tombol putih Mulai Bypass Game dengan hover/pressed state yang jelas dan tetap clean.
+  - BypassGameDetailViewModel: tambah properti ShowDefaultNoStatusSection (aktif jika bukan AKTIVASI OFFLINE dan bukan AKUN STEAM) serta command placeholder StartBypassGameCommand untuk checkpoint tahap ini.
+- Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
+- Next: Lanjut skenario status berikutnya (Aktivasi Offline / Akun Steam / kombinasi) dengan pola layout yang konsisten.
+Tanggal: 26 Mei 2026
+- Fokus: Bedah sidebar Bypass menjadi 3rd Party vs Akun Steam + scope konten detail default.
+- Perubahan:
+  - BypassGamesPage: kategori dipisah menjadi dua dropdown default terbuka (`3rd Party` dan `Steam Sharing`), dengan isi:
+    - `3rd Party`: Semua, Ubisoft, EA, Rockstar, PlayStation, Other.
+    - `Steam Sharing`: satu entry `Akun Steam` (tanpa subkategori tambahan).
+  - BypassGamesViewModel: filter source dipisah tegas:
+    - `steam-sharing` hanya membaca `_steamGames`.
+    - area `3rd Party` membaca `_allFixes` dan mengecualikan item steam (`!IsSteamType`).
+  - BypassGameDetailViewModel: section informasi default/no-status sekarang hanya tampil untuk non-steam tanpa Aktivasi Offline, sehingga akun steam tidak menampilkan konten info default yang khusus 3rd party.
+- Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
+- Next: Validasi runtime lintas dropdown untuk memastikan list dan konten detail selalu sesuai status sumber.
+Tanggal: 26 Mei 2026
+- Fokus: Koreksi arsitektur dropdown Bypass ke sidebar utama (bukan di body halaman).
+- Perubahan:
+  - `BypassGamesPage` dikembalikan ke desain kategori seperti sebelumnya (bar kategori horizontal di area halaman, bukan sidebar kiri internal page).
+  - `MainWindow` sidebar item `Bypass` sekarang punya submenu default drop-down saat aktif: `3rd Party` dan `Steam Sharing`.
+  - Klik submenu sidebar mengirim parameter kategori ke `BypassGamesPage` (`all` atau `steam-sharing`) agar filter langsung sesuai.
+  - Submenu Bypass hanya tampil saat pane sidebar terbuka dan menu `Bypass` sedang aktif agar tetap rapi.
+- Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
+- Next: QA runtime pada interaksi hover sidebar + navigasi submenu untuk memastikan state aktif dan filter tetap sinkron.
+Tanggal: 26 Mei 2026
+- Fokus: Finalisasi pemisahan sidebar Bypass (3rd Party vs Steam Sharing) + auto dropdown elegan.
+- Perubahan:
+  - `BypassGamesPage`: kategori `Akun Steam` dihapus dari bar kategori 3rd Party agar tidak bercampur.
+  - `MainWindow` sidebar: submenu Bypass sekarang auto-drop saat sidebar terbuka (tanpa perlu klik Bypass dulu), dengan ikon panah bawah pada item Bypass.
+  - Desain submenu diperbarui jadi panel tersambung (single container) berisi dua item: `3rd Party` dan `Steam Sharing`, lebih rapi dan konsisten.
+  - Klik submenu `3rd Party`/`Steam Sharing` tetap mengarahkan filter ke kategori yang benar (`all` / `steam-sharing`) dan state aktif visual ikut berpindah.
+- Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
+- Next: Validasi runtime spacing/hover/sidebar collapse-expand untuk polish akhir visual.
+Tanggal: 26 Mei 2026
+- Fokus: Polish UX dropdown Bypass + final scope kategori Steam Sharing.
+- Perubahan:
+  - Posisi chevron dropdown Bypass digeser ke kiri agar tidak terlalu menempel pojok kanan.
+  - Submenu `3rd Party` dan `Akun Steam` diberi ikon masing-masing (putih, non-emoji) untuk keterbacaan.
+  - Halaman Bypass sekarang mode-aware:
+    - Jika di `3rd Party`, tampil kategori 3rd-party (`Semua` s.d. `Other`).
+    - Jika di `Steam Sharing`, bar kategori hanya menampilkan satu tombol `Steam Sharing` (tanpa kategori lain).
+- Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
+- Next: QA runtime visual untuk memastikan state aktif submenu + mode kategori konsisten di semua alur navigasi.
+Tanggal: 26 Mei 2026
+- Fokus: Konsistensi naming submenu + perbaikan efek search saat switch grup Bypass.
+- Perubahan:
+  - Sidebar submenu: label item kedua diubah dari `Akun Steam` menjadi `Steam Sharing` (istilah Akun Steam tetap khusus badge).
+  - `BypassGamesPage.OnNavigatedTo`: saat navigasi dari submenu sidebar, `SearchQuery` dibersihkan dulu sebelum `SetCategory(...)` agar state pencarian lama tidak ikut memfilter hasil saat berpindah 3rd Party <-> Steam Sharing.
+- Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
+- Next: Validasi runtime bahwa switch submenu selalu menampilkan list default grup tanpa residu pencarian sebelumnya.
+Tanggal: 26 Mei 2026
+- Fokus: Sinkronisasi final search-switch kategori + badge Steam Sharing di detail.
+- Perubahan:
+  - `BypassGamesViewModel.SetCategory(...)` sekarang jadi sumber tunggal untuk switch kategori: saat kategori berubah, search otomatis di-reset (tanpa trigger filter ganda) sehingga pindah 3rd Party <-> Steam Sharing tidak mewarisi query lama.
+  - `BypassGamesPage` tidak lagi reset search manual di code-behind, agar alur tidak duplikat.
+  - `BypassGameDetailViewModel.ShowSteamSharingBadge` diperketat: badge hanya tampil jika `BypassEntry.Category == SteamSharing` (khusus entry yang memang punya field `category: steam-sharing`), bukan untuk semua steam type.
+- Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
+- Next: QA runtime pada sampel steam_games campuran (dengan/ tanpa field category) untuk verifikasi badge detail konsisten dengan card.
+Tanggal: 26 Mei 2026
+- Fokus: Rapikan UI kategori tanpa pembungkus + immersive detail bypass + hilangkan trigger efek search dari submenu.
+- Perubahan:
+  - `BypassGamesPage`: wrapper card/border besar pada area kategori dihapus; kini langsung tombol kategori saja sesuai desain ringkas.
+  - `MainWindow`: mode immersive (fullscreen tanpa sidebar/top shell) kini berlaku juga untuk `BypassGameDetailPage`, setara `GameDetailPage`.
+  - `BypassGamesViewModel.SetCategory(...)`: reset search otomatis saat switch kategori dihapus agar klik submenu `3rd Party/Steam Sharing` tidak lagi memicu perubahan perilaku search.
+- Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
+- Next: QA runtime khusus perpindahan submenu sidebar untuk verifikasi search textbox dan hasil list tetap stabil.
 ## 10. Update Log Ringkas
 
 Tambahkan catatan baru di atas bagian ini setiap selesai batch penting.
@@ -618,6 +690,7 @@ Tanggal:
   - Hotfix defensif UI `Games`: binding genre via handler + converter URL image aman untuk mencegah crash parsing image.
 - Build: `Build succeeded` (`0 Error(s)`).
 - Next: lanjut wiring data `Games` ke metadata source besar (160k) dengan query ringan + cache, tanpa menurunkan performa.
+
 
 
 

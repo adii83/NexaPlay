@@ -74,32 +74,47 @@
             </StackPanel>
         </Border>
 
-        <!-- Category Tabs -->
-        <ScrollViewer Grid.Row="1" HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Hidden" Margin="20,16,20,0">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="Semua" Tag="all" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
-                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'all'), Mode=OneWay}"
-                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'all'), Mode=OneWay}" />
-                <Button Content="Ubisoft" Tag="ubisoft" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
-                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'ubisoft'), Mode=OneWay}"
-                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'ubisoft'), Mode=OneWay}" />
-                <Button Content="EA" Tag="ea" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
-                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'ea'), Mode=OneWay}"
-                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'ea'), Mode=OneWay}" />
-                <Button Content="Rockstar" Tag="rockstar" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
-                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'rockstar'), Mode=OneWay}"
-                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'rockstar'), Mode=OneWay}" />
-                <Button Content="PlayStation" Tag="playstation" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
-                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'playstation'), Mode=OneWay}"
-                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'playstation'), Mode=OneWay}" />
-                <Button Content="Other" Tag="other" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
-                        Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'other'), Mode=OneWay}"
-                        Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'other'), Mode=OneWay}" />
-                <Button Content="Akun Steam" Tag="steam-sharing" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
+        <!-- Category Tabs (kembali ke desain halaman sebelumnya) -->
+        <Grid Grid.Row="1" Margin="20,14,20,0">
+            <ScrollViewer HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollBarVisibility="Disabled"
+                          HorizontalScrollMode="Enabled"
+                          VerticalScrollMode="Disabled"
+                          Visibility="{x:Bind local:BypassGamesPage.IsThirdPartyMode(ViewModel.ActiveCategory), Mode=OneWay}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Semua" Tag="all" Click="OnCategoryClicked" Padding="12,7" CornerRadius="8" FontWeight="Bold"
+                            Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'all'), Mode=OneWay}"
+                            Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'all'), Mode=OneWay}" />
+                    <Button Content="Ubisoft" Tag="ubisoft" Click="OnCategoryClicked" Padding="12,7" CornerRadius="8" FontWeight="Bold"
+                            Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'ubisoft'), Mode=OneWay}"
+                            Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'ubisoft'), Mode=OneWay}" />
+                    <Button Content="EA" Tag="ea" Click="OnCategoryClicked" Padding="12,7" CornerRadius="8" FontWeight="Bold"
+                            Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'ea'), Mode=OneWay}"
+                            Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'ea'), Mode=OneWay}" />
+                    <Button Content="Rockstar" Tag="rockstar" Click="OnCategoryClicked" Padding="12,7" CornerRadius="8" FontWeight="Bold"
+                            Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'rockstar'), Mode=OneWay}"
+                            Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'rockstar'), Mode=OneWay}" />
+                    <Button Content="PlayStation" Tag="playstation" Click="OnCategoryClicked" Padding="12,7" CornerRadius="8" FontWeight="Bold"
+                            Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'playstation'), Mode=OneWay}"
+                            Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'playstation'), Mode=OneWay}" />
+                    <Button Content="Other" Tag="other" Click="OnCategoryClicked" Padding="12,7" CornerRadius="8" FontWeight="Bold"
+                            Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'other'), Mode=OneWay}"
+                            Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'other'), Mode=OneWay}" />
+                </StackPanel>
+            </ScrollViewer>
+            <StackPanel Orientation="Horizontal"
+                        Spacing="8"
+                        Visibility="{x:Bind local:BypassGamesPage.IsSteamMode(ViewModel.ActiveCategory), Mode=OneWay}">
+                <Button Content="Steam Sharing"
+                        Tag="steam-sharing"
+                        Click="OnCategoryClicked"
+                        Padding="12,7"
+                        CornerRadius="8"
+                        FontWeight="Bold"
                         Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'steam-sharing'), Mode=OneWay}"
                         Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'steam-sharing'), Mode=OneWay}" />
             </StackPanel>
-        </ScrollViewer>
+        </Grid>
 
         <!-- Grid -->
         <Grid Grid.Row="2">

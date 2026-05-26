@@ -38,6 +38,11 @@ public sealed partial class BypassGamesPage : Page
         {
             await ViewModel.LoadAsync();
         }
+        
+        if (e.Parameter is string categoryFromSidebar && !string.IsNullOrWhiteSpace(categoryFromSidebar))
+        {
+            ViewModel.SetCategory(categoryFromSidebar);
+        }
 
         if (ApplyGamesGridLayout() && _lastColumns > 0)
         {
@@ -216,6 +221,16 @@ public sealed partial class BypassGamesPage : Page
 
     public static Microsoft.UI.Xaml.Visibility InverseBoolToVis(bool v) =>
         v ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+
+    public static Microsoft.UI.Xaml.Visibility IsSteamMode(string? category) =>
+        string.Equals(category, "steam-sharing", StringComparison.OrdinalIgnoreCase)
+            ? Microsoft.UI.Xaml.Visibility.Visible
+            : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    public static Microsoft.UI.Xaml.Visibility IsThirdPartyMode(string? category) =>
+        string.Equals(category, "steam-sharing", StringComparison.OrdinalIgnoreCase)
+            ? Microsoft.UI.Xaml.Visibility.Collapsed
+            : Microsoft.UI.Xaml.Visibility.Visible;
 
     public static ImageSource? ToImageSource(string? raw)
     {

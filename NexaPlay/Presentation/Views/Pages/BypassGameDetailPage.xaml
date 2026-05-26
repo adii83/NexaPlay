@@ -242,6 +242,7 @@
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <Grid
@@ -359,6 +360,127 @@
                                 TextWrapping="WrapWholeWords" />
                         </StackPanel>
                     </Grid>
+
+                    <StackPanel
+                        Grid.Column="0"
+                        Grid.Row="1"
+                        Spacing="16"
+                        Visibility="{x:Bind local:BypassGameDetailPage.BoolToVis(ViewModel.ShowDefaultNoStatusSection), Mode=OneWay}">
+                        <TextBlock
+                            Text="Informasi Penting"
+                            Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                            FontSize="30"
+                            FontWeight="SemiBold"
+                            CharacterSpacing="-20" />
+
+                        <Border
+                            Background="#141414"
+                            BorderBrush="#2E2E2E"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="18,16">
+                            <StackPanel Spacing="10">
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <FontIcon
+                                        Glyph="&#xE814;"
+                                        FontFamily="Segoe Fluent Icons"
+                                        FontSize="16"
+                                        Foreground="#FFFFFF" />
+                                    <TextBlock
+                                        Text="Antivirus"
+                                        Foreground="#FFFFFF"
+                                        FontSize="19"
+                                        FontWeight="SemiBold" />
+                                </StackPanel>
+                                <TextBlock
+                                    Text="Untuk hasil terbaik, gunakan Windows Defender saja. Jika Anda menggunakan antivirus lain, disarankan menonaktifkan atau uninstall sementara agar proses bypass berjalan lebih stabil."
+                                    Foreground="#E2E2E2"
+                                    FontSize="14.5"
+                                    LineHeight="24"
+                                    TextWrapping="WrapWholeWords" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Background="#141414"
+                            BorderBrush="#2E2E2E"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="18,16">
+                            <StackPanel Spacing="10">
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <FontIcon
+                                        Glyph="&#xE823;"
+                                        FontFamily="Segoe Fluent Icons"
+                                        FontSize="16"
+                                        Foreground="#FFFFFF" />
+                                    <TextBlock
+                                        Text="Windows Update"
+                                        Foreground="#FFFFFF"
+                                        FontSize="19"
+                                        FontWeight="SemiBold" />
+                                </StackPanel>
+                                <TextBlock
+                                    Text="Setelah Windows Update, game mungkin perlu melewati proses bypass ulang. Menjaga update tetap terkontrol dapat membantu mengurangi gangguan pada patch yang sudah terpasang."
+                                    Foreground="#E2E2E2"
+                                    FontSize="14.5"
+                                    LineHeight="24"
+                                    TextWrapping="WrapWholeWords" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Background="#141414"
+                            BorderBrush="#2E2E2E"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="18,16">
+                            <StackPanel Spacing="10">
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <FontIcon
+                                        Glyph="&#xE7BA;"
+                                        FontFamily="Segoe Fluent Icons"
+                                        FontSize="16"
+                                        Foreground="#FFFFFF" />
+                                    <TextBlock
+                                        Text="Laporkan Masalah"
+                                        Foreground="#FFFFFF"
+                                        FontSize="19"
+                                        FontWeight="SemiBold" />
+                                </StackPanel>
+                                <TextBlock
+                                    Text="Jika Anda menemukan error selama proses bypass, laporkan ke admin agar penanganan bisa dilakukan lebih cepat dan tepat."
+                                    Foreground="#E2E2E2"
+                                    FontSize="14.5"
+                                    LineHeight="24"
+                                    TextWrapping="WrapWholeWords" />
+                            </StackPanel>
+                        </Border>
+
+                        <Button
+                            Command="{x:Bind ViewModel.StartBypassGameCommand}"
+                            HorizontalAlignment="Left"
+                            MinWidth="240"
+                            Height="44"
+                            Padding="22,0"
+                            Background="#FFFFFF"
+                            Foreground="#000000"
+                            BorderBrush="#FFFFFF"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Content="Mulai Bypass Game">
+                            <Button.Resources>
+                                <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#F0F0F0" />
+                                <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#DFDFDF" />
+                                <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#000000" />
+                                <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#000000" />
+                                <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#F0F0F0" />
+                                <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#DFDFDF" />
+                            </Button.Resources>
+                        </Button>
+                    </StackPanel>
                 </Grid>
             </Grid>
         </ScrollViewer>

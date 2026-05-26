@@ -43,6 +43,7 @@ public sealed partial class MainWindow : Window
         _nav.Initialize(ContentFrame);
         ContentFrame.Navigated += ContentFrame_Navigated;
         this.Activated += OnFirstActivated;
+        SetBypassSubmenuActive("all");
     }
 
     private async void OnFirstActivated(object sender, WindowActivatedEventArgs e)
@@ -194,6 +195,7 @@ public sealed partial class MainWindow : Window
         MenuHeader.Visibility = Visibility.Visible;
         AccountHeader.Visibility = Visibility.Visible;
         VersionGrid.Visibility = Visibility.Visible;
+        UpdateBypassSubmenuVisibility();
 
         AnimateNavWidth(200);
     }
@@ -204,6 +206,7 @@ public sealed partial class MainWindow : Window
         MenuHeader.Visibility = Visibility.Collapsed;
         AccountHeader.Visibility = Visibility.Collapsed;
         VersionGrid.Visibility = Visibility.Collapsed;
+        BypassSubmenuPanel.Visibility = Visibility.Collapsed;
 
         AnimateNavWidth(68);
     }
@@ -237,7 +240,8 @@ public sealed partial class MainWindow : Window
 
     private void ContentFrame_Navigated(object sender, Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
     {
-        bool immersiveDetail = e.SourcePageType == typeof(GameDetailPage);
+        bool immersiveDetail = e.SourcePageType == typeof(GameDetailPage)
+                               || e.SourcePageType == typeof(BypassGameDetailPage);
         SetShellDetailMode(immersiveDetail);
     }
 
@@ -273,6 +277,7 @@ public sealed partial class MainWindow : Window
         SetNavStyle(NavLibrary,  LblLibrary,  rb == NavLibrary);
         SetNavStyle(NavBypass, LblBypassGames, rb == NavBypass);
         SetNavStyle(NavSettings, LblSettings, rb == NavSettings);
+        UpdateBypassSubmenuVisibility();
 
         Type? targetPage = null;
 
@@ -284,11 +289,38 @@ public sealed partial class MainWindow : Window
 
         if (targetPage is not null)
         {
+            if (rb == NavBypass)
+            {
+                SetBypassSubmenuActive("all");
+            }
+
             ContentFrame.Navigate(targetPage, null, new SlideNavigationTransitionInfo
             {
                 Effect = SlideNavigationTransitionEffect.FromRight
             });
         }
+    }
+
+    private void OnBypassSubmenuClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not string category)
+            return;
+
+        if (NavBypass is not null)
+        {
+            NavBypass.IsChecked = true;
+            SetNavStyle(NavHome, LblHome, false);
+            SetNavStyle(NavGames, LblGames, false);
+            SetNavStyle(NavLibrary, LblLibrary, false);
+            SetNavStyle(NavBypass, LblBypassGames, true);
+            SetNavStyle(NavSettings, LblSettings, false);
+        }
+
+        ContentFrame.Navigate(typeof(BypassGamesPage), category, new SlideNavigationTransitionInfo
+        {
+            Effect = SlideNavigationTransitionEffect.FromRight
+        });
+        SetBypassSubmenuActive(category);
     }
 
     private static void SetNavStyle(RadioButton? rb, TextBlock? label, bool active)
@@ -297,6 +329,29 @@ public sealed partial class MainWindow : Window
         label.Style = active
             ? (Microsoft.UI.Xaml.Style)Application.Current.Resources["NavLabelActiveStyle"]
             : (Microsoft.UI.Xaml.Style)Application.Current.Resources["NavLabelStyle"];
+    }
+
+    private void UpdateBypassSubmenuVisibility()
+    {
+        if (BypassSubmenuPanel is null)
+            return;
+
+        BypassSubmenuPanel.Visibility = RootSplitView.IsPaneOpen
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void SetBypassSubmenuActive(string category)
+    {
+        if (BypassSubmenuThirdParty is null || BypassSubmenuSteam is null)
+            return;
+
+        var isSteam = string.Equals(category, "steam-sharing", StringComparison.OrdinalIgnoreCase);
+
+        BypassSubmenuThirdParty.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            isSteam ? Windows.UI.Color.FromArgb(0x00, 0x00, 0x00, 0x00) : Windows.UI.Color.FromArgb(0xFF, 0x17, 0x1A, 0x1F));
+        BypassSubmenuSteam.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            isSteam ? Windows.UI.Color.FromArgb(0xFF, 0x17, 0x1A, 0x1F) : Windows.UI.Color.FromArgb(0x00, 0x00, 0x00, 0x00));
     }
 
     private async System.Threading.Tasks.Task ShowLicenseActivation()

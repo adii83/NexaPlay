@@ -53,7 +53,7 @@ public sealed partial class BypassGamesViewModel : ObservableObject
 
     // ── Category labels (untuk UI) ────────────────────────────────
     public static readonly string[] CategoryIds  = { "all", "ubisoft", "ea", "rockstar", "playstation", "other", "steam-sharing" };
-    public static readonly string[] CategoryLabels = { "Semua", "Ubisoft", "EA", "Rockstar", "PlayStation", "Other", "Steam Sharing" };
+    public static readonly string[] CategoryLabels = { "Semua", "Ubisoft", "EA", "Rockstar", "PlayStation", "Other", "Akun Steam" };
 
     public BypassGamesViewModel(
         IBypassGamesDataService fixData, IOnlineFixService onlineFix,
@@ -116,6 +116,10 @@ public sealed partial class BypassGamesViewModel : ObservableObject
 
     public void SetCategory(string categoryId)
     {
+        var changed = !string.Equals(ActiveCategory, categoryId, StringComparison.OrdinalIgnoreCase);
+        if (!changed)
+            return;
+
         ActiveCategory = categoryId;
         ApplyFilters();
     }
@@ -132,6 +136,8 @@ public sealed partial class BypassGamesViewModel : ObservableObject
         else
         {
             source = _allFixes;
+            // 3rd Party area hanya untuk non-steam categories.
+            source = source.Where(f => !f.IsSteamType);
             if (ActiveCategory != "all")
             {
                 var catEnum = ActiveCategory switch

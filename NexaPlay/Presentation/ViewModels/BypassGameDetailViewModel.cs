@@ -41,6 +41,9 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     public bool IsPremiumGame => Game?.IsPremium == true;
     public bool ShowAktivasiOfflineBadge => BypassEntry?.AktivasiOffline == true;
     public bool ShowSteamSharingBadge => BypassEntry?.Category == GameCategory.SteamSharing;
+    public bool ShowDefaultNoStatusSection => BypassEntry is not null
+                                              && !BypassEntry.IsSteamType
+                                              && !ShowAktivasiOfflineBadge;
 
     private int _loadVersion;
 
@@ -127,9 +130,11 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         LoadAsync(appId, preferredBypassEntry: null, ct);
 
     [RelayCommand]
-    private void CheckBypass()
+    private void StartBypassGame()
     {
-        // Placeholder or navigation to another area if needed.
+        // Placeholder action for the default/no-status layout stage.
+        // Final bypass execution flow can be wired in the next batch.
+        _log.Log("BypassDetail", $"StartBypassGame clicked for appid={Game?.AppId}");
     }
 
     private static IReadOnlyList<string> BuildGenreTags(string? rawGenre)
@@ -160,6 +165,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(IsPremiumGame));
         OnPropertyChanged(nameof(ShowAktivasiOfflineBadge));
         OnPropertyChanged(nameof(ShowSteamSharingBadge));
+        OnPropertyChanged(nameof(ShowDefaultNoStatusSection));
     }
 
     private async Task<FixEntry?> ResolveBypassEntryAsync(int appId, CancellationToken ct)
