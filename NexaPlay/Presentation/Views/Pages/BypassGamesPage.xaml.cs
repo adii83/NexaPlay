@@ -10,6 +10,7 @@ using NexaPlay.Presentation.ViewModels;
 using System.ComponentModel;
 using System.Collections.Generic;
 using System;
+using System.Linq;
 
 namespace NexaPlay.Presentation.Views.Pages;
 
@@ -131,7 +132,8 @@ public sealed partial class BypassGamesPage : Page
     {
         if (sender is Button button && button.Tag is int appId)
         {
-            _nav.Navigate<GameDetailPage>(appId);
+            var selectedEntry = ViewModel.DisplayGames.FirstOrDefault(x => x.AppId == appId);
+            _nav.Navigate<BypassGameDetailPage>((appId, selectedEntry));
         }
     }
 

@@ -12,6 +12,8 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media;
 using NexaPlay.Presentation.ViewModels;
 using NexaPlay.Core.Models;
 using Windows.System;
@@ -50,6 +52,7 @@ public sealed partial class GameDetailPage : Page
     /// </summary>
     private int _renderedForAppId = -1;
     private bool _hasValidRenderForCurrentApp;
+    private readonly Dictionary<FrameworkElement, Storyboard> _metadataShimmerStoryboards = new();
 
     public GameDetailViewModel ViewModel { get; }
 
@@ -121,6 +124,8 @@ public sealed partial class GameDetailPage : Page
             _mediaCarouselTimer.Tick -= MediaCarouselTimer_Tick;
             _mediaCarouselTimer = null;
         }
+
+        StopAllMetadataShimmerAnimations();
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -799,6 +804,150 @@ public sealed partial class GameDetailPage : Page
     private void DenuvoBadge_Unloaded(object sender, RoutedEventArgs e)
     {
         StopDenuvoPulse();
+    }
+
+    private void MetadataImage_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Image image)
+            return;
+
+        image.Visibility = Visibility.Visible;
+        image.Opacity = 0;
+        var overlay = FindSiblingSkeletonOverlay(image);
+        if (overlay is not null)
+        {
+            overlay.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void MetadataImage_ImageOpened(object sender, RoutedEventArgs e)
+    {
+        RevealMetadataImage(sender);
+    }
+
+    private void MetadataImage_ImageFailed(object sender, ExceptionRoutedEventArgs e)
+    {
+        if (sender is not Image image)
+            return;
+
+        image.Visibility = Visibility.Collapsed;
+        image.Opacity = 0;
+        var overlay = FindSiblingSkeletonOverlay(image);
+        if (overlay is not null)
+        {
+            overlay.Visibility = Visibility.Visible;
+            FreezeMetadataSkeletonOverlay(overlay);
+        }
+    }
+
+    private void RevealMetadataImage(object sender)
+    {
+        if (sender is not Image image)
+            return;
+
+        image.Visibility = Visibility.Visible;
+        image.Opacity = 1;
+        var overlay = FindSiblingSkeletonOverlay(image);
+        if (overlay is not null)
+        {
+            overlay.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private FrameworkElement? FindSiblingSkeletonOverlay(Image image)
+    {
+        if (image.Parent is not Panel panel)
+            return null;
+
+        foreach (var child in panel.Children)
+        {
+            if (ReferenceEquals(child, image))
+                continue;
+
+            if (child is FrameworkElement fe && fe.Tag is string tag && tag == "SkeletonOverlay")
+                return fe;
+        }
+
+        return null;
+    }
+
+    private void MetadataSkeletonSweep_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement sweep || sweep.RenderTransform is not TranslateTransform transform)
+            return;
+
+        StartMetadataShimmerAnimation(sweep, transform);
+    }
+
+    private void MetadataSkeletonSweep_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement sweep)
+            return;
+
+        if (_metadataShimmerStoryboards.TryGetValue(sweep, out var storyboard))
+        {
+            storyboard.Stop();
+            _metadataShimmerStoryboards.Remove(sweep);
+        }
+    }
+
+    private void StartMetadataShimmerAnimation(FrameworkElement sweep, TranslateTransform transform)
+    {
+        if (_metadataShimmerStoryboards.TryGetValue(sweep, out var existing))
+        {
+            existing.Stop();
+            _metadataShimmerStoryboards.Remove(sweep);
+        }
+
+        var parentWidth = (sweep.Parent as FrameworkElement)?.ActualWidth;
+        var start = -Math.Max(180, sweep.Width > 0 ? sweep.Width : 240);
+        var end = ((parentWidth is > 0 ? parentWidth.Value : RootLayout.ActualWidth > 0 ? RootLayout.ActualWidth : 1200) + 120);
+
+        var storyboard = new Storyboard { RepeatBehavior = RepeatBehavior.Forever };
+        var anim = new DoubleAnimation
+        {
+            From = start,
+            To = end,
+            Duration = TimeSpan.FromMilliseconds(1200)
+        };
+        Storyboard.SetTarget(anim, transform);
+        Storyboard.SetTargetProperty(anim, "X");
+        storyboard.Children.Add(anim);
+        storyboard.Begin();
+        _metadataShimmerStoryboards[sweep] = storyboard;
+    }
+
+    private void StopAllMetadataShimmerAnimations()
+    {
+        foreach (var storyboard in _metadataShimmerStoryboards.Values)
+        {
+            storyboard.Stop();
+        }
+        _metadataShimmerStoryboards.Clear();
+    }
+
+    private void FreezeMetadataSkeletonOverlay(FrameworkElement overlay)
+    {
+        if (overlay is not Panel panel)
+            return;
+
+        foreach (var child in panel.Children)
+        {
+            if (child is not FrameworkElement fe)
+                continue;
+
+            if (_metadataShimmerStoryboards.TryGetValue(fe, out var storyboard))
+            {
+                storyboard.Stop();
+                _metadataShimmerStoryboards.Remove(fe);
+            }
+
+            // child shimmer sweep disembunyikan agar tidak terlihat "loading tanpa akhir"
+            if (fe is Border)
+            {
+                fe.Visibility = Visibility.Collapsed;
+            }
+        }
     }
 
     private void StartDenuvoPulse()

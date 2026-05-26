@@ -69,6 +69,11 @@ Update status setiap selesai implementasi/validasi.
 | Online-Fix action | `OnlineFixService` | `GameDetailViewModel.ApplyFixCommand` | Partial |
 | Restart Steam action | `SteamService.RestartSteam` | `GameDetailViewModel.RestartSteamCommand` | **Done** |
 
+Catatan nomenklatur UI Bypass:
+- Untuk tampilan UI, istilah `Steam Sharing` sudah diganti menjadi `Akun Steam`.
+- Label badge/card/detail memakai teks `AKUN STEAM`.
+- Mapping data backend tetap memakai category/tag asli `steam-sharing` (display-only rename, tanpa perubahan source field).
+
 ## G. System / Security Helpers
 
 | Area | GameHub (lama) | NexaPlay (baru) | Status |

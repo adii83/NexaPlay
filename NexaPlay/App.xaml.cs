@@ -69,6 +69,7 @@ public partial class App : Application
         services.AddTransient<BypassGamesViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<GameDetailViewModel>();
+        services.AddTransient<BypassGameDetailViewModel>();
 
         // ── Window ──────────────────────────────────────────────────
         services.AddTransient<MainWindow>();

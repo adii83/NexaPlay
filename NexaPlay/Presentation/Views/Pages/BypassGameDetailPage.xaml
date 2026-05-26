@@ -1,0 +1,460 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="NexaPlay.Presentation.Views.Pages.BypassGameDetailPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="using:NexaPlay.Presentation.Views.Pages"
+    mc:Ignorable="d"
+    Background="{ThemeResource NexaSurfaceBrush}">
+
+    <Grid x:Name="RootLayout" SizeChanged="RootLayout_SizeChanged">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="WideState">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1360" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="HeroTitleText.FontSize" Value="20" />
+                        <Setter Target="HeroDescriptionText.FontSize" Value="15" />
+                        <Setter Target="HeroDescriptionText.LineHeight" Value="24" />
+                    </VisualState.Setters>
+                </VisualState>
+
+                <VisualState x:Name="MediumState">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1100" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="HeroTitleText.FontSize" Value="19" />
+                        <Setter Target="HeroDescriptionText.FontSize" Value="14" />
+                        <Setter Target="HeroDescriptionText.LineHeight" Value="23" />
+                    </VisualState.Setters>
+                </VisualState>
+
+                <VisualState x:Name="CompactState">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="HeroTitleText.FontSize" Value="18" />
+                        <Setter Target="HeroDescriptionText.FontSize" Value="13.5" />
+                        <Setter Target="HeroDescriptionText.LineHeight" Value="22" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <!-- ═══ Shimmer Skeleton Loading ═══ -->
+        <Grid x:Name="ShimmerContainer"
+              Visibility="{x:Bind local:BypassGameDetailPage.BoolToVis(ViewModel.IsDetailLoading), Mode=OneWay}"
+              Loaded="ShimmerContainer_Loaded"
+              Unloaded="ShimmerContainer_Unloaded">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="520" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.Clip>
+                <RectangleGeometry x:Name="ShimmerClipGeometry" Rect="0,0,2000,700" />
+            </Grid.Clip>
+
+            <!-- Hero skeleton placeholder -->
+            <Border Grid.Row="0" Background="#10FFFFFF" />
+
+            <!-- Bottom metadata skeleton placeholders -->
+            <Grid Grid.Row="1" Margin="56,24,56,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Description placeholder lines -->
+                <StackPanel Grid.Row="0" Spacing="10" MaxWidth="550" HorizontalAlignment="Left">
+                    <Border Background="#10FFFFFF" Height="14" CornerRadius="4" />
+                    <Border Background="#10FFFFFF" Height="14" Width="420" HorizontalAlignment="Left" CornerRadius="4" />
+                    <Border Background="#10FFFFFF" Height="14" Width="300" HorizontalAlignment="Left" CornerRadius="4" />
+                </StackPanel>
+
+                <!-- Genre tags placeholder -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,18,0,0">
+                    <Border Background="#10FFFFFF" Height="26" Width="70" CornerRadius="13" />
+                    <Border Background="#10FFFFFF" Height="26" Width="90" CornerRadius="13" />
+                    <Border Background="#10FFFFFF" Height="26" Width="60" CornerRadius="13" />
+                </StackPanel>
+
+                <!-- Badge + metadata row placeholder -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="28" Margin="0,24,0,0">
+                    <Border Background="#10FFFFFF" Height="30" Width="90" CornerRadius="5" />
+                    <Border Background="#10FFFFFF" Height="30" Width="80" CornerRadius="5" />
+                    <StackPanel Spacing="6">
+                        <Border Background="#0AFFFFFF" Height="10" Width="50" CornerRadius="3" />
+                        <Border Background="#10FFFFFF" Height="16" Width="70" CornerRadius="3" />
+                    </StackPanel>
+                    <StackPanel Spacing="6">
+                        <Border Background="#0AFFFFFF" Height="10" Width="80" CornerRadius="3" />
+                        <Border Background="#10FFFFFF" Height="16" Width="100" CornerRadius="3" />
+                    </StackPanel>
+                    <StackPanel Spacing="6">
+                        <Border Background="#0AFFFFFF" Height="10" Width="70" CornerRadius="3" />
+                        <Border Background="#10FFFFFF" Height="16" Width="110" CornerRadius="3" />
+                    </StackPanel>
+                    <StackPanel Spacing="6">
+                        <Border Background="#0AFFFFFF" Height="10" Width="65" CornerRadius="3" />
+                        <Border Background="#10FFFFFF" Height="16" Width="60" CornerRadius="3" />
+                    </StackPanel>
+                    <StackPanel Spacing="6">
+                        <Border Background="#0AFFFFFF" Height="10" Width="40" CornerRadius="3" />
+                        <Border Background="#10FFFFFF" Height="16" Width="80" CornerRadius="3" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <!-- Shimmer sweep overlay -->
+            <Border x:Name="ShimmerSweep" Grid.RowSpan="2" IsHitTestVisible="False" Width="600">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="ShimmerTranslate" X="-600" />
+                </Border.RenderTransform>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                        <GradientStop Color="Transparent" Offset="0.0" />
+                        <GradientStop Color="#08FFFFFF" Offset="0.25" />
+                        <GradientStop Color="#18FFFFFF" Offset="0.5" />
+                        <GradientStop Color="#08FFFFFF" Offset="0.75" />
+                        <GradientStop Color="Transparent" Offset="1.0" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+        </Grid>
+
+        <ScrollViewer
+            Visibility="{x:Bind local:BypassGameDetailPage.InverseBoolToVis(ViewModel.IsDetailLoading), Mode=OneWay}"
+            VerticalScrollBarVisibility="Auto">
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition x:Name="HeroRowDefinition" Height="520" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0">
+                    <Image
+                        x:Name="HeroImage"
+                        Stretch="UniformToFill"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Opacity="0"
+                        ImageOpened="HeroImage_ImageOpened"
+                        ImageFailed="HeroImage_ImageFailed">
+                        <Image.Source>
+                            <BitmapImage
+                                UriSource="{x:Bind local:BypassGameDetailPage.SafeUri(ViewModel.HeroBackgroundUrl), Mode=OneWay}"
+                                DecodePixelWidth="3840"
+                                DecodePixelHeight="1240" />
+                        </Image.Source>
+                    </Image>
+
+                    <Grid x:Name="HeroSkeletonOverlay" IsHitTestVisible="False" Background="#22000000">
+                        <Border Background="#22FFFFFF" />
+                        <Border x:Name="HeroShimmerSweep" Width="560" HorizontalAlignment="Left">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="HeroShimmerTranslate" X="-560" />
+                            </Border.RenderTransform>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                    <GradientStop Color="Transparent" Offset="0.0" />
+                                    <GradientStop Color="#16FFFFFF" Offset="0.25" />
+                                    <GradientStop Color="#38FFFFFF" Offset="0.5" />
+                                    <GradientStop Color="#16FFFFFF" Offset="0.75" />
+                                    <GradientStop Color="Transparent" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                    </Grid>
+
+                    <Border>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#C8000000" Offset="0" />
+                                <GradientStop Color="#9E000000" Offset="0.5" />
+                                <GradientStop Color="#4A000000" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <Border VerticalAlignment="Bottom" Height="220">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#00000000" Offset="0" />
+                                <GradientStop Color="#FF080808" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <Grid Margin="56,24,56,52">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="56" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="2" Spacing="10" MaxWidth="650" HorizontalAlignment="Left">
+                            <TextBlock x:Name="HeroDescriptionText"
+                                Text="{x:Bind ViewModel.DisplayShortDescription, Mode=OneWay}"
+                                Foreground="#D8FFFFFF"
+                                FontStyle="Italic"
+                                FontSize="14"
+                                TextWrapping="WrapWholeWords"
+                                LineHeight="24"
+                                MaxLines="4" />
+
+                            <ItemsRepeater ItemsSource="{x:Bind ViewModel.GenreTags, Mode=OneWay}" HorizontalAlignment="Left">
+                                <ItemsRepeater.Layout>
+                                    <StackLayout Orientation="Horizontal" Spacing="8" />
+                                </ItemsRepeater.Layout>
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <Border
+                                            Background="#18000000"
+                                            BorderBrush="#60FFFFFF"
+                                            BorderThickness="1"
+                                            CornerRadius="14"
+                                            Padding="12,4">
+                                            <TextBlock
+                                                Text="{x:Bind}"
+                                                Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                                                FontSize="12"
+                                                FontWeight="SemiBold" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+
+                <Grid x:Name="DetailLayoutGrid" Grid.Row="1" Margin="56,16,56,116" ColumnSpacing="30">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid
+                        Grid.Column="0"
+                        Grid.Row="0"
+                        Margin="0,0,0,22"
+                        ColumnSpacing="28"
+                        RowSpacing="12"
+                        HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel
+                            Grid.Column="0"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            Margin="0,0,2,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Bottom">
+                            <Grid>
+                                <Border
+                                    Visibility="{x:Bind local:BypassGameDetailPage.BoolToVis(ViewModel.IsPremiumGame), Mode=OneWay}"
+                                    Background="{ThemeResource NexaTextPrimaryBrush}"
+                                    CornerRadius="5"
+                                    Padding="12,6">
+                                    <TextBlock
+                                        Text="PREMIUM"
+                                        FontSize="11"
+                                        FontWeight="Bold"
+                                        Foreground="#000000" />
+                                </Border>
+
+                                <Border
+                                    Visibility="{x:Bind local:BypassGameDetailPage.InverseBoolToVis(ViewModel.IsPremiumGame), Mode=OneWay}"
+                                    Background="#16000000"
+                                    BorderBrush="#70FFFFFF"
+                                    BorderThickness="1"
+                                    CornerRadius="5"
+                                    Padding="12,6">
+                                    <TextBlock
+                                        Text="STANDARD"
+                                        FontSize="11"
+                                        FontWeight="Bold"
+                                        Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                                </Border>
+                            </Grid>
+
+                            <Border
+                                Visibility="{x:Bind local:BypassGameDetailPage.BoolToVis(ViewModel.ShowAktivasiOfflineBadge), Mode=OneWay}"
+                                Background="#0F766E"
+                                BorderBrush="#5EEAD4"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8,4">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="AKTIVASI OFFLINE"
+                                        FontSize="10"
+                                        FontWeight="Bold"
+                                        Foreground="#FFFFFF" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border
+                                Visibility="{x:Bind local:BypassGameDetailPage.BoolToVis(ViewModel.ShowSteamSharingBadge), Mode=OneWay}"
+                                Background="#0F766E"
+                                BorderBrush="#5EEAD4"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8,4">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="AKUN STEAM"
+                                        FontSize="10"
+                                        FontWeight="Bold"
+                                        Foreground="#FFFFFF" />
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Spacing="5">
+                            <TextBlock Text="APP ID" Foreground="{ThemeResource NexaTextMutedBrush}" CharacterSpacing="80" FontSize="10" FontWeight="SemiBold" />
+                            <TextBlock Text="{x:Bind ViewModel.Game.AppId, Mode=OneWay}" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="14.5" FontWeight="SemiBold" TextWrapping="WrapWholeWords" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Spacing="5">
+                            <TextBlock Text="RELEASE DATE" Foreground="{ThemeResource NexaTextMutedBrush}" CharacterSpacing="80" FontSize="10" FontWeight="SemiBold" />
+                            <TextBlock Text="{x:Bind ViewModel.DisplayReleaseDate, Mode=OneWay}" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="14.5" FontWeight="SemiBold" TextWrapping="WrapWholeWords" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="3" Spacing="5" MaxWidth="260">
+                            <TextBlock Text="DEVELOPER" Foreground="{ThemeResource NexaTextMutedBrush}" CharacterSpacing="80" FontSize="10" FontWeight="SemiBold" />
+                            <TextBlock Text="{x:Bind ViewModel.DisplayDeveloper, Mode=OneWay}" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="14.5" FontWeight="SemiBold" TextWrapping="WrapWholeWords" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="4" Spacing="5" MaxWidth="260">
+                            <TextBlock Text="PUBLISHER" Foreground="{ThemeResource NexaTextMutedBrush}" CharacterSpacing="80" FontSize="10" FontWeight="SemiBold" />
+                            <TextBlock Text="{x:Bind ViewModel.DisplayPublisher, Mode=OneWay}" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="14.5" FontWeight="SemiBold" TextWrapping="WrapWholeWords" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="5" Spacing="5">
+                            <TextBlock Text="PRICE" Foreground="{ThemeResource NexaTextMutedBrush}" CharacterSpacing="80" FontSize="10" FontWeight="SemiBold" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.DisplayPrice, Mode=OneWay}"
+                                Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                                FontSize="14.5"
+                                FontWeight="SemiBold"
+                                TextWrapping="WrapWholeWords" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Top Bar Overlay -->
+        <Border
+            x:Name="TopBarOverlay"
+            VerticalAlignment="Top"
+            Height="66"
+            BorderThickness="0"
+            Padding="14,0">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#B8141414" Offset="0" />
+                    <GradientStop Color="#86141414" Offset="0.46" />
+                    <GradientStop Color="#18141414" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+            <Grid ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Button
+                    Grid.Column="0"
+                    Width="34"
+                    Height="34"
+                    Click="BackButton_Click"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Background="#24000000"
+                    BorderBrush="#28FFFFFF"
+                    BorderThickness="1"
+                    CornerRadius="17"
+                    Padding="0">
+                    <FontIcon
+                        Glyph="&#xE72B;"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="16"
+                        Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                </Button>
+
+                <Border
+                    Grid.Column="1"
+                    Width="30"
+                    Height="30"
+                    Margin="2,0,0,0"
+                    VerticalAlignment="Center"
+                    CornerRadius="3"
+                    BorderBrush="#40FFFFFF"
+                    BorderThickness="1"
+                    Background="#22000000">
+                    <Grid>
+                        <Image Stretch="UniformToFill"
+                               Opacity="0"
+                               Loaded="TopIconImage_Loaded"
+                               ImageOpened="TopIconImage_ImageOpened"
+                               ImageFailed="TopIconImage_ImageFailed">
+                            <Image.Source>
+                                <BitmapImage
+                                    UriSource="{x:Bind local:BypassGameDetailPage.SafeUri(ViewModel.GameIconUrl), Mode=OneWay}"
+                                    DecodePixelWidth="80" />
+                            </Image.Source>
+                        </Image>
+                        <Grid x:Name="TopIconSkeletonOverlay" IsHitTestVisible="False" Background="#22FFFFFF">
+                            <Border x:Name="TopIconShimmerSweep" Width="26" HorizontalAlignment="Left">
+                                <Border.RenderTransform>
+                                    <TranslateTransform x:Name="TopIconShimmerTranslate" X="-26" />
+                                </Border.RenderTransform>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                        <GradientStop Color="Transparent" Offset="0.0" />
+                                        <GradientStop Color="#14FFFFFF" Offset="0.24" />
+                                        <GradientStop Color="#34FFFFFF" Offset="0.50" />
+                                        <GradientStop Color="#14FFFFFF" Offset="0.76" />
+                                        <GradientStop Color="Transparent" Offset="1.0" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <TextBlock x:Name="HeroTitleText"
+                    Grid.Column="2"
+                    Margin="2,0,0,0"
+                    Text="{x:Bind ViewModel.Game.Name, Mode=OneWay}"
+                    Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                    FontWeight="SemiBold"
+                    FontSize="19"
+                    VerticalAlignment="Center"
+                    TextTrimming="CharacterEllipsis" />
+            </Grid>
+        </Border>
+
+    </Grid>
+</Page>

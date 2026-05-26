@@ -100,6 +100,10 @@ Yang sudah diarahkan:
 - `View on Steam` di Game Detail sudah dihapus sesuai request terakhir.
 - Price di Game Detail harus dari runtime catalog/source metadata repo, terutama `price_normalized`, bukan dari API detail Steam.
 - Sticky action/status bar bawah sudah mulai diterapkan agar action penting tetap terlihat saat scroll.
+- Terminologi UI terbaru untuk area bypass:
+  - `Steam Sharing` diganti menjadi `Akun Steam` (display only).
+  - Label di card dan detail menggunakan `AKUN STEAM`.
+  - Tag/data backend tetap `steam-sharing` (source field asli tidak diubah).
 
 Update UI Game Detail 2026-05-19:
 
@@ -324,6 +328,89 @@ Tanggal: 26 Mei 2026
 - Build: Pass
 - Next: Menambahkan navigasi dari item ke detail, dan menguji layout di runtime saat membuka halaman BypassGames.
 
+### 2026-05-26 (Batch: BypassGameDetailPage)
+- Fokus: Membuat halaman detail khusus untuk Bypass Games (BypassGameDetailPage) — terpisah dari GameDetailPage.
+- Perubahan:
+  - **[NEW] `BypassGameDetailViewModel.cs`**: ViewModel baru dengan pipeline fetch metadata identik GameDetailViewModel (IMetadataService → ISteamStoreService → INexaPlayOverrideService). Prioritas fallback hero/icon sama persis.
+  - **[NEW] `BypassGameDetailPage.xaml`**: Layout XAML menduplikasi bagian atas GameDetailPage (Hero banner, gradient overlay, deskripsi, genre tags, metadata row: APP ID / RELEASE DATE / DEVELOPER / PUBLISHER / PRICE, badge PREMIUM/STANDARD/DENUVO, tombol CEK BYPASS). Bagian MEDIA ke bawah dikosongkan sesuai instruksi.
+  - **[NEW] `BypassGameDetailPage.xaml.cs`**: Code-behind dengan SafeUri, BoolToVis, Denuvo pulse animation, responsive hero sizing.
+  - **[MODIFY] `App.xaml.cs`**: Register `BypassGameDetailViewModel` di DI container.
+  - **[MODIFY] `BypassGamesPage.xaml.cs`**: Navigasi `OnGameCardClicked` diubah dari `GameDetailPage` → `BypassGameDetailPage`.
+- Build: ✅ Sukses (0 Error, 0 Warning)
+- Next: Mengisi konten bagian bawah BypassGameDetailPage (aksi bypass, status, dsb).
+
+Tanggal: 26 Mei 2026
+- Fokus: Hero Skeleton/Shimmer BypassGameDetailPage agar tidak muncul layar hitam saat metadata/image hero masih memuat.
+- Perubahan:
+  - Menambahkan overlay skeleton khusus area hero di BypassGameDetailPage.xaml (base placeholder + shimmer sweep), terpisah dari shimmer global page.
+  - Menambahkan event ImageOpened/ImageFailed pada HeroImage untuk menyembunyikan skeleton hanya saat image sudah siap/selesai fallback.
+  - Menambahkan kontrol lifecycle shimmer hero di BypassGameDetailPage.xaml.cs (show saat HeroBackgroundUrl berubah atau IsDetailLoading aktif, hide saat image selesai load, update range saat resize).
+- Build: Pass (0 Error, 0 Warning).
+- Next: Validasi runtime dengan koneksi lambat/revisit cepat untuk memastikan transisi hero halus tanpa flash hitam.
+
+Tanggal: 26 Mei 2026
+- Fokus: Perkuat efek putih Shimmer/Skeleton dan terapkan ke GameDetailPage untuk hero + media gambar metadata.
+- Perubahan:
+  - `BypassGameDetailPage`: intensitas skeleton putih diperjelas (base putih + sweep lebih terang) agar loading hero tidak terlihat hitam.
+  - `GameDetailPage.xaml`: tambahkan skeleton overlay + shimmer sweep untuk image hero utama, card MEDIA carousel, blok GAME OVERVIEW screenshots, dan POST-ABOUT screenshots.
+  - `GameDetailPage.xaml`: semua image metadata terkait diberi event `Loaded/ImageOpened/ImageFailed` + `Opacity` awal 0 agar reveal terjadi setelah image siap.
+  - `GameDetailPage.xaml.cs`: tambah lifecycle shimmer per-overlay (start/stop), auto-hide skeleton saat image loaded/failed, dan cleanup storyboard saat page keluar.
+- Build: Pass (0 Error, 0 Warning).
+- Next: Uji runtime skenario jaringan lambat dan navigasi cepat untuk memastikan tidak ada flash hitam dan shimmer hilang tepat saat image siap.
+
+Tanggal: 26 Mei 2026
+- Fokus: Hilangkan placeholder broken image (ikon silang) pada GameDetail/BypassGameDetail saat gambar metadata gagal lalu terlambat berhasil.
+- Perubahan:
+  - Analisis: terjadi race `ImageFailed` lalu `ImageOpened`/URL update, sehingga glyph broken-image sempat terlihat sebelum cover final muncul.
+  - `GameDetailPage.xaml.cs`: saat `ImageFailed` kini image di-`Collapsed`, skeleton tetap tampil, shimmer dihentikan; saat `ImageOpened` image direveal kembali.
+  - `GameDetailPage.xaml`: top icon sekarang memakai pipeline skeleton/shimmer + event load/opened/failed yang sama agar ikon silang tidak muncul.
+  - `BypassGameDetailPage.xaml/.cs`: top icon juga ditambahkan skeleton/shimmer + fail handling collapse image; hero fail handling disamakan.
+- Build: Pass (0 Error, 0 Warning).
+- Next: Retest runtime pada game yang metadata art-nya sering fallback/terlambat (hero + top icon) untuk memastikan tidak ada frame ikon silang sama sekali.
+
+Tanggal: 26 Mei 2026
+- Fokus: Khusus BypassGameDetailPage â€” hapus badge Denuvo, tampilkan badge Aktivasi Offline/Steam Sharing dari source bypass yang benar.
+- Perubahan:
+  - `BypassGameDetailViewModel` tidak lagi membaca badge dari `GameEntry` (karena field tidak ada).
+  - Menambahkan properti `BypassEntry` (`FixEntry`) dan resolver lintas source bypass (`fix_games`, `steam_games`, `new_fix_games`) berdasarkan `AppId`.
+  - Binding badge di `BypassGameDetailPage` sekarang valid: `AKTIVASI OFFLINE` dan `STEAM SHARING` membaca dari `BypassEntry`.
+  - Denuvo badge tetap dihapus khusus halaman detail bypass sesuai arahan.
+- Build: Pass (setelah perbaikan compile error CS1061).
+- Next: Validasi runtime beberapa game campuran (steam sharing + non-sharing) untuk memastikan badge tampil konsisten tanpa memengaruhi page detail utama.
+
+Tanggal: 26 Mei 2026
+- Fokus: BypassGameDetailPage - hapus tombol CEK BYPASS dari metadata strip.
+- Perubahan:
+  - Menghapus elemen Button CEK BYPASS di BypassGameDetailPage.xaml (termasuk ikon dan tooltip) agar area metadata lebih bersih sesuai arahan.
+  - Tidak mengubah behavior inti data/detail game dan tidak menyentuh halaman lain.
+- Build: Build checkpoint akan mengikuti setelah batch edit ini.
+- Next: Lanjut evaluasi elemen UI lain di BypassGameDetailPage sesuai prioritas user.
+Tanggal: 26 Mei 2026
+- Fokus: Sinkronisasi badge BypassGameDetailPage agar selalu sama dengan card yang diklik.
+- Perubahan:
+  - Root cause dianalisis: detail page resolve ulang status berdasarkan ppid dengan prioritas source berbeda dari card (ix_games bisa menimpa steam_games), sehingga label bisa salah.
+  - BypassGamesPage.xaml.cs: navigasi detail sekarang mengirim payload (appId, FixEntry terpilih) dari card aktif.
+  - BypassGameDetailPage.xaml.cs: OnNavigatedTo menerima payload tuple dan meneruskan FixEntry itu ke ViewModel.
+  - BypassGameDetailViewModel.cs: LoadAsync overload baru menerima preferredBypassEntry; jika ada, dipakai sebagai source utama badge. Fallback resolver tetap ada, dengan prioritas steam_games -> fix_games -> new_fix_games.
+- Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
+- Next: Validasi runtime silang-tab (Semua vs Steam Sharing) pada appid yang sama untuk pastikan badge konsisten dengan card asal klik.
+Tanggal: 26 Mei 2026
+- Fokus: Standardisasi badge Bypass (tanpa ikon, label Akun Steam, dan warna tosca Aktivasi Offline).
+- Perubahan:
+  - BypassGamesPage.xaml: label kategori UI Steam Sharing diubah menjadi Akun Steam (tag tetap steam-sharing).
+  - BypassGamesPage.xaml: badge card STEAM SHARING diubah jadi AKUN STEAM.
+  - BypassGamesPage.xaml: badge AKTIVASI OFFLINE di card diubah ke tema tosca (#0F766E + border #5EEAD4).
+  - BypassGameDetailPage.xaml: menghapus FontIcon pada badge status (tanpa ikon), mengubah label STEAM SHARING jadi AKUN STEAM, dan menyamakan warna tosca untuk AKTIVASI OFFLINE.
+- Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
+- Next: Validasi runtime visual untuk memastikan badge card dan detail konsisten pada game dengan status steam-sharing maupun ktivasi_offline.
+Tanggal: 26 Mei 2026
+- Fokus: Dokumentasi naming parity untuk status Steam Sharing di area Bypass.
+- Perubahan:
+  - Menambahkan catatan eksplisit bahwa istilah UI Steam Sharing diganti menjadi Akun Steam (display only).
+  - Menegaskan label UI card/detail memakai AKUN STEAM, sementara tag/source backend tetap steam-sharing.
+  - Menambahkan catatan yang sama di MIGRATION_PARITY_MATRIX.md bagian Bypass agar konsisten lintas dokumen.
+- Build: Tidak diperlukan (perubahan dokumentasi saja).
+- Next: AI berikutnya mengikuti naming ini agar tidak terjadi mismatch istilah UI vs source data.
 ## 10. Update Log Ringkas
 
 Tambahkan catatan baru di atas bagian ini setiap selesai batch penting.
@@ -531,3 +618,8 @@ Tanggal:
   - Hotfix defensif UI `Games`: binding genre via handler + converter URL image aman untuk mencegah crash parsing image.
 - Build: `Build succeeded` (`0 Error(s)`).
 - Next: lanjut wiring data `Games` ke metadata source besar (160k) dengan query ringan + cache, tanpa menurunkan performa.
+
+
+
+
+

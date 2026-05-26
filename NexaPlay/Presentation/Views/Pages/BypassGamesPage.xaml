@@ -95,7 +95,7 @@
                 <Button Content="Other" Tag="other" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
                         Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'other'), Mode=OneWay}"
                         Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'other'), Mode=OneWay}" />
-                <Button Content="Steam Sharing" Tag="steam-sharing" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
+                <Button Content="Akun Steam" Tag="steam-sharing" Click="OnCategoryClicked" Padding="16,8" CornerRadius="8" FontWeight="Bold"
                         Background="{x:Bind local:BypassGamesPage.CategoryButtonBackground(ViewModel.ActiveCategory, 'steam-sharing'), Mode=OneWay}"
                         Foreground="{x:Bind local:BypassGamesPage.CategoryButtonForeground(ViewModel.ActiveCategory, 'steam-sharing'), Mode=OneWay}" />
             </StackPanel>
@@ -196,15 +196,19 @@
 
                                 <StackPanel Orientation="Vertical" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" Spacing="6">
                                     <Border Visibility="{x:Bind local:BypassGamesPage.BoolToVis(ShowAktivasiOfflineBadge)}"
-                                            Background="#3B82F6"
+                                            Background="#0F766E"
+                                            BorderBrush="#5EEAD4"
+                                            BorderThickness="1"
                                             CornerRadius="4" Padding="8,4" HorizontalAlignment="Right">
                                         <TextBlock Text="AKTIVASI OFFLINE" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
                                     </Border>
                                     
                                     <Border Visibility="{x:Bind local:BypassGamesPage.BoolToVis(ShowSteamSharingBadge)}"
-                                            Background="#3B82F6"
+                                            Background="#0F766E"
+                                            BorderBrush="#5EEAD4"
+                                            BorderThickness="1"
                                             CornerRadius="4" Padding="8,4" HorizontalAlignment="Right">
-                                        <TextBlock Text="STEAM SHARING" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
+                                        <TextBlock Text="AKUN STEAM" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
                                     </Border>
                                 </StackPanel>
 

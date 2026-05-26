@@ -117,9 +117,14 @@
 
                 <Grid Grid.Row="0">
                     <Image
+                        x:Name="HeroImage"
                         Stretch="UniformToFill"
                         HorizontalAlignment="Center"
-                        VerticalAlignment="Center">
+                        VerticalAlignment="Center"
+                        Opacity="0"
+                        Loaded="MetadataImage_Loaded"
+                        ImageOpened="MetadataImage_ImageOpened"
+                        ImageFailed="MetadataImage_ImageFailed">
                         <Image.Source>
                             <BitmapImage
                                 UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.HeroBackgroundUrl), Mode=OneWay}"
@@ -127,6 +132,27 @@
                                 DecodePixelHeight="1240" />
                         </Image.Source>
                     </Image>
+
+                    <Grid Tag="SkeletonOverlay" IsHitTestVisible="False" Background="#2AFFFFFF">
+                        <Border Background="#22FFFFFF" />
+                        <Border Width="580"
+                                HorizontalAlignment="Left"
+                                Loaded="MetadataSkeletonSweep_Loaded"
+                                Unloaded="MetadataSkeletonSweep_Unloaded">
+                            <Border.RenderTransform>
+                                <TranslateTransform X="-580" />
+                            </Border.RenderTransform>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                    <GradientStop Color="Transparent" Offset="0.0" />
+                                    <GradientStop Color="#18FFFFFF" Offset="0.22" />
+                                    <GradientStop Color="#38FFFFFF" Offset="0.50" />
+                                    <GradientStop Color="#18FFFFFF" Offset="0.78" />
+                                    <GradientStop Color="Transparent" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                    </Grid>
 
                     <Border>
                         <Border.Background>
@@ -392,13 +418,36 @@
                                                     SizeChanged="MediaCard_SizeChanged"
                                                 Scale="{x:Bind local:GameDetailPage.GetSelectedScale(IsSelected), Mode=OneWay}">
                                                 <Grid>
-                                                    <Image Stretch="UniformToFill">
+                                                    <Image Stretch="UniformToFill"
+                                                           Opacity="0"
+                                                           Loaded="MetadataImage_Loaded"
+                                                           ImageOpened="MetadataImage_ImageOpened"
+                                                           ImageFailed="MetadataImage_ImageFailed">
                                                         <Image.Source>
                                                                 <BitmapImage
                                                                     UriSource="{x:Bind local:GameDetailPage.SafeUri(ThumbnailUrl)}"
                                                                     DecodePixelWidth="760" />
                                                             </Image.Source>
                                                         </Image>
+                                                        <Grid Tag="SkeletonOverlay" IsHitTestVisible="False" Background="#22FFFFFF">
+                                                            <Border Width="240"
+                                                                    HorizontalAlignment="Left"
+                                                                    Loaded="MetadataSkeletonSweep_Loaded"
+                                                                    Unloaded="MetadataSkeletonSweep_Unloaded">
+                                                                <Border.RenderTransform>
+                                                                    <TranslateTransform X="-240" />
+                                                                </Border.RenderTransform>
+                                                                <Border.Background>
+                                                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                                        <GradientStop Color="Transparent" Offset="0.0" />
+                                                                        <GradientStop Color="#14FFFFFF" Offset="0.24" />
+                                                                        <GradientStop Color="#30FFFFFF" Offset="0.50" />
+                                                                        <GradientStop Color="#14FFFFFF" Offset="0.76" />
+                                                                        <GradientStop Color="Transparent" Offset="1.0" />
+                                                                    </LinearGradientBrush>
+                                                                </Border.Background>
+                                                            </Border>
+                                                        </Grid>
                                                         <Border
                                                             CornerRadius="7"
                                                             BorderBrush="{ThemeResource NexaTextPrimaryBrush}"
@@ -448,11 +497,34 @@
                                        PointerEntered="MediaCard_PointerEntered"
                                        PointerExited="MediaCard_PointerExited"
                                        SizeChanged="MediaCard_SizeChanged">
-                                     <Image Stretch="UniformToFill">
+                                     <Image Stretch="UniformToFill"
+                                            Opacity="0"
+                                            Loaded="MetadataImage_Loaded"
+                                            ImageOpened="MetadataImage_ImageOpened"
+                                            ImageFailed="MetadataImage_ImageFailed">
                                          <Image.Source>
                                              <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.OverviewScreenshotUrl1), Mode=OneWay}" DecodePixelWidth="800" />
                                          </Image.Source>
                                      </Image>
+                                     <Grid Tag="SkeletonOverlay" IsHitTestVisible="False" Background="#22FFFFFF">
+                                         <Border Width="300"
+                                                 HorizontalAlignment="Left"
+                                                 Loaded="MetadataSkeletonSweep_Loaded"
+                                                 Unloaded="MetadataSkeletonSweep_Unloaded">
+                                             <Border.RenderTransform>
+                                                 <TranslateTransform X="-300" />
+                                             </Border.RenderTransform>
+                                             <Border.Background>
+                                                 <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                     <GradientStop Color="Transparent" Offset="0.0" />
+                                                     <GradientStop Color="#14FFFFFF" Offset="0.24" />
+                                                     <GradientStop Color="#32FFFFFF" Offset="0.50" />
+                                                     <GradientStop Color="#14FFFFFF" Offset="0.76" />
+                                                     <GradientStop Color="Transparent" Offset="1.0" />
+                                                 </LinearGradientBrush>
+                                             </Border.Background>
+                                         </Border>
+                                     </Grid>
                                  </Grid>
                             </Border>
                             
@@ -469,11 +541,34 @@
                                            PointerEntered="MediaCard_PointerEntered"
                                            PointerExited="MediaCard_PointerExited"
                                            SizeChanged="MediaCard_SizeChanged">
-                                         <Image Stretch="UniformToFill">
+                                         <Image Stretch="UniformToFill"
+                                                Opacity="0"
+                                                Loaded="MetadataImage_Loaded"
+                                                ImageOpened="MetadataImage_ImageOpened"
+                                                ImageFailed="MetadataImage_ImageFailed">
                                              <Image.Source>
                                                  <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.OverviewScreenshotUrl2), Mode=OneWay}" DecodePixelWidth="400" />
                                              </Image.Source>
                                      </Image>
+                                     <Grid Tag="SkeletonOverlay" IsHitTestVisible="False" Background="#22FFFFFF">
+                                         <Border Width="220"
+                                                 HorizontalAlignment="Left"
+                                                 Loaded="MetadataSkeletonSweep_Loaded"
+                                                 Unloaded="MetadataSkeletonSweep_Unloaded">
+                                             <Border.RenderTransform>
+                                                 <TranslateTransform X="-220" />
+                                             </Border.RenderTransform>
+                                             <Border.Background>
+                                                 <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                     <GradientStop Color="Transparent" Offset="0.0" />
+                                                     <GradientStop Color="#14FFFFFF" Offset="0.24" />
+                                                     <GradientStop Color="#30FFFFFF" Offset="0.50" />
+                                                     <GradientStop Color="#14FFFFFF" Offset="0.76" />
+                                                     <GradientStop Color="Transparent" Offset="1.0" />
+                                                 </LinearGradientBrush>
+                                             </Border.Background>
+                                         </Border>
+                                     </Grid>
                                      </Grid>
                                 </Border>
                                 
@@ -483,11 +578,34 @@
                                            PointerEntered="MediaCard_PointerEntered"
                                            PointerExited="MediaCard_PointerExited"
                                            SizeChanged="MediaCard_SizeChanged">
-                                         <Image Stretch="UniformToFill">
+                                         <Image Stretch="UniformToFill"
+                                                Opacity="0"
+                                                Loaded="MetadataImage_Loaded"
+                                                ImageOpened="MetadataImage_ImageOpened"
+                                                ImageFailed="MetadataImage_ImageFailed">
                                              <Image.Source>
                                                  <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.OverviewScreenshotUrl3), Mode=OneWay}" DecodePixelWidth="400" />
                                              </Image.Source>
                                          </Image>
+                                         <Grid Tag="SkeletonOverlay" IsHitTestVisible="False" Background="#22FFFFFF">
+                                             <Border Width="220"
+                                                     HorizontalAlignment="Left"
+                                                     Loaded="MetadataSkeletonSweep_Loaded"
+                                                     Unloaded="MetadataSkeletonSweep_Unloaded">
+                                                 <Border.RenderTransform>
+                                                     <TranslateTransform X="-220" />
+                                                 </Border.RenderTransform>
+                                                 <Border.Background>
+                                                     <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                         <GradientStop Color="Transparent" Offset="0.0" />
+                                                         <GradientStop Color="#14FFFFFF" Offset="0.24" />
+                                                         <GradientStop Color="#30FFFFFF" Offset="0.50" />
+                                                         <GradientStop Color="#14FFFFFF" Offset="0.76" />
+                                                         <GradientStop Color="Transparent" Offset="1.0" />
+                                                     </LinearGradientBrush>
+                                                 </Border.Background>
+                                             </Border>
+                                         </Grid>
                                      </Grid>
                                 </Border>
                             </Grid>
@@ -541,11 +659,34 @@
                                     PointerEntered="MediaCard_PointerEntered"
                                     PointerExited="MediaCard_PointerExited"
                                     SizeChanged="MediaCard_SizeChanged">
-                                    <Image Stretch="UniformToFill">
+                                    <Image Stretch="UniformToFill"
+                                           Opacity="0"
+                                           Loaded="MetadataImage_Loaded"
+                                           ImageOpened="MetadataImage_ImageOpened"
+                                           ImageFailed="MetadataImage_ImageFailed">
                                         <Image.Source>
                                             <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.PostAboutScreenshotUrl1), Mode=OneWay}" DecodePixelWidth="1600" />
                                         </Image.Source>
                                     </Image>
+                                    <Grid Tag="SkeletonOverlay" IsHitTestVisible="False" Background="#22FFFFFF">
+                                        <Border Width="300"
+                                                HorizontalAlignment="Left"
+                                                Loaded="MetadataSkeletonSweep_Loaded"
+                                                Unloaded="MetadataSkeletonSweep_Unloaded">
+                                            <Border.RenderTransform>
+                                                <TranslateTransform X="-300" />
+                                            </Border.RenderTransform>
+                                            <Border.Background>
+                                                <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                    <GradientStop Color="Transparent" Offset="0.0" />
+                                                    <GradientStop Color="#14FFFFFF" Offset="0.24" />
+                                                    <GradientStop Color="#32FFFFFF" Offset="0.50" />
+                                                    <GradientStop Color="#14FFFFFF" Offset="0.76" />
+                                                    <GradientStop Color="Transparent" Offset="1.0" />
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                        </Border>
+                                    </Grid>
                                 </Grid>
                             </Border>
 
@@ -567,11 +708,34 @@
                                         PointerEntered="MediaCard_PointerEntered"
                                         PointerExited="MediaCard_PointerExited"
                                         SizeChanged="MediaCard_SizeChanged">
-                                        <Image Stretch="UniformToFill">
+                                        <Image Stretch="UniformToFill"
+                                               Opacity="0"
+                                               Loaded="MetadataImage_Loaded"
+                                               ImageOpened="MetadataImage_ImageOpened"
+                                               ImageFailed="MetadataImage_ImageFailed">
                                             <Image.Source>
                                                 <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.PostAboutScreenshotUrl1), Mode=OneWay}" DecodePixelWidth="1200" />
                                             </Image.Source>
                                         </Image>
+                                        <Grid Tag="SkeletonOverlay" IsHitTestVisible="False" Background="#22FFFFFF">
+                                            <Border Width="240"
+                                                    HorizontalAlignment="Left"
+                                                    Loaded="MetadataSkeletonSweep_Loaded"
+                                                    Unloaded="MetadataSkeletonSweep_Unloaded">
+                                                <Border.RenderTransform>
+                                                    <TranslateTransform X="-240" />
+                                                </Border.RenderTransform>
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                        <GradientStop Color="Transparent" Offset="0.0" />
+                                                        <GradientStop Color="#14FFFFFF" Offset="0.24" />
+                                                        <GradientStop Color="#30FFFFFF" Offset="0.50" />
+                                                        <GradientStop Color="#14FFFFFF" Offset="0.76" />
+                                                        <GradientStop Color="Transparent" Offset="1.0" />
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                            </Border>
+                                        </Grid>
                                     </Grid>
                                 </Border>
 
@@ -582,11 +746,34 @@
                                         PointerEntered="MediaCard_PointerEntered"
                                         PointerExited="MediaCard_PointerExited"
                                         SizeChanged="MediaCard_SizeChanged">
-                                        <Image Stretch="UniformToFill">
+                                        <Image Stretch="UniformToFill"
+                                               Opacity="0"
+                                               Loaded="MetadataImage_Loaded"
+                                               ImageOpened="MetadataImage_ImageOpened"
+                                               ImageFailed="MetadataImage_ImageFailed">
                                             <Image.Source>
                                                 <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.PostAboutScreenshotUrl2), Mode=OneWay}" DecodePixelWidth="1600" />
                                             </Image.Source>
                                         </Image>
+                                        <Grid Tag="SkeletonOverlay" IsHitTestVisible="False" Background="#22FFFFFF">
+                                            <Border Width="260"
+                                                    HorizontalAlignment="Left"
+                                                    Loaded="MetadataSkeletonSweep_Loaded"
+                                                    Unloaded="MetadataSkeletonSweep_Unloaded">
+                                                <Border.RenderTransform>
+                                                    <TranslateTransform X="-260" />
+                                                </Border.RenderTransform>
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                        <GradientStop Color="Transparent" Offset="0.0" />
+                                                        <GradientStop Color="#14FFFFFF" Offset="0.24" />
+                                                        <GradientStop Color="#30FFFFFF" Offset="0.50" />
+                                                        <GradientStop Color="#14FFFFFF" Offset="0.76" />
+                                                        <GradientStop Color="Transparent" Offset="1.0" />
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                            </Border>
+                                        </Grid>
                                     </Grid>
                                 </Border>
                             </Grid>
@@ -614,11 +801,34 @@
                                         PointerEntered="MediaCard_PointerEntered"
                                         PointerExited="MediaCard_PointerExited"
                                         SizeChanged="MediaCard_SizeChanged">
-                                        <Image Stretch="UniformToFill">
+                                        <Image Stretch="UniformToFill"
+                                               Opacity="0"
+                                               Loaded="MetadataImage_Loaded"
+                                               ImageOpened="MetadataImage_ImageOpened"
+                                               ImageFailed="MetadataImage_ImageFailed">
                                             <Image.Source>
                                                 <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.PostAboutScreenshotUrl1), Mode=OneWay}" DecodePixelWidth="700" />
                                             </Image.Source>
                                         </Image>
+                                        <Grid Tag="SkeletonOverlay" IsHitTestVisible="False" Background="#22FFFFFF">
+                                            <Border Width="210"
+                                                    HorizontalAlignment="Left"
+                                                    Loaded="MetadataSkeletonSweep_Loaded"
+                                                    Unloaded="MetadataSkeletonSweep_Unloaded">
+                                                <Border.RenderTransform>
+                                                    <TranslateTransform X="-210" />
+                                                </Border.RenderTransform>
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                        <GradientStop Color="Transparent" Offset="0.0" />
+                                                        <GradientStop Color="#14FFFFFF" Offset="0.24" />
+                                                        <GradientStop Color="#2EFFFFFF" Offset="0.50" />
+                                                        <GradientStop Color="#14FFFFFF" Offset="0.76" />
+                                                        <GradientStop Color="Transparent" Offset="1.0" />
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                            </Border>
+                                        </Grid>
                                     </Grid>
                                 </Border>
 
@@ -629,11 +839,34 @@
                                         PointerEntered="MediaCard_PointerEntered"
                                         PointerExited="MediaCard_PointerExited"
                                         SizeChanged="MediaCard_SizeChanged">
-                                        <Image Stretch="UniformToFill">
+                                        <Image Stretch="UniformToFill"
+                                               Opacity="0"
+                                               Loaded="MetadataImage_Loaded"
+                                               ImageOpened="MetadataImage_ImageOpened"
+                                               ImageFailed="MetadataImage_ImageFailed">
                                             <Image.Source>
                                                 <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.PostAboutScreenshotUrl2), Mode=OneWay}" DecodePixelWidth="700" />
                                             </Image.Source>
                                         </Image>
+                                        <Grid Tag="SkeletonOverlay" IsHitTestVisible="False" Background="#22FFFFFF">
+                                            <Border Width="210"
+                                                    HorizontalAlignment="Left"
+                                                    Loaded="MetadataSkeletonSweep_Loaded"
+                                                    Unloaded="MetadataSkeletonSweep_Unloaded">
+                                                <Border.RenderTransform>
+                                                    <TranslateTransform X="-210" />
+                                                </Border.RenderTransform>
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                        <GradientStop Color="Transparent" Offset="0.0" />
+                                                        <GradientStop Color="#14FFFFFF" Offset="0.24" />
+                                                        <GradientStop Color="#2EFFFFFF" Offset="0.50" />
+                                                        <GradientStop Color="#14FFFFFF" Offset="0.76" />
+                                                        <GradientStop Color="Transparent" Offset="1.0" />
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                            </Border>
+                                        </Grid>
                                     </Grid>
                                 </Border>
 
@@ -644,11 +877,34 @@
                                         PointerEntered="MediaCard_PointerEntered"
                                         PointerExited="MediaCard_PointerExited"
                                         SizeChanged="MediaCard_SizeChanged">
-                                        <Image Stretch="UniformToFill">
+                                        <Image Stretch="UniformToFill"
+                                               Opacity="0"
+                                               Loaded="MetadataImage_Loaded"
+                                               ImageOpened="MetadataImage_ImageOpened"
+                                               ImageFailed="MetadataImage_ImageFailed">
                                             <Image.Source>
                                                 <BitmapImage UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.PostAboutScreenshotUrl3), Mode=OneWay}" DecodePixelWidth="1400" />
                                             </Image.Source>
                                         </Image>
+                                        <Grid Tag="SkeletonOverlay" IsHitTestVisible="False" Background="#22FFFFFF">
+                                            <Border Width="280"
+                                                    HorizontalAlignment="Left"
+                                                    Loaded="MetadataSkeletonSweep_Loaded"
+                                                    Unloaded="MetadataSkeletonSweep_Unloaded">
+                                                <Border.RenderTransform>
+                                                    <TranslateTransform X="-280" />
+                                                </Border.RenderTransform>
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                        <GradientStop Color="Transparent" Offset="0.0" />
+                                                        <GradientStop Color="#14FFFFFF" Offset="0.24" />
+                                                        <GradientStop Color="#30FFFFFF" Offset="0.50" />
+                                                        <GradientStop Color="#14FFFFFF" Offset="0.76" />
+                                                        <GradientStop Color="Transparent" Offset="1.0" />
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                            </Border>
+                                        </Grid>
                                     </Grid>
                                 </Border>
                             </Grid>
@@ -942,13 +1198,38 @@
                     BorderBrush="#40FFFFFF"
                     BorderThickness="1"
                     Background="#22000000">
-                    <Image Stretch="UniformToFill">
-                        <Image.Source>
-                            <BitmapImage
-                                UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.GameIconUrl), Mode=OneWay}"
-                                DecodePixelWidth="80" />
-                        </Image.Source>
-                    </Image>
+                    <Grid>
+                        <Image Stretch="UniformToFill"
+                               Opacity="0"
+                               Loaded="MetadataImage_Loaded"
+                               ImageOpened="MetadataImage_ImageOpened"
+                               ImageFailed="MetadataImage_ImageFailed">
+                            <Image.Source>
+                                <BitmapImage
+                                    UriSource="{x:Bind local:GameDetailPage.SafeUri(ViewModel.GameIconUrl), Mode=OneWay}"
+                                    DecodePixelWidth="80" />
+                            </Image.Source>
+                        </Image>
+                        <Grid Tag="SkeletonOverlay" IsHitTestVisible="False" Background="#22FFFFFF">
+                            <Border Width="26"
+                                    HorizontalAlignment="Left"
+                                    Loaded="MetadataSkeletonSweep_Loaded"
+                                    Unloaded="MetadataSkeletonSweep_Unloaded">
+                                <Border.RenderTransform>
+                                    <TranslateTransform X="-26" />
+                                </Border.RenderTransform>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                        <GradientStop Color="Transparent" Offset="0.0" />
+                                        <GradientStop Color="#14FFFFFF" Offset="0.24" />
+                                        <GradientStop Color="#34FFFFFF" Offset="0.50" />
+                                        <GradientStop Color="#14FFFFFF" Offset="0.76" />
+                                        <GradientStop Color="Transparent" Offset="1.0" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                        </Grid>
+                    </Grid>
                 </Border>
 
                 <TextBlock x:Name="HeroTitleText"
