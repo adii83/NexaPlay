@@ -377,14 +377,16 @@
                         Visibility="{x:Bind local:BypassGameDetailPage.BoolToVis(ViewModel.ShowThirdPartySection), Mode=OneWay}"
                         Spacing="0">
 
-                        <!-- Title: separate from 2-col grid so it always renders above cards -->
-                        <TextBlock
-                            Text="Mohon Dibaca Sebentar!!"
-                            Foreground="{ThemeResource NexaTextPrimaryBrush}"
-                            FontSize="20"
-                            FontWeight="SemiBold"
-                            CharacterSpacing="-10"
-                            Margin="0,24,0,16" />
+                        <!-- 3rd Party Bypass Section -->
+                        <StackPanel Visibility="{x:Bind local:BypassGameDetailPage.BoolToVis(ViewModel.ShowThirdPartySection), Mode=OneWay}">
+                            <!-- Title: separate from 2-col grid so it always renders above cards -->
+                            <TextBlock
+                                Text="Mohon Dibaca Sebentar!!"
+                                Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                CharacterSpacing="-10"
+                                Margin="0,24,0,16" />
 
                         <!-- 2-column: left=cards+button, right=cover art -->
                         <Grid ColumnSpacing="28">
@@ -639,7 +641,104 @@
                                 </Grid>
                             </Border>
                         </Grid>
+                        </StackPanel>
                     </StackPanel>
+
+                    <!-- STEAM SHARING SECTION -->
+                        <StackPanel Grid.Row="2" Visibility="{x:Bind local:BypassGameDetailPage.BoolToVis(ViewModel.ShowSteamSection), Mode=OneWay}" Spacing="24" Margin="0,24,0,0">
+                            <Grid ColumnSpacing="28">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="3*" /> <!-- Account & Video -->
+                                    <ColumnDefinition Width="4*" /> <!-- Instructions -->
+                                </Grid.ColumnDefinitions>
+
+                                <!-- LEFT: Account Info & Video -->
+                                <StackPanel Grid.Column="0" Spacing="16">
+                                    <TextBlock Text="Informasi Akun" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="20" FontWeight="SemiBold" CharacterSpacing="-10" />
+                                    
+                                    <Border Background="#141414" BorderBrush="#2E2E2E" BorderThickness="1" CornerRadius="12" Padding="18">
+                                        <StackPanel Spacing="16">
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Text="Username" Foreground="#C8C8C8" FontSize="13" />
+                                                <Grid ColumnSpacing="8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Grid.Column="0" Text="{x:Bind ViewModel.SteamUsername, Mode=OneWay}" IsReadOnly="True" Background="#0A0A0A" BorderBrush="#33FFFFFF" Foreground="#FFFFFF" />
+                                                    <Button Grid.Column="1" Command="{x:Bind ViewModel.CopySteamUsernameCommand}" Content="Copy" Style="{StaticResource AccentButtonStyle}" Background="#FFFFFF" Foreground="#000000" />
+                                                </Grid>
+                                            </StackPanel>
+
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Text="Password" Foreground="#C8C8C8" FontSize="13" />
+                                                <Grid ColumnSpacing="8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Grid.Column="0" Text="{x:Bind ViewModel.SteamPassword, Mode=OneWay}" IsReadOnly="True" Background="#0A0A0A" BorderBrush="#33FFFFFF" Foreground="#FFFFFF" />
+                                                    <Button Grid.Column="1" Command="{x:Bind ViewModel.CopySteamPasswordCommand}" Content="Copy" Style="{StaticResource AccentButtonStyle}" Background="#FFFFFF" Foreground="#000000" />
+                                                </Grid>
+                                            </StackPanel>
+
+                                            <TextBlock Text="Jika akun tidak berhasil login harap segera hubungi admin!!" Foreground="#C8C8C8" FontWeight="Bold" FontSize="13" TextWrapping="WrapWholeWords" />
+                                            
+                                            <Button Command="{x:Bind ViewModel.ReportAccountCommand}" Content="Laporkan Akun" HorizontalAlignment="Stretch" Background="#141414" BorderBrush="#33FFFFFF" Foreground="#FFFFFF" />
+                                        </StackPanel>
+                                    </Border>
+                                    
+                                    <!-- Video Embed -->
+                                    <Border CornerRadius="12" BorderBrush="#2E2E2E" BorderThickness="1" Background="#141414" Height="240" Margin="0,8,0,0">
+                                        <Grid x:Name="TutorialVideoContainer">
+                                            <!-- WebView2 is hidden by default to save RAM -->
+                                            <WebView2 x:Name="TutorialWebView" Visibility="Collapsed" DefaultBackgroundColor="Black" />
+                                            
+                                            <!-- Thumbnail Overlay for Performance -->
+                                            <Grid x:Name="TutorialThumbnailOverlay" Background="Black" Tapped="TutorialThumbnail_Tapped" CornerRadius="11">
+                                                <Image Source="https://img.youtube.com/vi/lkETeFanN7c/maxresdefault.jpg" Stretch="UniformToFill" Opacity="0.75" />
+                                                <Border Background="#CC000000" CornerRadius="30" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <FontIcon Glyph="&#xE768;" FontSize="24" Foreground="#FFFFFF" Margin="4,0,0,0" />
+                                                </Border>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- RIGHT: Instructions -->
+                                <StackPanel Grid.Column="1" Spacing="16">
+                                    <TextBlock Text="Instruksi Penggunaan" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="20" FontWeight="SemiBold" CharacterSpacing="-10" />
+                                    
+                                    <Border Background="#141414" BorderBrush="#2E2E2E" BorderThickness="1" CornerRadius="12" Padding="20">
+                                        <StackPanel Spacing="16">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <FontIcon Glyph="&#xE7BA;" FontFamily="Segoe Fluent Icons" Foreground="#FFFFFF" FontSize="16" />
+                                                <TextBlock Text="Mohon Dibaca Sampai Tuntas Demi Kenyamanan Bersama" Foreground="#FFFFFF" FontSize="14.5" FontWeight="SemiBold" />
+                                            </StackPanel>
+                                            <TextBlock Foreground="#C8C8C8" FontSize="13.5" TextWrapping="WrapWholeWords" Margin="0,0,0,4">
+                                                <Run Text="Catatan:" FontWeight="Bold" Foreground="#FFFFFF" />
+                                                <Run Text=" Game bisa dimainkan di akun pribadi kalian masing-masing. Gunakan akun ini sebagai akun pancingan seperti di video tutorial." />
+                                            </TextBlock>
+
+                                            <StackPanel Spacing="12">
+                                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#FFFFFF" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"><TextBlock Text="1" Foreground="#000000" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="Login ke akun Steam tersebut menggunakan username dan password yang sudah di-copy." Foreground="#FFFFFF" FontSize="13.5" TextWrapping="WrapWholeWords" VerticalAlignment="Center" /></Grid>
+                                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#FFFFFF" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"><TextBlock Text="2" Foreground="#000000" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="Jangan lupa centang Remember Me." Foreground="#FFFFFF" FontSize="13.5" TextWrapping="WrapWholeWords" VerticalAlignment="Center" /></Grid>
+                                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#FFFFFF" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"><TextBlock Text="3" Foreground="#000000" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="Cek apakah ada game yang sesuai di library akun tersebut." Foreground="#FFFFFF" FontSize="13.5" TextWrapping="WrapWholeWords" VerticalAlignment="Center" /></Grid>
+                                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#FFFFFF" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"><TextBlock Text="4" Foreground="#000000" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="Jika ada game, logout dan kembali ke akun pribadi kalian." Foreground="#FFFFFF" FontSize="13.5" TextWrapping="WrapWholeWords" VerticalAlignment="Center" /></Grid>
+                                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#FFFFFF" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"><TextBlock Text="5" Foreground="#000000" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="Add game tersebut ke library akun pribadi kalian terlebih dahulu." Foreground="#FFFFFF" FontSize="13.5" TextWrapping="WrapWholeWords" VerticalAlignment="Center" /></Grid>
+                                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#FFFFFF" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"><TextBlock Text="6" Foreground="#000000" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="Download game seperti biasa di akun pribadi kalian." Foreground="#FFFFFF" FontSize="13.5" TextWrapping="WrapWholeWords" VerticalAlignment="Center" /></Grid>
+                                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#FFFFFF" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"><TextBlock Text="7" Foreground="#000000" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="Setelah download selesai, login kembali ke akun Steam tersebut." Foreground="#FFFFFF" FontSize="13.5" TextWrapping="WrapWholeWords" VerticalAlignment="Center" /></Grid>
+                                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#FFFFFF" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"><TextBlock Text="8" Foreground="#000000" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="Jalankan game dari akun tersebut." Foreground="#FFFFFF" FontSize="13.5" TextWrapping="WrapWholeWords" VerticalAlignment="Center" /></Grid>
+                                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#FFFFFF" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"><TextBlock Text="9" Foreground="#000000" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="Biarkan game berjalan sampai masuk ke menu utama game." Foreground="#FFFFFF" FontSize="13.5" TextWrapping="WrapWholeWords" VerticalAlignment="Center" /></Grid>
+                                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#FFFFFF" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"><TextBlock Text="10" Foreground="#000000" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="Setelah masuk menu utama, tutup game dengan menekan Alt + F4." Foreground="#FFFFFF" FontSize="13.5" TextWrapping="WrapWholeWords" VerticalAlignment="Center" /></Grid>
+                                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#FFFFFF" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"><TextBlock Text="11" Foreground="#000000" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="Logout dari akun tersebut dan kembali ke akun pribadi kalian." Foreground="#FFFFFF" FontSize="13.5" TextWrapping="WrapWholeWords" VerticalAlignment="Center" /></Grid>
+                                                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Background="#FFFFFF" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"><TextBlock Text="12" Foreground="#000000" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="Mainkan game dari akun pribadi kalian seperti biasa." Foreground="#FFFFFF" FontSize="13.5" TextWrapping="WrapWholeWords" VerticalAlignment="Center" /></Grid>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
 
                     <!-- Default (No Aktivasi Offline) Section removed duplicate -->
                 </Grid>

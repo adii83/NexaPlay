@@ -733,3 +733,24 @@ Tanggal:
 
 
 
+
+### 2026-05-27 (Batch : Implementasi UI Steam Sharing)
+- Fokus: Menambahkan tampilan khusus untuk "Steam Sharing" (Akun Steam) di dalam BypassGameDetailPage untuk mengakomodasi instruksi panjang.
+- Perubahan:
+  - FixEntry.cs: Menambahkan properti Username.
+  - BypassGamesDataService.cs: Memperbarui ParseFixGamesJson dan ParseSteamGamesJson untuk mengekstrak field username.
+  - BypassGameDetailViewModel.cs: Menambahkan logika ShowSteamSection, mapping SteamUsername / SteamPassword, serta implementasi command untuk *Copy* data dan ReportAccountCommand.
+  - BypassGameDetailPage.xaml: Membungkus section bypass 3rd party sebelumnya dan menambahkan <StackPanel> baru khusus untuk ShowSteamSection.
+  - BypassGameDetailPage.xaml: Mendesain grid informasi akun dan integrasi YouTube dengan WebView2 di kolom kiri, serta layout grid numbering instruksi (1-12) panjang yang tertata rapi di kolom kanan.
+  - Memperbaiki parsing tag </Grid> yang tertinggal dan menghapus properti invalid ClipToBounds pada tag XAML.
+- Build: Build Succeeded, 0 Error(s).
+- Next: Implementasi tombol "Mulai Bypass" untuk akun yang bukan steam sharing (action command) dan penyelesaian integrasi metadata library capsule cover.
+
+### 2026-05-27 (Batch : Fix UI Steam Account & YouTube Embed Performance)
+- Fokus: Memperbaiki binding UI dan performa video YouTube khusus untuk game tipe "Akun Steam" (tanpa badge Steam Sharing) dan Cover Art 3rd Party.
+- Perubahan:
+  - BypassGameDetailViewModel.cs: Menambahkan pemanggilan OnPropertyChanged(nameof(CoverArtUrl)) yang tertinggal sehingga *Cover Art* (library capsule) pada section "Mohon Dibaca Sebentar" (3rd Party) dan section lainnya sekarang muncul dengan benar seperti pada page Bypass.
+  - BypassGameDetailPage.xaml: Mengganti WebView2 YouTube yang me-load langsung menjadi strategi *Click-to-Play* (Thumbnail overlay dengan ikon *Play*) demi menjaga performa aplikasi agar tidak lemot saat halaman dibuka.
+  - BypassGameDetailPage.xaml.cs: Menambahkan event handler TutorialThumbnail_Tapped yang secara dinamis melakukan inisialisasi EnsureCoreWebView2Async() dan memuat URL YouTube hanya saat pengguna menekan tombol Play pada thumbnail.
+- Build: Build Succeeded, 0 Error(s).
+- Next: Menunggu validasi user, lalu lanjut ke pembuatan fungsi aksi tombol "Mulai Bypass".

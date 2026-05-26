@@ -255,6 +255,7 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
                     var pub      = g.TryGetProperty("publisher",  out var p)   ? p.GetString()   ?? "" : "";
                     var catStr   = g.TryGetProperty("category",   out var c)   ? c.GetString()   ?? "" : "";
                     var poster   = g.TryGetProperty("poster",     out var po)  ? po.GetString()  : null;
+                    var username = g.TryGetProperty("username",   out var un)  ? un.GetString()  : null;
                     var password = g.TryGetProperty("password",   out var pw)  ? pw.GetString()  : null;
                     var premium  = g.TryGetProperty("premium",    out var pr)  && pr.GetBoolean();
                     var offline  = g.TryGetProperty("aktivasi_offline", out var aof) && aof.GetBoolean();
@@ -291,7 +292,7 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
                     list.Add(new FixEntry
                     {
                         AppId = appId, Title = title, Publisher = pub, Category = category,
-                        PosterUrl = poster, Password = password, IsPremium = premium,
+                        PosterUrl = poster, Username = username, Password = password, IsPremium = premium,
                         AktivasiOffline = offline, ExeHint = exeHint, UseShortcut = shortcut, Files = files
                     });
                 }
@@ -328,12 +329,14 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
                     if (!g.TryGetProperty("appid",    out var aidProp))  continue;
                     if (!g.TryGetProperty("title",    out var titleProp)) continue;
                     if (!g.TryGetProperty("poster",   out var postProp))  continue;
+                    if (!g.TryGetProperty("username", out var unProp))    continue;
                     if (!g.TryGetProperty("password", out var pwProp))    continue;
 
                     var appId    = aidProp.ValueKind == JsonValueKind.Number ? aidProp.GetInt32()
                                   : int.TryParse(aidProp.GetString(), out var p) ? p : 0;
                     var title    = titleProp.GetString() ?? "";
                     var poster   = postProp.GetString();
+                    var username = unProp.GetString();
                     var password = pwProp.GetString();
                     var pub      = g.TryGetProperty("publisher", out var pubProp) ? pubProp.GetString() ?? "" : "";
                     var premium  = g.TryGetProperty("premium",   out var prProp)  && prProp.GetBoolean();
@@ -349,7 +352,7 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
                     list.Add(new FixEntry
                     {
                         AppId = appId, Title = title, Publisher = pub, Category = category,
-                        PosterUrl = poster, Password = password, IsPremium = premium,
+                        PosterUrl = poster, Username = username, Password = password, IsPremium = premium,
                         AktivasiOffline = offline, Files = Array.Empty<FixFile>()
                     });
                 }

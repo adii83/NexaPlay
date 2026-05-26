@@ -368,6 +368,21 @@ public sealed partial class BypassGameDetailPage : Page
         // For now, the Lanjut Bypass button just acts like a close button
     }
 
+    private async void TutorialThumbnail_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        if (TutorialThumbnailOverlay != null && TutorialWebView != null)
+        {
+            TutorialThumbnailOverlay.Visibility = Visibility.Collapsed;
+            TutorialWebView.Visibility = Visibility.Visible;
+            try
+            {
+                await TutorialWebView.EnsureCoreWebView2Async();
+                TutorialWebView.Source = new Uri("https://www.youtube.com/embed/lkETeFanN7c?autoplay=1");
+            }
+            catch { }
+        }
+    }
+
     public static Visibility BoolToVis(bool v) =>
         v ? Visibility.Visible : Visibility.Collapsed;
 

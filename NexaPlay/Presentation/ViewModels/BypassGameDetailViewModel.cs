@@ -43,6 +43,10 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     public bool ShowAktivasiOfflineBadge => BypassEntry?.AktivasiOffline == true;
     public bool ShowSteamSharingBadge => BypassEntry?.Category == GameCategory.SteamSharing;
     public bool ShowThirdPartySection => BypassEntry is not null && !BypassEntry.IsSteamType;
+    public bool ShowSteamSection => BypassEntry is not null && BypassEntry.IsSteamType;
+
+    public string SteamUsername => BypassEntry?.Username ?? string.Empty;
+    public string SteamPassword => BypassEntry?.Password ?? string.Empty;
 
     private int _loadVersion;
 
@@ -133,6 +137,12 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
                 : !string.IsNullOrWhiteSpace(Game?.HeaderImageUrl) ? Game.HeaderImageUrl
                 : appId > 0 ? $"https://steamcdn-a.akamaihd.net/steam/apps/{appId}/library_600x900_2x.jpg"
                 : string.Empty;
+
+            OnPropertyChanged(nameof(CoverArtUrl));
+            OnPropertyChanged(nameof(ShowSteamSection));
+            OnPropertyChanged(nameof(ShowThirdPartySection));
+            OnPropertyChanged(nameof(SteamUsername));
+            OnPropertyChanged(nameof(SteamPassword));
         }
         finally
         {
@@ -149,6 +159,36 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         // Placeholder action for the default/no-status layout stage.
         // Final bypass execution flow can be wired in the next batch.
         _log.Log("BypassDetail", $"StartBypassGame clicked for appid={Game?.AppId}");
+    }
+
+    [RelayCommand]
+    private void CopySteamUsername()
+    {
+        if (!string.IsNullOrEmpty(SteamUsername))
+        {
+            var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            dataPackage.SetText(SteamUsername);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+        }
+    }
+
+    [RelayCommand]
+    private void CopySteamPassword()
+    {
+        if (!string.IsNullOrEmpty(SteamPassword))
+        {
+            var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            dataPackage.SetText(SteamPassword);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+        }
+    }
+
+    [RelayCommand]
+    private async Task ReportAccountAsync()
+    {
+        // Navigasi ke tautan pelaporan / WhatsApp admin
+        var uri = new Uri("https://wa.me/6281234567890?text=Lapor%20akun%20bermasalah%20di%20Game:%20" + Uri.EscapeDataString(BypassEntry?.Title ?? "Unknown"));
+        await Windows.System.Launcher.LaunchUriAsync(uri);
     }
 
     private static IReadOnlyList<string> BuildGenreTags(string? rawGenre)
