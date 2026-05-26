@@ -8,7 +8,167 @@
     mc:Ignorable="d"
     Background="#080808">
 
-    <Grid>
-        <TextBlock Text="Settings Page" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-    </Grid>
+    <ScrollViewer Padding="56,40,56,80">
+        <StackPanel Spacing="32" MaxWidth="1000" HorizontalAlignment="Left">
+            
+            <!-- License Information -->
+            <StackPanel Spacing="16">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <FontIcon Glyph="&#xE8D7;" FontSize="20" Foreground="#FFFFFF" />
+                    <TextBlock Text="LICENSE INFORMATION" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                </StackPanel>
+
+                <Grid Background="#111111" BorderBrush="#222222" BorderThickness="1" CornerRadius="8" Padding="24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Plan -->
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Plan" Foreground="#A0A0A0" VerticalAlignment="Center" Margin="0,0,0,16"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Premium" Foreground="#FFFFFF" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,0,16"/>
+
+                    <!-- License Key -->
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="License Key" Foreground="#A0A0A0" VerticalAlignment="Center" Margin="0,0,0,16"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="GHUB-5RO...TYE-SADQ" Foreground="#FFFFFF" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,0,16"/>
+                    <Button Grid.Row="1" Grid.Column="2" Background="Transparent" BorderThickness="0" Padding="8" Margin="0,0,0,16" ToolTipService.ToolTip="Copy License Key">
+                        <FontIcon Glyph="&#xE8C8;" FontSize="14" Foreground="#FFFFFF"/>
+                    </Button>
+
+                    <!-- Device ID -->
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Device ID" Foreground="#A0A0A0" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="387531f4981c42e811eb836f1b4401f0d2ac22b1c7f60654e8e5a888d7396923" Foreground="#FFFFFF" FontFamily="Consolas" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                    <Button Grid.Row="2" Grid.Column="2" Background="Transparent" BorderThickness="0" Padding="8" ToolTipService.ToolTip="Copy Device ID">
+                        <FontIcon Glyph="&#xE8C8;" FontSize="14" Foreground="#FFFFFF"/>
+                    </Button>
+                </Grid>
+            </StackPanel>
+
+            <!-- Actions -->
+            <StackPanel Spacing="16">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <FontIcon Glyph="&#xE713;" FontSize="20" Foreground="#FFFFFF" />
+                    <TextBlock Text="ACTIONS" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                    <Button Background="#111111" BorderBrush="#333333" BorderThickness="1" Foreground="#FFFFFF" CornerRadius="4" Padding="16,10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE72C;" FontSize="14" />
+                            <TextBlock Text="Load Games" />
+                        </StackPanel>
+                    </Button>
+                    <Button Background="#111111" BorderBrush="#333333" BorderThickness="1" Foreground="#FFFFFF" CornerRadius="4" Padding="16,10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xEA99;" FontSize="14" />
+                            <TextBlock Text="Clear Cache" />
+                        </StackPanel>
+                    </Button>
+                    <Button Background="#111111" BorderBrush="#333333" BorderThickness="1" Foreground="#FFFFFF" CornerRadius="4" Padding="16,10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE74D;" FontSize="14" />
+                            <TextBlock Text="Clear Data" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Application Update -->
+            <StackPanel Spacing="16">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <FontIcon Glyph="&#xE895;" FontSize="20" Foreground="#FFFFFF" />
+                    <TextBlock Text="APPLICATION UPDATE" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                </StackPanel>
+
+                <Grid Background="#111111" BorderBrush="#222222" BorderThickness="1" CornerRadius="8" Padding="24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,24">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <FontIcon Glyph="&#xE73E;" FontSize="16" Foreground="#FFFFFF" />
+                            <TextBlock Text="Up to date" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                        </StackPanel>
+                        <TextBlock Text="Sudah menggunakan versi terbaru. Terakhir dicek pada 27 May 2026, 02:23." Foreground="#A0A0A0" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <Grid Grid.Row="1" Margin="0,0,0,24">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="64"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="64"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Current Version" Foreground="#A0A0A0" FontSize="12" Margin="0,0,0,4"/>
+                            <TextBlock Text="v2.0.1.0" Foreground="#FFFFFF" FontWeight="SemiBold"/>
+                        </StackPanel>
+                        
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Latest Version" Foreground="#A0A0A0" FontSize="12" Margin="0,0,0,4"/>
+                            <TextBlock Text="v2.0.1" Foreground="#FFFFFF" FontWeight="SemiBold"/>
+                        </StackPanel>
+                        
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="Last Checked" Foreground="#A0A0A0" FontSize="12" Margin="0,0,0,4"/>
+                            <TextBlock Text="27 May 2026, 02:23" Foreground="#FFFFFF" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Grid.Row="2" Spacing="16">
+                        <TextBlock Text="Release Notes" Foreground="#FFFFFF" FontWeight="SemiBold"/>
+                        <StackPanel Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="&#x2022;" Foreground="#A0A0A0"/>
+                                <TextBlock Text="Perbaikan: Alur Steam Account pada Fix Games lebih stabil" Foreground="#A0A0A0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="&#x2022;" Foreground="#A0A0A0"/>
+                                <TextBlock Text="Penambahan: Kategori Steam Sharing dipisah dari Steam Account" Foreground="#A0A0A0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="&#x2022;" Foreground="#A0A0A0"/>
+                                <TextBlock Text="Perbaikan: Badge dan detail game disesuaikan per kategori" Foreground="#A0A0A0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="&#x2022;" Foreground="#A0A0A0"/>
+                                <TextBlock Text="Perbaikan: Notifikasi update dan cek update lebih konsisten" Foreground="#A0A0A0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="&#x2022;" Foreground="#A0A0A0"/>
+                                <TextBlock Text="Peningkatan: Stabilitas desktop bridge dan WebView" Foreground="#A0A0A0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,16,0,0">
+                            <Button Background="#FFFFFF" BorderThickness="0" Foreground="#000000" CornerRadius="4" Padding="16,10">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE721;" FontSize="14" Foreground="#000000" />
+                                    <TextBlock Text="Check for Updates" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+                            <Button Background="#111111" BorderBrush="#333333" BorderThickness="1" Foreground="#FFFFFF" CornerRadius="4" Padding="16,10">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE896;" FontSize="14" Foreground="#FFFFFF" />
+                                    <TextBlock Text="Install Update" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
 </Page>

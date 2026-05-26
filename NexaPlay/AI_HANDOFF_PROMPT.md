@@ -332,6 +332,15 @@ Tanggal:
 - Next:
 ```
 
+### 2026-05-27 (Batch : UI Settings Page)
+- Fokus: UI Settings Page
+- Perubahan: 
+  - Mengganti layout `SettingsPage.xaml` menjadi desain monokrom (*clean enterprise theme*) sesuai aturan UI NexaPlay tanpa menggunakan emoji.
+  - Menerapkan data *dummy* secara *hardcode* dalam XAML untuk bagian *License Information*, *Actions*, dan *Application Update* tanpa menyentuh struktur backend.
+  - Menggunakan ikon-ikon native Segoe Fluent (`FontIcon`) yang mewakili masing-masing aksi dan kategori data dengan elegan.
+- Build: Pass (0 Error, 0 Warning)
+- Next: Menyambungkan *fields dummy* pada *Settings Page* ke data backend atau menunggu instruksi page selanjutnya.
+
 ### 2026-05-27 (Batch : Perbaikan Detail UI Steam Sharing & Error Video)
 - Fokus: Memperbaiki UI pada section Steam Sharing yang tidak sesuai instruksi dan memperbaiki masalah pemutaran YouTube (Error 153).
 - Perubahan: 
