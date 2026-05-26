@@ -44,9 +44,15 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     public bool ShowSteamSharingBadge => BypassEntry?.Category == GameCategory.SteamSharing;
     public bool ShowThirdPartySection => BypassEntry is not null && !BypassEntry.IsSteamType;
     public bool ShowSteamSection => BypassEntry is not null && BypassEntry.IsSteamType;
+    public bool ShowDapatkanKode => BypassEntry?.DapatkanKode == true;
 
     public string SteamUsername => BypassEntry?.Username ?? string.Empty;
     public string SteamPassword => BypassEntry?.Password ?? string.Empty;
+
+    [ObservableProperty] public partial bool IsLoadingKode { get; set; }
+    [ObservableProperty] public partial string SteamGuardCode { get; set; } = string.Empty;
+    public bool HasSteamGuardCodeResult => !string.IsNullOrEmpty(SteamGuardCode);
+    public bool IsSteamGuardCodeSuccess => !string.IsNullOrEmpty(SteamGuardCode) && !SteamGuardCode.StartsWith("Error:") && !SteamGuardCode.StartsWith("Tidak ada");
 
     private int _loadVersion;
 
@@ -141,8 +147,11 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
             OnPropertyChanged(nameof(CoverArtUrl));
             OnPropertyChanged(nameof(ShowSteamSection));
             OnPropertyChanged(nameof(ShowThirdPartySection));
+            OnPropertyChanged(nameof(ShowDapatkanKode));
             OnPropertyChanged(nameof(SteamUsername));
             OnPropertyChanged(nameof(SteamPassword));
+            SteamGuardCode = string.Empty;
+            IsLoadingKode = false;
         }
         finally
         {
@@ -191,6 +200,42 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         await Windows.System.Launcher.LaunchUriAsync(uri);
     }
 
+    [RelayCommand]
+    private async Task GetSteamGuardCodeAsync()
+    {
+        if (string.IsNullOrEmpty(SteamUsername)) return;
+        
+        IsLoadingKode = true;
+        SteamGuardCode = string.Empty;
+        
+        try
+        {
+            var code = await NexaPlay.Infrastructure.Services.SteamGuardService.FetchLatestSteamGuardCodeAsync(SteamUsername);
+            SteamGuardCode = code;
+        }
+        catch (Exception ex)
+        {
+            SteamGuardCode = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsLoadingKode = false;
+            OnPropertyChanged(nameof(HasSteamGuardCodeResult));
+            OnPropertyChanged(nameof(IsSteamGuardCodeSuccess));
+        }
+    }
+
+    [RelayCommand]
+    private void CopySteamGuardCode()
+    {
+        if (IsSteamGuardCodeSuccess)
+        {
+            var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            dataPackage.SetText(SteamGuardCode);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+        }
+    }
+
     private static IReadOnlyList<string> BuildGenreTags(string? rawGenre)
     {
         if (string.IsNullOrWhiteSpace(rawGenre))
@@ -220,6 +265,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowAktivasiOfflineBadge));
         OnPropertyChanged(nameof(ShowSteamSharingBadge));
         OnPropertyChanged(nameof(ShowThirdPartySection));
+        OnPropertyChanged(nameof(ShowDapatkanKode));
     }
 
     private async Task<FixEntry?> ResolveBypassEntryAsync(int appId, CancellationToken ct)

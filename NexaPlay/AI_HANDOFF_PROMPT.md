@@ -332,6 +332,18 @@ Tanggal:
 - Next:
 ```
 
+### 2026-05-27 (Batch : Perbaikan Detail UI Steam Sharing & Error Video)
+- Fokus: Memperbaiki UI pada section Steam Sharing yang tidak sesuai instruksi dan memperbaiki masalah pemutaran YouTube (Error 153).
+- Perubahan: 
+  - Mengubah warna catatan dan ikon peringatan kembali ke monokrom putih/hitam (menghapus emoji berwarna).
+  - Menambahkan divider putih halus pada atas dan bawah teks Catatan.
+  - Memisahkan seksi Video YouTube menjadi blok "Tutorial Video" tersendiri.
+  - Mengubah teks pelaporan akun dan merubah behavior tombol *Copy* untuk berubah menjadi teks "Copied!" dengan *background* transparan saat ditekan (serta menghapus efek *hover* biru bawaan sistem).
+  - Mengubah UI "Alt + F4" menjadi bentuk *code block* menyatu dengan teks menggunakan `InlineUIContainer`.
+  - Mengatasi Error 153 (Playback Restricted) YouTube WebView2 dengan menyuntikkan origin standar.
+- Build: Success
+- Next: Menambahkan logika untuk menekan tombol "Mulai Proses Bypass" (Aktivasi Offline) dan "Mainkan Game" (Steam Sharing) menuju ke eksekusi game.
+
 ### 2026-05-27 (Batch : Implementasi UI Dialog Khusus Aktivasi Offline & Konsistensi Cover Art)
 - Fokus: UI Dialog Khusus Aktivasi Offline & Konsistensi Cover Art (BypassGameDetailPage)
 - Perubahan:
@@ -754,3 +766,35 @@ Tanggal:
   - BypassGameDetailPage.xaml.cs: Menambahkan event handler TutorialThumbnail_Tapped yang secara dinamis melakukan inisialisasi EnsureCoreWebView2Async() dan memuat URL YouTube hanya saat pengguna menekan tombol Play pada thumbnail.
 - Build: Build Succeeded, 0 Error(s).
 - Next: Menunggu validasi user, lalu lanjut ke pembuatan fungsi aksi tombol "Mulai Bypass".
+
+### 2026-05-27 (Batch : Implementasi Dapatkan Kode Verifikasi Steam Guard)
+- Fokus: Menambahkan fitur pengambilan kode Steam Guard langsung dari email master secara otomatis via IMAP untuk game tipe Akun Steam.
+- Perubahan:
+  - Menginstal package MailKit dan MimeKit.
+  - FixEntry.cs & BypassGamesDataService.cs: Menambahkan dan mem-parsing properti DapatkanKode.
+  - SteamGuardService.cs: Membuat service IMAP baru (berjalan secara asinkron) untuk menyaring kode 5 karakter terbaru dari noreply@steampowered.com.
+  - BypassGameDetailViewModel.cs: Menambahkan command GetSteamGuardCodeAsync dan state pendukung (ShowDapatkanKode, SteamGuardCode, IsLoadingKode).
+  - BypassGameDetailPage.xaml: Menambahkan seksi UI "Dapatkan Kode Verifikasi" di bawah section Password dengan tombol trigger dan animasi loading ProgressRing.
+- Build: Build Succeeded (x64), 0 Error(s).
+- Next: Implementasi tombol "Mulai Bypass" untuk akun yang bukan steam sharing (action command) dan penyelesaian integrasi akhir.
+
+### 2026-05-27 (Batch : Redesign UI & UX Dapatkan Kode Steam Guard)
+- Fokus: Memperbaiki tata letak (layout) dan pengalaman pengguna pada bagian "Dapatkan Kode Verifikasi" berdasarkan feedback, agar tidak berdesakan dan tampil lebih rapi.
+- Perubahan:
+  - BypassGameDetailViewModel.cs: Menambahkan properti `HasSteamGuardCodeResult` untuk trigger visibilitas papan hasil, `IsSteamGuardCodeSuccess` untuk memvalidasi format kode, dan `CopySteamGuardCode()` untuk fitur penyalinan teks hasil kode.
+  - BypassGameDetailPage.xaml: Memisahkan teks judul dan teks instruksi menggunakan `StackPanel` (Spacing=4) agar jarak vertikal lebih proporsional dan tidak mepet.
+  - BypassGameDetailPage.xaml: Mengubah tata letak "Dapatkan Kode" menjadi form horizontal di samping teks (menggunakan Grid) agar selaras dengan desain *modern-app*.
+  - BypassGameDetailPage.xaml: Menambahkan elemen Papan Hasil (Border gelap) yang akan muncul otomatis usai loading selesai (`ProgressRing` berhenti).
+  - BypassGameDetailPage.xaml: Papan Hasil mendukung teks panjang (Wrap) agar pesan error yang panjang tidak terpotong (contoh: "Tidak ada kode Steam yang Masuk!!...").
+  - BypassGameDetailPage.xaml: Jika pengambilan kode berhasil (5 karakter valid), papan hasil akan menampilkan tombol "Copy Code" di sebelah kanannya yang tersambung dengan fitur copy clipboard.
+- Build: Build Succeeded (x64), 0 Error(s).
+- Next: Finalisasi dan melanjutkan ke fungsionalitas "Mulai Bypass Game".
+
+### 2026-05-27 (Batch : Pemisahan Instruksi & Styling Khusus Steam Sharing)
+- Fokus: Memisahkan dan merapikan panduan "Instruksi Penggunaan" berdasarkan kategori akun (Family Sharing vs Offline Mode) serta memastikan konsistensi desain warna monokrom NexaPlay.
+- Perubahan:
+  - BypassGameDetailPage.xaml: Memecah blok "Instruksi Penggunaan" menjadi dua versi. Versi 1-12 untuk akun biasa (Family Sharing) dan versi 1-6 khusus untuk akun kategori `steam-sharing` (Offline Mode).
+  - BypassGameDetailPage.xaml: Menukar (*swap*) binding logika visibilitas (`InverseBoolToVis` dan `BoolToVis` terhadap `ShowSteamSharingBadge`) agar instruksi Family Sharing muncul pada game *SteamAccount* biasa, dan instruksi Offline Mode muncul pada game dengan *badge* `steam-sharing`.
+  - BypassGameDetailPage.xaml: Mendesain ulang gaya kotak peringatan (Step 5 - PENTING Aktifkan Offline Mode) dengan layout spesifik (border kiri lebih tebal) namun mengembalikan palet warnanya menjadi murni monokrom (hitam, putih, abu-abu gelap) tanpa warna-warni bawaan referensi gambar.
+- Build: Build Succeeded (x64), 0 Error(s).
+- Next: Menambahkan logika untuk mengeksekusi game (Mulai Bypass / Aktivasi Offline).

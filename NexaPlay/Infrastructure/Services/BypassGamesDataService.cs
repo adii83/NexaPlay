@@ -341,6 +341,7 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
                     var pub      = g.TryGetProperty("publisher", out var pubProp) ? pubProp.GetString() ?? "" : "";
                     var premium  = g.TryGetProperty("premium",   out var prProp)  && prProp.GetBoolean();
                     var offline  = g.TryGetProperty("aktivasi_offline", out var aof) && aof.GetBoolean();
+                    var dk       = g.TryGetProperty("dapatkan_kode", out var dkProp) && dkProp.GetBoolean();
 
                     var catStr   = g.TryGetProperty("category", out var catProp) ? catProp.GetString() ?? "" : "";
                     var category = catStr.ToLowerInvariant() switch
@@ -353,7 +354,7 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
                     {
                         AppId = appId, Title = title, Publisher = pub, Category = category,
                         PosterUrl = poster, Username = username, Password = password, IsPremium = premium,
-                        AktivasiOffline = offline, Files = Array.Empty<FixFile>()
+                        AktivasiOffline = offline, DapatkanKode = dk, Files = Array.Empty<FixFile>()
                     });
                 }
                 catch { /* skip malformed entries */ }

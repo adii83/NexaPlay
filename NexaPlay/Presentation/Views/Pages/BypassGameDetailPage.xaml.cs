@@ -368,6 +368,26 @@ public sealed partial class BypassGameDetailPage : Page
         // For now, the Lanjut Bypass button just acts like a close button
     }
 
+    private async void CopyButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn)
+        {
+            var origContent = btn.Content;
+            var origBg = btn.Background;
+            var origFg = btn.Foreground;
+
+            btn.Content = "Copied!";
+            btn.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            btn.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+
+            await Task.Delay(2000);
+
+            btn.Content = origContent;
+            btn.Background = origBg;
+            btn.Foreground = origFg;
+        }
+    }
+
     private async void TutorialThumbnail_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
     {
         if (TutorialThumbnailOverlay != null && TutorialWebView != null)
@@ -377,7 +397,26 @@ public sealed partial class BypassGameDetailPage : Page
             try
             {
                 await TutorialWebView.EnsureCoreWebView2Async();
-                TutorialWebView.Source = new Uri("https://www.youtube.com/embed/lkETeFanN7c?autoplay=1");
+                
+                string html = @"
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #141414; }
+                        iframe { width: 100vw; height: 100vh; border: none; }
+                    </style>
+                </head>
+                <body>
+                    <iframe src='https://www.youtube-nocookie.com/embed/lkETeFanN7c?autoplay=1&rel=0&modestbranding=1&origin=http://localhost' 
+                            title='YouTube video player' 
+                            allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' 
+                            allowfullscreen>
+                    </iframe>
+                </body>
+                </html>";
+
+                TutorialWebView.NavigateToString(html);
             }
             catch { }
         }

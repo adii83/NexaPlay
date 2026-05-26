@@ -24,6 +24,7 @@ public sealed class FixEntry
     public bool IsPremium { get; init; }
     public bool HasDenuvo { get; init; }
     public bool AktivasiOffline { get; init; }
+    public bool DapatkanKode { get; init; }
 
     // Computed helpers
     public bool HasPopularCover => !string.IsNullOrWhiteSpace(PosterUrl);
