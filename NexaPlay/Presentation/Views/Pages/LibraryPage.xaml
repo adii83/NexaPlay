@@ -54,7 +54,7 @@
                         </Border.BorderBrush>
                         
                         <TextBox x:Name="SearchBox"
-                                 PlaceholderText="Search Game (Bisa Pakai AppID SteamDB)"
+                                 PlaceholderText="Search Game..."
                                  Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  Height="42"
                                  Background="Transparent"

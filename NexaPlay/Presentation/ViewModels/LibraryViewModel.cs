@@ -11,6 +11,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NexaPlay.Core.Helpers;
 
 namespace NexaPlay.Presentation.ViewModels;
 
@@ -144,8 +145,8 @@ public sealed partial class LibraryViewModel : ObservableObject
             }
             else
             {
-                var lowered = q.ToLowerInvariant();
-                query = query.Where(x => (x.Name ?? "").ToLowerInvariant().Contains(lowered, StringComparison.Ordinal));
+                var lowered = q.NormalizeForSearch();
+                query = query.Where(x => (x.Name ?? "").NormalizeForSearch().Contains(lowered, StringComparison.Ordinal));
             }
         }
 

@@ -6,6 +6,7 @@ using NexaPlay.Core.Models;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
+using NexaPlay.Core.Helpers;
 
 namespace NexaPlay.Presentation.ViewModels;
 
@@ -153,11 +154,11 @@ public sealed partial class BypassGamesViewModel : ObservableObject
         // Filter search
         if (!string.IsNullOrWhiteSpace(SearchQuery))
         {
-            var q = SearchQuery.Trim().ToLowerInvariant();
+            var q = SearchQuery.NormalizeForSearch();
             source = source.Where(f =>
-                f.Title.ToLowerInvariant().Contains(q) ||
-                f.Publisher.ToLowerInvariant().Contains(q) ||
-                f.AppId.ToString().Contains(q));
+                f.Title.NormalizeForSearch().Contains(q, StringComparison.Ordinal) ||
+                (f.Publisher ?? "").NormalizeForSearch().Contains(q, StringComparison.Ordinal) ||
+                f.AppId.ToString().Contains(q, StringComparison.Ordinal));
         }
 
         var filtered = source

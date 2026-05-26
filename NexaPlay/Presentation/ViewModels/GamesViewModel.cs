@@ -6,6 +6,7 @@ using NexaPlay.Core.Models;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Threading.Tasks;
+using NexaPlay.Core.Helpers;
 
 namespace NexaPlay.Presentation.ViewModels;
 
@@ -57,7 +58,7 @@ public sealed partial class GamesViewModel : ObservableObject
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "NexaPlay",
         "runtime_catalog_sources",
-        "games_filter_index_cache_v2.json");
+        "games_filter_index_cache_v3.json");
 
     public bool IsEmpty => !IsLoading && Games.Count == 0;
 
@@ -111,7 +112,7 @@ public sealed partial class GamesViewModel : ObservableObject
         var built = snapshot
             .Select(game => new GameFilterIndex(
                 game.AppId,
-                (game.Name ?? string.Empty).ToLowerInvariant(),
+                (game.Name ?? string.Empty).NormalizeForSearch(),
                 game.PriceNormalized,
                 game.IsPremium,
                 game.Protection,
@@ -154,7 +155,7 @@ public sealed partial class GamesViewModel : ObservableObject
             }
             else
             {
-                var lowered = q.ToLowerInvariant();
+                var lowered = q.NormalizeForSearch();
                 query = query.Where(x => x.NameLower.Contains(lowered, StringComparison.Ordinal));
             }
         }
