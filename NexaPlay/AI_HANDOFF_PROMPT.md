@@ -20,6 +20,7 @@ Sebelum mengubah kode, WAJIB baca dokumen ini berurutan:
 4. NexaPlay/MIGRATION_PARITY_MATRIX.md
 5. NexaPlay/AI_HANDOFF_PROMPT.md
 6. NexaPlay/AI_HANDOFF_HOME_HISTORY.md (riwayat detail perbaikan page Home)
+7. NexaPlay/.agents/rules/antigravity-rtk-rules.md (aturan menggunakan rtk)
 
 
 Lokasi project utama:
@@ -318,7 +319,32 @@ Docs:
 - `NexaPlay/MIGRATION_PARITY_MATRIX.md`
 - `NexaPlay/AI_HANDOFF_PROMPT.md`
 
-Tanggal: 26 Mei 2026
+
+## 10. Update Log dan catatan AI
+Tambahkan catatan baru di atas bagian ## 10. Update Log Ringkas setiap selesai batch penting.
+Format:
+
+```text
+Tanggal:
+- Fokus:
+- Perubahan:
+- Build:
+- Next:
+```
+
+### 2026-05-27 (Batch : Implementasi UI Dialog Khusus Aktivasi Offline & Konsistensi Cover Art)
+- Fokus: UI Dialog Khusus Aktivasi Offline & Konsistensi Cover Art (BypassGameDetailPage)
+- Perubahan:
+  - Mengubah logika section 3rd-party (Mulai Bypass & info card) agar tetap muncul walau game berlabel "Aktivasi Offline" (`ShowThirdPartySection`).
+  - Menambahkan *ContentDialog* khusus "Aktivasi Offline" murni bertema hitam-putih. Tidak ada warna aksen biru/merah/kuning.
+  - Memperbaiki layout teks petunjuk menggunakan `Grid` 2 kolom untuk mencapai *hanging indent* rata kiri yang rapi dengan simbol hubung tebal (`-`).
+  - Menimpa style bawaan WinUI: Checkbox `Checked` dan tombol `Primary` di-*override* berlatar putih dengan font/tick hitam, termasuk pada state `:Hover` (`#E5E5E5`) dan `:Pressed` (`#CCCCCC`).
+  - Menyelaraskan logika `CoverArtUrl` di halaman Detail dengan logika *enrichment* 4-level fallback dari BypassGamesPage (memilih `BypassEntry.PosterUrl` sebagai prioritas pertama).
+- Build: Pass
+- Next: Menuggu Instruksi lebih lanjut dari user.
+
+
+### 2026-05-26 (Batch : Replikasi UX GameHub Fix Games)
 - Fokus: UI BypassGamesPage (Replikasi UX GameHub Fix Games)
 - Perubahan: 
   - Update `GameCategory` enum dan `FixEntry` model (tambah AktivasiOffline & SteamSharing).
@@ -483,6 +509,17 @@ Tanggal: 26 Mei 2026
   - `BypassGamesViewModel.SetCategory(...)`: reset search otomatis saat switch kategori dihapus agar klik submenu `3rd Party/Steam Sharing` tidak lagi memicu perubahan perilaku search.
 - Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
 - Next: QA runtime khusus perpindahan submenu sidebar untuk verifikasi search textbox dan hasil list tetap stabil.
+Tanggal: 27 Mei 2026
+- Fokus: UI Sidebar Bypass + Layout BypassGameDetailPage (3rd Party no-status section).
+- Perubahan:
+  - `MainWindow.xaml`: Hapus box/border terluar dropdown Bypass. Submenu sekarang tampil langsung indented di bawah item Bypass (tanpa container terpisah yang terlihat seperti kotak ke-2).
+  - `MainWindow.xaml.cs`: Warna aktif/pasif submenu diupdate — aktif memakai `#1AFFFFFF` (transparan putih), ikon dan teks berubah warna mengikuti status aktif (putih = aktif, abu-abu = pasif).
+  - `BypassGameDetailPage.xaml`: Section default/no-status (3rd Party tanpa Aktivasi Offline) diubah ke layout 2 kolom — kiri: info cards + tombol, kanan: cover art game (library capsule portrait 258×387).
+  - `BypassGameDetailViewModel.cs`: Tambah properti `CoverArtUrl` dengan fallback pipeline: `library_capsule_2x` → `library_600x900_2x` → `LibraryCapsuleUrl` → `PopularCoverImageUrl` → `HeaderImageUrl`.
+  - `BypassGameDetailPage.xaml.cs`: Tambah handler `CoverArtImage_ImageOpened/Failed` untuk reveal/hide skeleton cover art.
+- Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
+- Next: Validasi runtime — cek cover art portrait muncul di kanan untuk game 3rd party tanpa Aktivasi Offline; pastikan tidak mengganggu layout skenario lain (Aktivasi Offline / Steam Sharing).
+
 ## 10. Update Log Ringkas
 
 Tambahkan catatan baru di atas bagian ini setiap selesai batch penting.

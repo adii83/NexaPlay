@@ -31,6 +31,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     [ObservableProperty] public partial string HeroBackgroundUrl { get; set; }
     [ObservableProperty] public partial string GameIconUrl { get; set; }
     [ObservableProperty] public partial FixEntry? BypassEntry { get; set; }
+    [ObservableProperty] public partial string CoverArtUrl { get; set; }
 
     public IReadOnlyList<string> GenreTags => BuildGenreTags(Game?.Genre);
     public string DisplayShortDescription => Detail?.ShortDescription ?? Game?.ShortDescription ?? string.Empty;
@@ -41,9 +42,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     public bool IsPremiumGame => Game?.IsPremium == true;
     public bool ShowAktivasiOfflineBadge => BypassEntry?.AktivasiOffline == true;
     public bool ShowSteamSharingBadge => BypassEntry?.Category == GameCategory.SteamSharing;
-    public bool ShowDefaultNoStatusSection => BypassEntry is not null
-                                              && !BypassEntry.IsSteamType
-                                              && !ShowAktivasiOfflineBadge;
+    public bool ShowThirdPartySection => BypassEntry is not null && !BypassEntry.IsSteamType;
 
     private int _loadVersion;
 
@@ -66,6 +65,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
 
         HeroBackgroundUrl = string.Empty;
         GameIconUrl = string.Empty;
+        CoverArtUrl = string.Empty;
     }
 
     public async Task LoadAsync(int appId, FixEntry? preferredBypassEntry, CancellationToken ct = default)
@@ -119,6 +119,20 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
                 ?? Game?.IconImageUrl
                 ?? Game?.HeaderImageUrl
                 ?? string.Empty;
+
+            var overrideCover = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId))?.LibraryCapsule;
+            var apiCover = Detail?.LibraryCapsuleUrl;
+            var sgdbGrid = Detail?.SgdbGridUrl;
+
+            // Cover art for default 3rd-party section (library capsule portrait 2:3)
+            CoverArtUrl = !string.IsNullOrWhiteSpace(BypassEntry?.PosterUrl) ? BypassEntry.PosterUrl
+                : !string.IsNullOrWhiteSpace(overrideCover) ? overrideCover
+                : !string.IsNullOrWhiteSpace(apiCover) ? apiCover
+                : !string.IsNullOrWhiteSpace(sgdbGrid) ? sgdbGrid
+                : !string.IsNullOrWhiteSpace(Game?.LibraryCapsuleUrl) ? Game.LibraryCapsuleUrl
+                : !string.IsNullOrWhiteSpace(Game?.HeaderImageUrl) ? Game.HeaderImageUrl
+                : appId > 0 ? $"https://steamcdn-a.akamaihd.net/steam/apps/{appId}/library_600x900_2x.jpg"
+                : string.Empty;
         }
         finally
         {
@@ -165,7 +179,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(IsPremiumGame));
         OnPropertyChanged(nameof(ShowAktivasiOfflineBadge));
         OnPropertyChanged(nameof(ShowSteamSharingBadge));
-        OnPropertyChanged(nameof(ShowDefaultNoStatusSection));
+        OnPropertyChanged(nameof(ShowThirdPartySection));
     }
 
     private async Task<FixEntry?> ResolveBypassEntryAsync(int appId, CancellationToken ct)

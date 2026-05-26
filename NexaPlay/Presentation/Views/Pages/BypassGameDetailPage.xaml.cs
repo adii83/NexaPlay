@@ -278,6 +278,96 @@ public sealed partial class BypassGameDetailPage : Page
         Unloaded -= OnPageUnloaded;
     }
 
+    private void CoverArtImage_ImageOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Image img) return;
+        img.Opacity = 1;
+        if (CoverArtSkeleton is not null)
+            CoverArtSkeleton.Visibility = Visibility.Collapsed;
+    }
+
+    private void CoverArtImage_ImageFailed(object sender, ExceptionRoutedEventArgs e)
+    {
+        if (sender is not Image img) return;
+        img.Visibility = Visibility.Collapsed;
+        // Keep skeleton visible as fallback
+        if (CoverArtSkeleton is not null)
+            CoverArtSkeleton.Visibility = Visibility.Visible;
+    }
+
+    private void CoverArtCard_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (CoverArtHoverOverlay is null) return;
+        var sb = new Storyboard();
+        var anim = new DoubleAnimation { To = 1.0, Duration = TimeSpan.FromMilliseconds(160) };
+        anim.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut };
+        Storyboard.SetTarget(anim, CoverArtHoverOverlay);
+        Storyboard.SetTargetProperty(anim, "Opacity");
+        sb.Children.Add(anim);
+        sb.Begin();
+    }
+
+    private void CoverArtCard_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (CoverArtHoverOverlay is null) return;
+        var sb = new Storyboard();
+        var anim = new DoubleAnimation { To = 0.0, Duration = TimeSpan.FromMilliseconds(200) };
+        anim.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut };
+        Storyboard.SetTarget(anim, CoverArtHoverOverlay);
+        Storyboard.SetTargetProperty(anim, "Opacity");
+        sb.Children.Add(anim);
+        sb.Begin();
+    }
+
+    private void BypassBtn_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (BypassBtnGlow is null) return;
+        var sb = new Storyboard();
+        var anim = new DoubleAnimation { To = 1.0, Duration = TimeSpan.FromMilliseconds(160) };
+        anim.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut };
+        Storyboard.SetTarget(anim, BypassBtnGlow);
+        Storyboard.SetTargetProperty(anim, "Opacity");
+        sb.Children.Add(anim);
+        sb.Begin();
+    }
+
+    private void BypassBtn_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (BypassBtnGlow is null) return;
+        var sb = new Storyboard();
+        var anim = new DoubleAnimation { To = 0.0, Duration = TimeSpan.FromMilliseconds(200) };
+        anim.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut };
+        Storyboard.SetTarget(anim, BypassBtnGlow);
+        Storyboard.SetTargetProperty(anim, "Opacity");
+        sb.Children.Add(anim);
+        sb.Begin();
+    }
+
+    private async void StartBypassBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.ShowAktivasiOfflineBadge)
+        {
+            OfflineActivationCheckbox.IsChecked = false;
+            OfflineActivationDialog.IsPrimaryButtonEnabled = false;
+            OfflineActivationDialog.XamlRoot = this.XamlRoot;
+            await OfflineActivationDialog.ShowAsync();
+        }
+        else
+        {
+            ViewModel.StartBypassGameCommand.Execute(null);
+        }
+    }
+
+    private void OfflineActivationCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        OfflineActivationDialog.IsPrimaryButtonEnabled = OfflineActivationCheckbox.IsChecked == true;
+    }
+
+    private void OfflineActivationDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        // For now, the Lanjut Bypass button just acts like a close button
+    }
+
     public static Visibility BoolToVis(bool v) =>
         v ? Visibility.Visible : Visibility.Collapsed;
 

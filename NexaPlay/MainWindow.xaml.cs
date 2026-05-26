@@ -253,6 +253,7 @@ public sealed partial class MainWindow : Window
             ContentTopBarRow.Height = new GridLength(0);
             SidebarShell.Visibility = Visibility.Collapsed;
             PageTopBar.Visibility = Visibility.Collapsed;
+            RootSplitView.DisplayMode = SplitViewDisplayMode.Overlay;
             RootSplitView.CompactPaneLength = 0;
             RootSplitView.OpenPaneLength = 0;
             RootSplitView.IsPaneOpen = false;
@@ -263,6 +264,7 @@ public sealed partial class MainWindow : Window
         ContentTopBarRow.Height = new GridLength(0);
         SidebarShell.Visibility = Visibility.Visible;
         PageTopBar.Visibility = Visibility.Collapsed;
+        RootSplitView.DisplayMode = SplitViewDisplayMode.CompactInline;
         RootSplitView.CompactPaneLength = 68;
         RootSplitView.OpenPaneLength = 200;
     }
@@ -348,10 +350,28 @@ public sealed partial class MainWindow : Window
 
         var isSteam = string.Equals(category, "steam-sharing", StringComparison.OrdinalIgnoreCase);
 
+        // Active background: #1AFFFFFF, Inactive: Transparent
         BypassSubmenuThirdParty.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            isSteam ? Windows.UI.Color.FromArgb(0x00, 0x00, 0x00, 0x00) : Windows.UI.Color.FromArgb(0xFF, 0x17, 0x1A, 0x1F));
+            isSteam ? Windows.UI.Color.FromArgb(0x00, 0x00, 0x00, 0x00) : Windows.UI.Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF));
         BypassSubmenuSteam.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            isSteam ? Windows.UI.Color.FromArgb(0xFF, 0x17, 0x1A, 0x1F) : Windows.UI.Color.FromArgb(0x00, 0x00, 0x00, 0x00));
+            isSteam ? Windows.UI.Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF) : Windows.UI.Color.FromArgb(0x00, 0x00, 0x00, 0x00));
+
+        // Active foreground: Primary (White), Inactive: Secondary (Gray)
+        var activeBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["NexaTextPrimaryBrush"];
+        var inactiveBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["NexaTextSecondaryBrush"];
+
+        BypassSubmenuThirdParty.Foreground = isSteam ? inactiveBrush : activeBrush;
+        BypassSubmenuSteam.Foreground = isSteam ? activeBrush : inactiveBrush;
+
+        // Also update icon colors
+        if (BypassSubmenuThirdParty.Content is StackPanel sp3rd && sp3rd.Children.Count > 0 && sp3rd.Children[0] is FontIcon icon3rd)
+        {
+            icon3rd.Foreground = BypassSubmenuThirdParty.Foreground;
+        }
+        if (BypassSubmenuSteam.Content is StackPanel spSteam && spSteam.Children.Count > 0 && spSteam.Children[0] is FontIcon iconSteam)
+        {
+            iconSteam.Foreground = BypassSubmenuSteam.Foreground;
+        }
     }
 
     private async System.Threading.Tasks.Task ShowLicenseActivation()
