@@ -243,6 +243,15 @@ Jaga performa sebagai prioritas:
 - Detail metadata/media dipanggil saat dibutuhkan, bukan dimuat semua saat startup.
 - Cache boleh dipakai, tetapi jangan membuat app menunggu download besar tanpa perlu.
 
+Performance guardrail tambahan (wajib dipertahankan untuk fitur action seperti Add Game / Online-Fix):
+
+- UI progress harus di-throttle (minimal perubahan persen atau interval waktu), hindari spam update per chunk kecil.
+- Operasi file/network wajib jalan async + `CancellationToken` agar aksi user `Batal` responsif.
+- Jangan lakukan logging verbose di loop panas; log cukup event penting: start, success, failed, cancelled.
+- Jangan menaruh parse/download besar di constructor ViewModel atau startup window.
+- Dialog proses harus state-driven dari ViewModel (bukan logic bisnis di code-behind) agar tidak memblok UI thread.
+- Gunakan guard re-entrancy (`IsApplyingFix`, `IsAddingGame`) untuk mencegah proses ganda di AppID yang sama.
+
 ## 7. Workflow Wajib Per Batch
 
 Kerjakan per halaman dan per batch kecil.
@@ -331,6 +340,64 @@ Tanggal:
 - Build:
 - Next:
 ```
+
+### 2026-06-01 (Batch : UX Dialog Add Game + Case Denuvo + Polish Dialog Remove)
+- Fokus: Menambahkan feedback proses `Add Game` yang jelas untuk user (seperti GameHub) dengan tema monokrom NexaPlay.
+- Perubahan:
+  - Menambahkan dialog proses native di `GameDetailPage` dengan judul **Mengunduh & Memasang**.
+  - Dialog proses menampilkan progres 0-100% dan status fase ramah user:
+    - mengunduh,
+    - memverifikasi,
+    - memasang,
+    - selesai/gagal.
+  - Menambahkan guard case Denuvo sebelum `Add Game`:
+    - jika game Denuvo dan tidak ada di `Bypass Games` (gabungan cek `fix_games` + `steam_games`),
+    - tampil dialog informasi user-friendly bahwa game belum tersedia di Bypass Games.
+  - Mengganti dialog remove-blocked dari `ContentDialog` menjadi overlay custom agar styling konsisten:
+    - efek lighting/glow lebih tebal,
+    - visual hitam-putih,
+    - tombol `Mengerti` dengan hover transparan monokrom (tanpa biru sistem).
+  - Menambahkan `RemoveGameResult` untuk komunikasi hasil remove yang lebih eksplisit dari service ke ViewModel/UI.
+- Build: Pending (jalankan build gate setelah patch ini).
+- Next: Verifikasi runtime skenario Add sukses/gagal/cancel dan skenario Denuvo-unavailable agar pesan UI sesuai ekspektasi.
+
+### 2026-06-01 (Batch : Parity UX Add/Remove GameDetail + Dialog Installed)
+- Fokus: Menyamakan UX `Add Game` di GameDetail dengan pola GameHub (toggle tombol + peringatan saat remove diblokir).
+- Perubahan:
+  - Tombol aksi utama GameDetail sekarang toggle otomatis:
+    - belum terpasang script: `Add Game`,
+    - sudah terpasang script: `Remove Game` (bukan `Installed` pasif).
+  - `GameDetailViewModel` tetap berperan orchestration:
+    - command `AddGameCommand` tetap satu pintu,
+    - jika `IsGameInstalled=true`, command tersebut otomatis jalankan flow remove,
+    - jika remove diblokir karena game masih terinstall di Steam, ViewModel hanya expose state dialog request.
+  - `IAddGameService` diubah agar remove mengembalikan hasil terstruktur (`RemoveGameResult`) dengan flag `BlockedByInstalledGame`.
+  - `AddGameService` menerapkan parity check `appmanifest_*`:
+    - jika appmanifest ada, remove diblokir dan hasil error dikembalikan ke ViewModel.
+  - `GameDetailPage.xaml.cs` menambahkan dialog dark-theme monokrom saat remove diblokir:
+    - title: `Game Masih Terinstall`,
+    - pesan: minta uninstall dari Steam dulu sebelum remove script.
+- Build: Pending (jalankan MSBuild gate setelah patch ini).
+- Next: Uji runtime alur 2 skenario:
+  1) Add sukses -> tombol berubah jadi Remove Game.
+  2) Remove saat appmanifest masih ada -> dialog blokir tampil sesuai tema NexaPlay.
+
+### 2026-06-01 (Batch : Parity Add Game GameDetail dengan GameHub)
+- Fokus: Menerapkan logika `Add Game` di `GameDetailPage` agar sedekat mungkin dengan flow GameHub (source API berantai + install script).
+- Perubahan:
+  - Port ulang `Infrastructure/Services/AddGameService.cs` berbasis flow GameHub:
+    - baca `api.json` dan iterasi `api_list` berurutan (`enabled`, `success_code`, `unavailable_code`),
+    - fallback antar sumber API sampai ada hasil,
+    - progress fase `start/download/validate/install/done`,
+    - validasi file ZIP (`PK` magic bytes),
+    - install `.lua` + extract `.manifest` ke `depotcache`,
+    - comment out `setManifestid(...)` seperti behavior GameHub,
+    - dukungan cancel internal per `appid` melalui token map.
+  - Kontrak service `IAddGameService` ditambah `CancelAdd(string appId)` agar lifecycle proses tetap ditangani di layer service (SOLID).
+  - Menambahkan file `data/api.json` ke NexaPlay (disalin dari GameHub) dan set `CopyToOutputDirectory=PreserveNewest`.
+  - `GameDetailViewModel` tetap hanya orchestration UI; timeout paksa 60 detik dihapus agar flow runtime `Add Game` tidak memutus fallback chain lebih cepat dari GameHub.
+- Build: Pending (jalankan MSBuild gate setelah batch ini).
+- Next: Validasi runtime klik `Add Game` pada beberapa appid (sukses, gagal, dan cancel), lalu sinkronkan detail status/parity matrix jika diperlukan.
 
 ### 2026-05-27 (Batch : UI Settings Page)
 - Fokus: UI Settings Page
@@ -541,6 +608,86 @@ Tanggal: 27 Mei 2026
 - Build: MSBuild Debug x64 OutDir=Debug-preview sukses (0 Error, 0 Warning).
 - Next: Validasi runtime — cek cover art portrait muncul di kanan untuk game 3rd party tanpa Aktivasi Offline; pastikan tidak mengganggu layout skenario lain (Aktivasi Offline / Steam Sharing).
 
+Tanggal: 1 Juni 2026
+- Fokus: Polishing UX dialog `GameDetail` untuk flow Add Game (tipografi + aksi batal saat proses).
+- Perubahan:
+  - `GameDetailPage.xaml`: skala tipografi dialog diperkecil agar konsisten dengan tema (`AddGame`, `UiInfo`, `RemoveBlocked`) dan tidak terlalu dominan di layar.
+  - `GameDetailPage.xaml`: tombol dialog proses Add Game kini bind dinamis `Batal` saat proses berjalan dan `Mengerti` saat proses selesai/gagal/dibatalkan.
+  - `GameDetailViewModel.cs`: tambah orkestrasi cancel Add Game (`_addGameCts`, `IsAddGameCancelRequested`, `HandleAddGameDialogAction`) tanpa memindahkan logika IO dari service.
+  - `GameDetailPage.xaml.cs`: handler klik dialog Add Game diarahkan ke `HandleAddGameDialogAction`.
+- Build: `dotnet build` Debug x64 dengan OutDir `Debug-preview` sukses (0 Error, 0 Warning).
+- Next: QA runtime khusus flow Add Game: tekan `Batal` saat download/install, verifikasi status menjadi batal dan file skrip tidak terpasang.
+Tanggal: 1 Juni 2026
+- Fokus: Parity `Online-Fix` di `GameDetail` + checklist performa untuk action dialog.
+- Perubahan:
+  - `GameDetailViewModel.cs`: alur `Online-Fix` diubah jadi state dialog end-to-end:
+    - cek ketersediaan,
+    - konfirmasi apply,
+    - proses download/extract dengan progress,
+    - case unavailable / game belum terpasang / gagal / dibatalkan / sukses.
+  - `GameDetailViewModel.cs`: menambahkan action dialog `Primary/Secondary` agar tombol `Batal` benar-benar membatalkan proses via `CancellationToken`.
+  - `GameDetailPage.xaml`: menambahkan overlay dialog khusus `Online-Fix` bertema monokrom (tidak memakai biru default sistem).
+  - `GameDetailPage.xaml.cs`: menambah handler klik dialog `OnlineFixDialogPrimary_Click` dan `OnlineFixDialogSecondary_Click`.
+  - `MIGRATION_PARITY_MATRIX.md`: status `Apply fix flow` dan `Online-Fix action` diperbarui menjadi `Done`.
+  - `AI_HANDOFF_PROMPT.md`: menambahkan blok `Performance guardrail tambahan` untuk menjaga kelancaran action flow.
+- Build: pending verifikasi build gate setelah batch ini.
+- Next: QA runtime 5 skenario Online-Fix (available, unavailable, game-not-installed, cancel saat apply, sukses apply lalu unfix).
+Tanggal: 1 Juni 2026
+- Fokus: Menambahkan fallback source `Online-Fix` dan menjaga parity patch `unsteam.ini`.
+- Perubahan:
+  - `AppConstants.cs`: menambahkan `OnlineFixFallbackUrl` ke `https://github.com/madoiscool/lt_api_links/releases/download/unsteam/Win64.zip`.
+  - `OnlineFixService.CheckAvailabilityAsync(...)`:
+    - cek source utama `OnlineFix1/{appid}.zip` tetap prioritas,
+    - jika gagal, otomatis probe source fallback.
+  - `OnlineFixService.ApplyAsync(...)`:
+    - download mencoba source utama lebih dulu,
+    - jika tidak sukses, otomatis fallback ke source GitHub `Win64.zip`,
+    - hasil tetap diekstrak ke folder game sesuai flow Online-Fix.
+  - `OnlineFixService`: menambahkan patch otomatis `unsteam.ini` (`<appid>` -> appid aktual) jika file tersebut ada di hasil ekstraksi.
+- Build: pending verifikasi build gate setelah patch fallback ini.
+- Next: QA runtime dua jalur source (primary down -> fallback up) dan verifikasi `unsteam.ini` benar terpatch.
+Tanggal: 1 Juni 2026
+- Fokus: Perbaikan parity `UnOnline-Fix` + error message game belum terinstall + hapus lighting dialog remove-blocked.
+- Perubahan:
+  - `GameDetailViewModel.cs`:
+    - `RemoveFixAsync` tidak lagi tergantung `FixEntry` (yang bisa null), sekarang memakai `Game.AppId` agar `UnOnline-Fix` benar-benar dieksekusi.
+    - Menambahkan dialog state khusus unfix: `Menghapus Online-Fix` -> `UnOnline-Fix Berhasil/Gagal`.
+    - Progress callback Online-Fix kini menangkap status `Failed` secara eksplisit dan langsung memakai `state.Error`, sehingga case game belum terinstall tidak jatuh ke pesan generik.
+  - `OnlineFixService.cs`:
+    - Parser unfix log diperketat agar mengabaikan baris metadata (`Date:`, `AppId:`, `Files:`); hanya daftar file fix yang dihapus.
+  - `GameDetailPage.xaml`:
+    - Menghapus elemen radial glow/lighting pada dialog `Game Masih Terinstall` sesuai request.
+- Build: pending verifikasi build gate setelah batch ini.
+- Next: QA runtime `UnOnline-Fix` untuk game applied-state lama (FixEntry null) + verifikasi pesan game belum terinstall tampil konsisten.
+Tanggal: 1 Juni 2026
+- Fokus: UX remove game di Library + sinkronisasi data Library setelah remove dari GameDetail.
+- Perubahan:
+  - `LibraryPage.xaml.cs`:
+    - Konfirmasi remove di Library sekarang setelah sukses menjalankan animasi card menghilang (fade + slide) sebelum refresh data.
+    - `OnNavigatedTo` kini selalu cek sinkronisasi source library saat page dibuka kembali; jika ada perubahan dari halaman lain (contoh remove dari GameDetail), data Library otomatis reload terbaru.
+  - `LibraryViewModel.cs`:
+    - `RemoveGameWithResultAsync` ditambah opsi `reloadOnSuccess` agar Library bisa menampilkan animasi dulu sebelum reload.
+    - Menambahkan `RefreshIfLibraryChangedAsync()` untuk membandingkan source library aktual vs snapshot ViewModel dan reload bila berbeda.
+- Build: pending verifikasi build gate setelah batch ini.
+- Next: QA runtime dua skenario:
+  1) remove langsung dari Library -> card hilang animasi lalu list konsisten,
+  2) remove dari GameDetail -> kembali ke Library data sudah tidak nyangkut.
+
+Tanggal: 1 Juni 2026
+- Fokus: Perbaikan gap kosong card Library setelah Remove Game.
+- Perubahan:
+  - LibraryPage.xaml.cs: animasi remove dipindah dari ListViewItem container ke root card (ContentTemplateRoot) agar container recycle tidak mewarisi state visual lama.
+  - LibraryPage.xaml.cs: reset state visual setelah animasi (Opacity dan TranslateTransform pada card + container) sebelum reload data.
+- Build: dotnet build NexaPlay.slnx -c Debug sukses (0 error).
+- Next: Validasi runtime berulang remove beberapa item berurutan untuk memastikan tidak ada slot kosong tersisa.
+Tanggal: 1 Juni 2026
+- Fokus: UX dialog Add Game untuk case game belum tersedia.
+- Perubahan:
+  - GameDetailViewModel.cs: menambah state ShowAddGameDialogProgress agar progress bar + persen bisa disembunyikan kondisional.
+  - GameDetailViewModel.cs: saat status case "belum tersedia", progress/persen otomatis disembunyikan.
+  - GameDetailPage.xaml: blok progress Add Game kini bind ke visibilitas ShowAddGameDialogProgress.
+- Build: dotnet build NexaPlay.slnx -c Debug sukses (0 error).
+- Next: QA runtime case add game unavailable untuk memastikan dialog tampil informatif tanpa 0%.
 ## 10. Update Log Ringkas
 
 Tambahkan catatan baru di atas bagian ini setiap selesai batch penting.
@@ -807,3 +954,7 @@ Tanggal:
   - BypassGameDetailPage.xaml: Mendesain ulang gaya kotak peringatan (Step 5 - PENTING Aktifkan Offline Mode) dengan layout spesifik (border kiri lebih tebal) namun mengembalikan palet warnanya menjadi murni monokrom (hitam, putih, abu-abu gelap) tanpa warna-warni bawaan referensi gambar.
 - Build: Build Succeeded (x64), 0 Error(s).
 - Next: Menambahkan logika untuk mengeksekusi game (Mulai Bypass / Aktivasi Offline).
+
+
+
+

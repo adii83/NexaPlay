@@ -35,37 +35,53 @@ public sealed class OnlineFixService : IOnlineFixService
 
     public async Task<bool> CheckAvailabilityAsync(int appId, CancellationToken ct = default)
     {
-        var url = $"{AppConstants.OnlineFixBaseUrl}{appId}.zip";
+        var primaryUrl = $"{AppConstants.OnlineFixBaseUrl}{appId}.zip";
+        var fallbackUrl = AppConstants.OnlineFixFallbackUrl;
         _log.Log("OnlineFix", $"Checking availability for appId={appId}");
         for (int i = 0; i < 3; i++)
         {
             try
             {
-                using var req = new HttpRequestMessage(HttpMethod.Head, url);
+                using var req = new HttpRequestMessage(HttpMethod.Head, primaryUrl);
                 req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
                 using var resp = await _http.SendAsync(req, ct);
                 if (resp.IsSuccessStatusCode)
                 {
-                    _log.Log("OnlineFix", $"Fix available for appId={appId}");
+                    _log.Log("OnlineFix", $"Fix available for appId={appId} source=primary");
                     return true;
                 }
             }
             catch { }
             await Task.Delay(300, ct);
         }
-        _log.Log("OnlineFix", $"Fix not available for appId={appId}");
+
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Head, fallbackUrl);
+            req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
+            using var resp = await _http.SendAsync(req, ct);
+            if (resp.IsSuccessStatusCode)
+            {
+                _log.Log("OnlineFix", $"Fix available for appId={appId} source=fallback");
+                return true;
+            }
+        }
+        catch { }
+
+        _log.Log("OnlineFix", $"Fix not available for appId={appId} on all sources");
         return false;
     }
 
     public async Task ApplyAsync(int appId, IProgress<BypassProgressState> progress, CancellationToken ct = default)
     {
         _log.Log("OnlineFix", $"Starting apply for appId={appId}");
-        var url = $"{AppConstants.OnlineFixBaseUrl}{appId}.zip";
+        var primaryUrl = $"{AppConstants.OnlineFixBaseUrl}{appId}.zip";
+        var fallbackUrl = AppConstants.OnlineFixFallbackUrl;
 
         var installPath = _steam.ResolveGameInstallPath(appId);
         if (string.IsNullOrEmpty(installPath) || !Directory.Exists(installPath))
         {
-            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Failed, Error = "Game not installed or path not found" });
+            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Failed, Error = "Game belum terinstall atau folder game tidak ditemukan." });
             return;
         }
 
@@ -76,32 +92,61 @@ public sealed class OnlineFixService : IOnlineFixService
 
         try
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get, url);
-            req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-            if (!resp.IsSuccessStatusCode)
+            HttpResponseMessage? resp = null;
+            var sourceLabel = "primary";
+            try
             {
-                progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Failed, Error = "Fix file not available" });
-                return;
+                var reqPrimary = new HttpRequestMessage(HttpMethod.Get, primaryUrl);
+                reqPrimary.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
+                resp = await _http.SendAsync(reqPrimary, HttpCompletionOption.ResponseHeadersRead, ct);
+                if (!resp.IsSuccessStatusCode)
+                {
+                    resp.Dispose();
+                    resp = null;
+                }
+            }
+            catch
+            {
+                resp?.Dispose();
+                resp = null;
             }
 
-            var total = resp.Content.Headers.ContentLength ?? 0;
-            long read = 0;
-            var buffer = new byte[81920];
-            var lastSentPct = -1;
-
-            await using var input  = await resp.Content.ReadAsStreamAsync(ct);
-            await using var output = File.Create(zipPath);
-            int n;
-            while ((n = await input.ReadAsync(buffer.AsMemory(0, buffer.Length), ct)) > 0)
+            if (resp is null)
             {
-                await output.WriteAsync(buffer.AsMemory(0, n), ct);
-                read += n;
-                var pct = total > 0 ? (int)(read * 100.0 / total) : -1;
-                if (pct >= lastSentPct + 1)
+                sourceLabel = "fallback";
+                var reqFallback = new HttpRequestMessage(HttpMethod.Get, fallbackUrl);
+                reqFallback.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
+                resp = await _http.SendAsync(reqFallback, HttpCompletionOption.ResponseHeadersRead, ct);
+            }
+
+            using (resp)
+            {
+                if (resp is null || !resp.IsSuccessStatusCode)
                 {
-                    lastSentPct = pct;
-                    progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Downloading, Phase = "download", Percent = pct, BytesRead = read, TotalBytes = total });
+                    progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Failed, Error = "File Online-Fix belum tersedia." });
+                    return;
+                }
+
+                _log.Log("OnlineFix", $"Download source selected appId={appId} source={sourceLabel}");
+
+                var total = resp.Content.Headers.ContentLength ?? 0;
+                long read = 0;
+                var buffer = new byte[81920];
+                var lastSentPct = -1;
+
+                await using var input = await resp.Content.ReadAsStreamAsync(ct);
+                await using var output = File.Create(zipPath);
+                int n;
+                while ((n = await input.ReadAsync(buffer.AsMemory(0, buffer.Length), ct)) > 0)
+                {
+                    await output.WriteAsync(buffer.AsMemory(0, n), ct);
+                    read += n;
+                    var pct = total > 0 ? (int)(read * 100.0 / total) : -1;
+                    if (pct >= lastSentPct + 1)
+                    {
+                        lastSentPct = pct;
+                        progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Downloading, Phase = "download", Percent = pct, BytesRead = read, TotalBytes = total });
+                    }
                 }
             }
 
@@ -109,6 +154,7 @@ public sealed class OnlineFixService : IOnlineFixService
             progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Extracting, Phase = "extract", Percent = 0 });
             _log.Log("OnlineFix", "Extracting...");
             var extracted = await ExtractAsync(zipPath, installPath, appId, ct);
+            await PatchUnsteamIniAsync(installPath, appId, extracted, ct);
 
             // Write fix log
             var logPath = Path.Combine(installPath, $"{AppConstants.FixLogPrefix}{appId}.log");
@@ -116,7 +162,7 @@ public sealed class OnlineFixService : IOnlineFixService
 
             // Update state
             await _appliedStore.SetAppliedAsync(appId, true);
-            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Applied, Phase = "done", Percent = 100, Message = "Fix applied successfully" });
+            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Applied, Phase = "done", Percent = 100, Message = "Online-Fix berhasil diterapkan." });
             _log.Log("OnlineFix", $"Apply done for appId={appId}, {extracted.Count} files extracted");
         }
         catch (OperationCanceledException)
@@ -146,7 +192,13 @@ public sealed class OnlineFixService : IOnlineFixService
 
         var lines = await File.ReadAllLinesAsync(logPath, ct);
         int deleted = 0;
-        foreach (var line in lines.Where(l => !l.StartsWith('[') && !string.IsNullOrWhiteSpace(l) && l != "---"))
+        foreach (var line in lines.Where(l =>
+                     !l.StartsWith('[') &&
+                     !string.IsNullOrWhiteSpace(l) &&
+                     l != "---" &&
+                     !l.StartsWith("Date:", StringComparison.OrdinalIgnoreCase) &&
+                     !l.StartsWith("AppId:", StringComparison.OrdinalIgnoreCase) &&
+                     !l.StartsWith("Files:", StringComparison.OrdinalIgnoreCase)))
         {
             var full = Path.Combine(installPath, line.Replace('/', Path.DirectorySeparatorChar));
             try { if (File.Exists(full)) { File.Delete(full); deleted++; } } catch { }
@@ -216,5 +268,32 @@ public sealed class OnlineFixService : IOnlineFixService
         lines.AddRange(files);
         lines.Add("[/FIX]");
         await File.WriteAllLinesAsync(logPath, lines, ct);
+    }
+
+    private async Task PatchUnsteamIniAsync(string installPath, int appId, List<string> extractedFiles, CancellationToken ct)
+    {
+        var relIni = extractedFiles
+            .FirstOrDefault(f => f.EndsWith("unsteam.ini", StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(relIni))
+            return;
+
+        var iniPath = Path.Combine(installPath, relIni.Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(iniPath))
+            return;
+
+        try
+        {
+            var contents = await File.ReadAllTextAsync(iniPath, ct);
+            var updated = contents.Replace("<appid>", appId.ToString(), StringComparison.OrdinalIgnoreCase);
+            if (!string.Equals(contents, updated, StringComparison.Ordinal))
+            {
+                await File.WriteAllTextAsync(iniPath, updated, ct);
+                _log.Log("OnlineFix", $"Updated unsteam.ini placeholder for appId={appId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.Log("OnlineFix", $"Failed to patch unsteam.ini for appId={appId}: {ex.Message}");
+        }
     }
 }

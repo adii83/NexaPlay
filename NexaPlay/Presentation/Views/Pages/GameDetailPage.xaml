@@ -1309,6 +1309,328 @@
         </Border>
 
         <Grid
+            Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.IsAddGameDialogOpen), Mode=OneWay}"
+            Background="#B3000000"
+            IsHitTestVisible="True">
+            <Border
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="520"
+                MaxWidth="920"
+                Margin="18"
+                CornerRadius="14"
+                Background="#090909"
+                BorderBrush="#30FFFFFF"
+                BorderThickness="1"
+                Padding="26">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+                <StackPanel Spacing="16">
+                    <TextBlock
+                        Text="{x:Bind ViewModel.AddGameDialogTitle, Mode=OneWay}"
+                        Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                        FontSize="20"
+                        FontWeight="SemiBold" />
+
+                    <TextBlock
+                        Text="{x:Bind ViewModel.AddGameDialogStatus, Mode=OneWay}"
+                        Foreground="{ThemeResource NexaTextSecondaryBrush}"
+                        FontSize="14"
+                        TextWrapping="WrapWholeWords" />
+
+                    <StackPanel
+                        Spacing="8"
+                        Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.ShowAddGameDialogProgress), Mode=OneWay}">
+                        <ProgressBar
+                            Height="8"
+                            Minimum="0"
+                            Maximum="100"
+                            Value="{x:Bind ViewModel.AddGameDialogPercent, Mode=OneWay}"
+                            Background="#1DFFFFFF"
+                            Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                        <TextBlock
+                            Text="{x:Bind ViewModel.AddGameDialogPercentText, Mode=OneWay}"
+                            Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                            HorizontalAlignment="Right"
+                            FontSize="12"
+                            FontWeight="SemiBold" />
+                    </StackPanel>
+
+                    <Button
+                        Content="{x:Bind ViewModel.AddGameDialogActionText, Mode=OneWay}"
+                        HorizontalAlignment="Right"
+                        MinWidth="180"
+                        Height="40"
+                        Padding="24,0"
+                        CornerRadius="8"
+                        Background="#F2F2F2"
+                        BorderBrush="#F2F2F2"
+                        BorderThickness="1"
+                        Foreground="#000000"
+                        Click="AddGameDialogClose_Click"
+                        PointerEntered="MonochromeButton_PointerEntered"
+                        PointerExited="MonochromeButton_PointerExited" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid
+            Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.IsUiInfoDialogOpen), Mode=OneWay}"
+            Background="#B3000000"
+            IsHitTestVisible="True">
+            <Border
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="680"
+                MaxWidth="980"
+                Margin="18"
+                CornerRadius="16"
+                Background="#0A0A0A"
+                BorderBrush="#35FFFFFF"
+                BorderThickness="1"
+                Padding="28">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+                <StackPanel Spacing="16">
+                    <TextBlock
+                        Text="{x:Bind ViewModel.UiInfoDialogTitle, Mode=OneWay}"
+                        Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                        FontSize="18"
+                        FontWeight="SemiBold" />
+                    <TextBlock
+                        Text="{x:Bind ViewModel.UiInfoDialogMessage, Mode=OneWay}"
+                        Foreground="{ThemeResource NexaTextSecondaryBrush}"
+                        FontSize="14"
+                        TextWrapping="WrapWholeWords"
+                        LineHeight="24" />
+                    <Button
+                        Content="Mengerti"
+                        HorizontalAlignment="Right"
+                        MinWidth="190"
+                        Height="40"
+                        Padding="24,0"
+                        CornerRadius="8"
+                        Background="#F2F2F2"
+                        BorderBrush="#F2F2F2"
+                        BorderThickness="1"
+                        Foreground="#000000"
+                        Click="UiInfoDialogClose_Click"
+                        PointerEntered="MonochromeButton_PointerEntered"
+                        PointerExited="MonochromeButton_PointerExited" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid
+            Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.IsRemoveBlockedDialogOpen), Mode=OneWay}"
+            Background="#B8000000"
+            IsHitTestVisible="True">
+            <Grid>
+                <Border
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Width="760"
+                    MaxWidth="1020"
+                    Margin="18"
+                    CornerRadius="16"
+                    Background="#0B0B0B"
+                    BorderBrush="#40FFFFFF"
+                    BorderThickness="1"
+                    Padding="0">
+                    <Border.Shadow>
+                        <ThemeShadow />
+                    </Border.Shadow>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Padding="30,26,30,24" Spacing="12">
+                            <TextBlock
+                                Text="Game Masih Terinstall"
+                                Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                                FontSize="24"
+                                FontWeight="SemiBold" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.RemoveBlockedDialogMessage, Mode=OneWay}"
+                                Foreground="{ThemeResource NexaTextSecondaryBrush}"
+                                FontSize="15"
+                                TextWrapping="WrapWholeWords"
+                                LineHeight="24" />
+                        </StackPanel>
+
+                        <Border Grid.Row="1" Background="#000000" BorderBrush="#22FFFFFF" BorderThickness="0,1,0,0">
+                            <Grid Padding="28,20,28,20">
+                                <Button
+                                    Content="Mengerti"
+                                    HorizontalAlignment="Right"
+                                    MinWidth="320"
+                                    Height="46"
+                                    Padding="30,0"
+                                    CornerRadius="8"
+                                    Background="#F2F2F2"
+                                    BorderBrush="#F2F2F2"
+                                    BorderThickness="1"
+                                    Foreground="#000000"
+                                    Click="RemoveBlockedDialogClose_Click"
+                                    PointerEntered="MonochromeButton_PointerEntered"
+                                    PointerExited="MonochromeButton_PointerExited" />
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Border>
+
+            </Grid>
+        </Grid>
+
+        <Grid
+            Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.IsRemoveGameConfirmDialogOpen), Mode=OneWay}"
+            Background="#B3000000"
+            IsHitTestVisible="True">
+            <Border
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="680"
+                MaxWidth="980"
+                Margin="18"
+                CornerRadius="16"
+                Background="#0A0A0A"
+                BorderBrush="#35FFFFFF"
+                BorderThickness="1"
+                Padding="28">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+                <StackPanel Spacing="16">
+                    <TextBlock
+                        Text="Remove Game"
+                        Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                        FontSize="20"
+                        FontWeight="SemiBold" />
+                    <TextBlock
+                        Text="{x:Bind ViewModel.RemoveGameConfirmMessage, Mode=OneWay}"
+                        Foreground="{ThemeResource NexaTextSecondaryBrush}"
+                        FontSize="14"
+                        TextWrapping="WrapWholeWords"
+                        LineHeight="24" />
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                        <Button
+                            Content="Batal"
+                            MinWidth="150"
+                            Height="40"
+                            Padding="20,0"
+                            CornerRadius="8"
+                            Background="#141414"
+                            BorderBrush="#38FFFFFF"
+                            BorderThickness="1"
+                            Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                            Click="RemoveGameConfirmCancel_Click" />
+                        <Button
+                            Content="Hapus Game"
+                            MinWidth="180"
+                            Height="40"
+                            Padding="24,0"
+                            CornerRadius="8"
+                            Background="#F2F2F2"
+                            BorderBrush="#F2F2F2"
+                            BorderThickness="1"
+                            Foreground="#000000"
+                            Click="RemoveGameConfirmPrimary_Click"
+                            PointerEntered="MonochromeButton_PointerEntered"
+                            PointerExited="MonochromeButton_PointerExited" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid
+            Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.IsOnlineFixDialogOpen), Mode=OneWay}"
+            Background="#B3000000"
+            IsHitTestVisible="True">
+            <Border
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="620"
+                MaxWidth="980"
+                Margin="18"
+                CornerRadius="16"
+                Background="#0A0A0A"
+                BorderBrush="#35FFFFFF"
+                BorderThickness="1"
+                Padding="28">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+                <StackPanel Spacing="16">
+                    <TextBlock
+                        Text="{x:Bind ViewModel.OnlineFixDialogTitle, Mode=OneWay}"
+                        Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                        FontSize="20"
+                        FontWeight="SemiBold" />
+
+                    <TextBlock
+                        Text="{x:Bind ViewModel.OnlineFixDialogMessage, Mode=OneWay}"
+                        Foreground="{ThemeResource NexaTextSecondaryBrush}"
+                        FontSize="14"
+                        TextWrapping="WrapWholeWords"
+                        LineHeight="24" />
+
+                    <StackPanel
+                        Spacing="8"
+                        Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.ShowOnlineFixDialogProgress), Mode=OneWay}">
+                        <ProgressBar
+                            Height="8"
+                            Minimum="0"
+                            Maximum="100"
+                            Value="{x:Bind ViewModel.OnlineFixDialogPercent, Mode=OneWay}"
+                            Background="#1DFFFFFF"
+                            Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                        <TextBlock
+                            Text="{x:Bind ViewModel.OnlineFixDialogPercentText, Mode=OneWay}"
+                            Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                            HorizontalAlignment="Right"
+                            FontSize="12"
+                            FontWeight="SemiBold" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                        <Button
+                            Content="{x:Bind ViewModel.OnlineFixDialogSecondaryText, Mode=OneWay}"
+                            MinWidth="150"
+                            Height="40"
+                            Padding="20,0"
+                            CornerRadius="8"
+                            Background="#141414"
+                            BorderBrush="#38FFFFFF"
+                            BorderThickness="1"
+                            Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                            Visibility="{x:Bind local:GameDetailPage.BoolToVis(ViewModel.ShowOnlineFixDialogSecondaryButton), Mode=OneWay}"
+                            IsEnabled="{x:Bind ViewModel.IsOnlineFixDialogSecondaryEnabled, Mode=OneWay}"
+                            Click="OnlineFixDialogSecondary_Click" />
+
+                        <Button
+                            Content="{x:Bind ViewModel.OnlineFixDialogPrimaryText, Mode=OneWay}"
+                            MinWidth="180"
+                            Height="40"
+                            Padding="24,0"
+                            CornerRadius="8"
+                            Background="#F2F2F2"
+                            BorderBrush="#F2F2F2"
+                            BorderThickness="1"
+                            Foreground="#000000"
+                            IsEnabled="{x:Bind ViewModel.IsOnlineFixDialogPrimaryEnabled, Mode=OneWay}"
+                            Click="OnlineFixDialogPrimary_Click"
+                            PointerEntered="MonochromeButton_PointerEntered"
+                            PointerExited="MonochromeButton_PointerExited" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid
             x:Name="MediaOverlay"
             Visibility="Collapsed"
             Background="#E6000000">

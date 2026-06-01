@@ -27,6 +27,9 @@
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\logo.svg" />
     <Content Include="Assets\logo_text.svg" />
+    <Content Include="data\api.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

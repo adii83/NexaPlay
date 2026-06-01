@@ -20,6 +20,7 @@ public static class AppConstants
 
     // Online fix base URL
     public const string OnlineFixBaseUrl = "https://files.luatools.work/OnlineFix1/";
+    public const string OnlineFixFallbackUrl = "https://github.com/madoiscool/lt_api_links/releases/download/unsteam/Win64.zip";
 
     // Supabase
     public const string SupabaseUrl     = "https://ghmzmvrjazvqiaufjrjt.supabase.co";

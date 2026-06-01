@@ -321,5 +321,114 @@
                 </ListView.Footer>
             </ListView>
         </Grid>
+
+        <Grid
+            x:Name="LibraryRemoveConfirmOverlay"
+            Grid.RowSpan="2"
+            Visibility="Collapsed"
+            Background="#B3000000"
+            IsHitTestVisible="True">
+            <Border
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="680"
+                MaxWidth="980"
+                Margin="18"
+                CornerRadius="16"
+                Background="#0A0A0A"
+                BorderBrush="#35FFFFFF"
+                BorderThickness="1"
+                Padding="28">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+                <StackPanel Spacing="16">
+                    <TextBlock
+                        Text="Remove Game"
+                        Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                        FontSize="20"
+                        FontWeight="SemiBold" />
+                    <TextBlock
+                        x:Name="LibraryRemoveConfirmMessageText"
+                        Foreground="{ThemeResource NexaTextSecondaryBrush}"
+                        FontSize="14"
+                        TextWrapping="WrapWholeWords"
+                        LineHeight="24" />
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                        <Button
+                            Content="Batal"
+                            MinWidth="150"
+                            Height="40"
+                            Padding="20,0"
+                            CornerRadius="8"
+                            Background="#141414"
+                            BorderBrush="#38FFFFFF"
+                            BorderThickness="1"
+                            Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                            Click="LibraryRemoveConfirmCancel_Click" />
+                        <Button
+                            Content="Hapus Game"
+                            MinWidth="180"
+                            Height="40"
+                            Padding="24,0"
+                            CornerRadius="8"
+                            Background="#F2F2F2"
+                            BorderBrush="#F2F2F2"
+                            BorderThickness="1"
+                            Foreground="#000000"
+                            Click="LibraryRemoveConfirmPrimary_Click" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid
+            x:Name="LibraryRemoveResultOverlay"
+            Grid.RowSpan="2"
+            Visibility="Collapsed"
+            Background="#B3000000"
+            IsHitTestVisible="True">
+            <Border
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="680"
+                MaxWidth="980"
+                Margin="18"
+                CornerRadius="16"
+                Background="#0A0A0A"
+                BorderBrush="#35FFFFFF"
+                BorderThickness="1"
+                Padding="28">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+                <StackPanel Spacing="16">
+                    <TextBlock
+                        x:Name="LibraryRemoveResultTitleText"
+                        Text="Remove Game Gagal"
+                        Foreground="{ThemeResource NexaTextPrimaryBrush}"
+                        FontSize="20"
+                        FontWeight="SemiBold" />
+                    <TextBlock
+                        x:Name="LibraryRemoveResultMessageText"
+                        Foreground="{ThemeResource NexaTextSecondaryBrush}"
+                        FontSize="14"
+                        TextWrapping="WrapWholeWords"
+                        LineHeight="24" />
+                    <Button
+                        Content="Mengerti"
+                        HorizontalAlignment="Right"
+                        MinWidth="180"
+                        Height="40"
+                        Padding="24,0"
+                        CornerRadius="8"
+                        Background="#F2F2F2"
+                        BorderBrush="#F2F2F2"
+                        BorderThickness="1"
+                        Foreground="#000000"
+                        Click="LibraryRemoveResultClose_Click" />
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Page>

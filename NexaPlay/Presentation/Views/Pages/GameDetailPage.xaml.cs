@@ -147,6 +147,61 @@ public sealed partial class GameDetailPage : Page
         }
     }
 
+    private void AddGameDialogClose_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.HandleAddGameDialogAction();
+    }
+
+    private void UiInfoDialogClose_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CloseUiInfoDialog();
+    }
+
+    private void RemoveBlockedDialogClose_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CloseRemoveBlockedDialog();
+    }
+
+    private async void RemoveGameConfirmPrimary_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.ConfirmRemoveGameAsync();
+    }
+
+    private void RemoveGameConfirmCancel_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CloseRemoveGameConfirmDialog();
+    }
+
+    private async void OnlineFixDialogPrimary_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.HandleOnlineFixPrimaryActionAsync();
+    }
+
+    private void OnlineFixDialogSecondary_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.HandleOnlineFixSecondaryAction();
+    }
+
+    private void MonochromeButton_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not Button button)
+            return;
+
+        button.Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(210, 34, 34, 34));
+        button.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.White);
+        button.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+    }
+
+    private void MonochromeButton_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not Button button)
+            return;
+
+        button.Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(242, 242, 242, 242));
+        button.BorderBrush = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(242, 242, 242, 242));
+        button.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
+    }
+
     /// <summary>
     /// Strip heading pertama yang bunyinya "About the Game" / "About This Game"
     /// dari HTML Steam — karena kita sudah tidak pakai native header di atas WebView2.

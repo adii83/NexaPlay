@@ -150,7 +150,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             }
         }
 
-        _filteredGames = query.OrderBy(x => x.Name).ToList();
+        _filteredGames = query.ToList();
         TotalCount = _filteredGames.Count;
 
         if (resetPage)
@@ -280,8 +280,61 @@ public sealed partial class LibraryViewModel : ObservableObject
     [RelayCommand]
     private async Task RemoveGameAsync(string appId)
     {
-        await _addGame.RemoveGameAsync(appId);
-        await LoadAsync();
+        await RemoveGameWithResultAsync(appId);
+    }
+
+    public async Task<RemoveGameResult> RemoveGameWithResultAsync(string appId)
+        => await RemoveGameWithResultAsync(appId, reloadOnSuccess: true);
+
+    public async Task<RemoveGameResult> RemoveGameWithResultAsync(string appId, bool reloadOnSuccess)
+    {
+        var result = await _addGame.RemoveGameAsync(appId);
+        if (result.Success && reloadOnSuccess)
+        {
+            await LoadAsync();
+        }
+        return result;
+    }
+
+    public async Task RefreshIfLibraryChangedAsync()
+    {
+        var latestIds = _addGame.ListLibraryGames()
+            .Select(x => int.TryParse(x, out var id) ? id : -1)
+            .Where(id => id > 0)
+            .OrderBy(id => id)
+            .ToArray();
+
+        var currentIds = _allInstalledGames
+            .Select(x => x.AppId)
+            .OrderBy(id => id)
+            .ToArray();
+
+        if (!latestIds.SequenceEqual(currentIds))
+        {
+            await LoadAsync();
+        }
+    }
+
+    public async Task SyncAfterSuccessfulRemovalAsync(int appId)
+    {
+        _allInstalledGames = _allInstalledGames
+            .Where(g => g.AppId != appId)
+            .ToList();
+
+        _filteredGames = _filteredGames
+            .Where(g => g.AppId != appId)
+            .ToList();
+
+        FixedCount = _allInstalledGames.Count(g => g.FixApplied);
+        TotalCount = _filteredGames.Count;
+
+        var totalPages = Math.Max(1, (int)Math.Ceiling(_filteredGames.Count / (double)PageSize));
+        if (_currentPage > totalPages)
+        {
+            _currentPage = totalPages;
+        }
+
+        await ApplyFiltersAndPaginationAsync(resetPage: false);
     }
 
     [RelayCommand]

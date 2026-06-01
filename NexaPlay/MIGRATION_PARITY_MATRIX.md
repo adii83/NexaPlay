@@ -61,12 +61,12 @@ Update status setiap selesai implementasi/validasi.
 | Area | GameHub (lama) | NexaPlay (baru) | Status |
 |---|---|---|---|
 | Fix catalog load | `FixGamesDataService` | `IBypassGamesDataService` + impl | Done |
-| Apply fix flow | `OnlineFixService` + progress | `IOnlineFixService` + `BypassGamesViewModel` + `GameDetailViewModel` | Partial |
+| Apply fix flow | `OnlineFixService` + progress | `IOnlineFixService` + `BypassGamesViewModel` + `GameDetailViewModel` | Done |
 | Progress state UI | Web progress updates | Native progress bar di `GameDetailPage` | **Done** |
 | Unfix flow | Ada | Ada di `GameDetailViewModel.RemoveFixCommand` | Partial |
 | Cancel flow | Ada | Ada di `GameDetailViewModel.CancelFixCommand` | Partial |
 | Add-Game action | `AddGameService` | `GameDetailViewModel.AddGameCommand` | **Done** |
-| Online-Fix action | `OnlineFixService` | `GameDetailViewModel.ApplyFixCommand` | Partial |
+| Online-Fix action | `OnlineFixService` | `GameDetailViewModel.ApplyFixCommand` | Done |
 | Restart Steam action | `SteamService.RestartSteam` | `GameDetailViewModel.RestartSteamCommand` | **Done** |
 
 Catatan nomenklatur UI Bypass:
