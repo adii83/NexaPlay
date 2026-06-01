@@ -547,7 +547,7 @@
                                                 <Run Text="error" FontWeight="Bold" Foreground="#FFFFFF" />
                                                 <Run Text=" atau " />
                                                 <Run Text="bug" FontWeight="Bold" Foreground="#FFFFFF" />
-                                                <Run Text=" selama proses fix, harap segera " />
+                                                <Run Text=" selama proses bypass, harap segera " />
                                                 <Run Text="laporkan" FontWeight="Bold" Foreground="#FFFFFF" />
                                                 <Run Text=" kepada admin agar dapat ditangani dengan cepat." />
                                             </TextBlock>
@@ -572,6 +572,7 @@
                                         IsHitTestVisible="False" />
                                     <Button
                                         Click="StartBypassBtn_Click"
+                                        IsEnabled="{x:Bind local:BypassGameDetailPage.InverseBool(ViewModel.IsBypassProcessing), Mode=OneWay}"
                                         MinWidth="200"
                                         Height="44"
                                         Padding="22,0"
@@ -593,6 +594,44 @@
                                         </Button.Resources>
                                     </Button>
                                 </Grid>
+
+                                <StackPanel Margin="0,10,0,0"
+                                            Spacing="6"
+                                            Visibility="{x:Bind local:BypassGameDetailPage.BoolToVis(ViewModel.HasBypassProgress), Mode=OneWay}">
+                                    <ProgressBar Minimum="0"
+                                                 Maximum="100"
+                                                 Value="{x:Bind ViewModel.BypassProgressPercent, Mode=OneWay}"
+                                                 Height="6"
+                                                 Foreground="#FFFFFF"
+                                                 Background="#26FFFFFF" />
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{x:Bind ViewModel.BypassProgressMessage, Mode=OneWay}"
+                                                   Foreground="#D0FFFFFF"
+                                                   FontSize="12.5"
+                                                   TextWrapping="WrapWholeWords" />
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{x:Bind ViewModel.BypassProgressPercentText, Mode=OneWay}"
+                                                   Foreground="#FFFFFF"
+                                                   FontWeight="SemiBold"
+                                                   FontSize="12.5" />
+                                    </Grid>
+                                    <TextBlock Text="{x:Bind ViewModel.BypassProgressDetail, Mode=OneWay}"
+                                               Foreground="#9FD0D0D0"
+                                               FontSize="11.5"
+                                               TextWrapping="WrapWholeWords" />
+                                </StackPanel>
+
+                                <TextBlock Margin="0,8,0,0"
+                                           Text="{x:Bind ViewModel.BypassErrorMessage, Mode=OneWay}"
+                                           Visibility="{x:Bind local:BypassGameDetailPage.BoolToVis(ViewModel.HasBypassError), Mode=OneWay}"
+                                           Foreground="#FF8A8A"
+                                           FontSize="12.5"
+                                           TextWrapping="WrapWholeWords" />
                             </StackPanel>
 
                             <!-- RIGHT: Game Cover Art (library capsule portrait) -->
@@ -1114,7 +1153,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="-" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
                         <TextBlock Grid.Column="1" Foreground="{ThemeResource NexaTextPrimaryBrush}" TextWrapping="WrapWholeWords" LineHeight="22">
-                            <Run Text="Setelah proses fix selesai, segera hubungi Admin melalui WhatsApp untuk melanjutkan proses aktivasi offline." />
+                            <Run Text="Setelah proses bypass selesai, segera hubungi Admin melalui WhatsApp untuk melanjutkan proses aktivasi offline." />
                         </TextBlock>
                     </Grid>
                 </StackPanel>

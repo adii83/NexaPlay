@@ -6,6 +6,7 @@ public interface IWindowsDefenderService
 {
     Task<IReadOnlyList<AntivirusInfo>> DetectAntivirusAsync();
     Task<bool> AddExclusionAsync(string path);
+    Task<DefenderExclusionResult> EnsurePathExcludedAsync(string path);
     Task<bool> IsPathExcludedAsync(string path);
     Task<IReadOnlyList<string>> GetExclusionsAsync();
 }

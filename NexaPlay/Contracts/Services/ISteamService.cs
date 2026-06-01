@@ -9,5 +9,6 @@ public interface ISteamService
     IReadOnlyList<InstalledGame> ScanInstalledGames();
     string? ResolveGameInstallPath(int appId);
     string? GetGameName(int appId);
+    Task<bool> SetLaunchOptionsAndRestartAsync(int appId, string launchOptions);
     Task RestartAsync();
 }

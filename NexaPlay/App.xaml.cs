@@ -22,6 +22,7 @@ public partial class App : Application
 
     private IServiceProvider? _serviceProvider;
     private Window? _window;
+    public Window? MainWindowInstance => _window;
 
     public App()
     {

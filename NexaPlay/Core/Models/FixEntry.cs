@@ -33,6 +33,7 @@ public sealed class FixEntry
     public bool ShowSteamSharingBadge => Category == GameCategory.SteamSharing;
 
     public string? ExeHint { get; init; }
+    public string? LaunchOption { get; init; }
     public bool UseShortcut { get; init; }
     public IReadOnlyList<FixFile> Files { get; init; } = Array.Empty<FixFile>();
     public string InstallHint => $"Usually installed at: steamapps/common/{Title}";

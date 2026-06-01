@@ -8,6 +8,8 @@ using NexaPlay.Contracts.Navigation;
 using NexaPlay.Presentation.ViewModels;
 using System;
 using System.ComponentModel;
+using System.Threading.Tasks;
+using Windows.Storage.Pickers;
 
 namespace NexaPlay.Presentation.Views.Pages;
 
@@ -25,6 +27,9 @@ public sealed partial class BypassGameDetailPage : Page
         _nav = ((App)App.Current).GetRequiredService<INavigationService>();
         InitializeComponent();
         DataContext = ViewModel;
+        ViewModel.ConfirmAsync = ShowConfirmAsync;
+        ViewModel.SelectFolderAsync = SelectManualFolderAsync;
+        ViewModel.ShowDialogAsync = ShowInfoDialogAsync;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         Unloaded += OnPageUnloaded;
     }
@@ -345,6 +350,11 @@ public sealed partial class BypassGameDetailPage : Page
 
     private async void StartBypassBtn_Click(object sender, RoutedEventArgs e)
     {
+        if (ViewModel.ShowSteamSection)
+        {
+            return;
+        }
+
         if (ViewModel.ShowAktivasiOfflineBadge)
         {
             OfflineActivationCheckbox.IsChecked = false;
@@ -354,7 +364,7 @@ public sealed partial class BypassGameDetailPage : Page
         }
         else
         {
-            ViewModel.StartBypassGameCommand.Execute(null);
+            await ViewModel.StartBypassGameCommand.ExecuteAsync(null);
         }
     }
 
@@ -365,7 +375,7 @@ public sealed partial class BypassGameDetailPage : Page
 
     private void OfflineActivationDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
-        // For now, the Lanjut Bypass button just acts like a close button
+        _ = ViewModel.StartBypassGameCommand.ExecuteAsync(null);
     }
 
     private async void CopyButton_Click(object sender, RoutedEventArgs e)
@@ -427,6 +437,173 @@ public sealed partial class BypassGameDetailPage : Page
 
     public static Visibility InverseBoolToVis(bool v) =>
         v ? Visibility.Collapsed : Visibility.Visible;
+
+    public static bool InverseBool(bool v) => !v;
+
+    private async Task<bool> ShowConfirmAsync(string message)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = "Peringatan Antivirus",
+            Content = new TextBlock
+            {
+                Text = message,
+                TextWrapping = TextWrapping.WrapWholeWords
+            },
+            PrimaryButtonText = "Tetap Lanjut",
+            CloseButtonText = "Batal",
+            DefaultButton = ContentDialogButton.Close
+        };
+        ApplyBypassDialogButtonTheme(dialog);
+
+        var result = await dialog.ShowAsync();
+        return result == ContentDialogResult.Primary;
+    }
+
+    private async Task<string?> SelectManualFolderAsync(string message)
+    {
+        var info = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = "Pilih Folder Game",
+            Content = new TextBlock
+            {
+                Text = message,
+                TextWrapping = TextWrapping.WrapWholeWords
+            },
+            PrimaryButtonText = "Lanjut Pilih Folder",
+            CloseButtonText = "Batal",
+            DefaultButton = ContentDialogButton.Primary
+        };
+        ApplyBypassDialogButtonTheme(info);
+
+        var ack = await info.ShowAsync();
+        if (ack != ContentDialogResult.Primary)
+            throw new InvalidOperationException("Anda belum memilih folder game.");
+
+        // Prioritas UI modern seperti GameHub screenshot: gunakan WinRT FolderPicker dulu.
+        // Jika gagal di environment tertentu, fallback ke dialog legacy agar flow tetap jalan.
+        try
+        {
+            var modernPath = await TryPickFolderWithWinRtAsync();
+            if (!string.IsNullOrWhiteSpace(modernPath))
+                return modernPath;
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var fallbackPath = TryPickFolderWithWinForms();
+            if (!string.IsNullOrWhiteSpace(fallbackPath))
+                return fallbackPath;
+
+            var detail = string.IsNullOrWhiteSpace(ex.Message)
+                ? "Terjadi kendala sistem saat membuka dialog pemilih folder."
+                : ex.Message;
+            throw new InvalidOperationException($"Gagal membuka pemilih folder: {detail}");
+        }
+
+        // WinRT tidak melempar error tapi tidak ada path, coba fallback legacy.
+        var legacyPath = TryPickFolderWithWinForms();
+        if (!string.IsNullOrWhiteSpace(legacyPath))
+            return legacyPath;
+
+        throw new InvalidOperationException("Anda belum memilih folder game.");
+    }
+
+    private static string? TryPickFolderWithWinForms()
+    {
+        try
+        {
+            const string psScript =
+                "Add-Type -AssemblyName System.Windows.Forms; " +
+                "$dlg = New-Object System.Windows.Forms.OpenFileDialog; " +
+                "$dlg.Title = 'Select Folder'; " +
+                "$dlg.Filter = 'Folders|*.folder'; " +
+                "$dlg.CheckFileExists = $false; " +
+                "$dlg.ValidateNames = $false; " +
+                "$dlg.FileName = 'Pilih folder instalasi game'; " +
+                "if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { " +
+                "  $path = Split-Path -Path $dlg.FileName -Parent; " +
+                "  if ([string]::IsNullOrWhiteSpace($path)) { $path = $dlg.FileName }; " +
+                "  Write-Output $path " +
+                "}";
+
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -STA -Command \"{psScript}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            using var proc = System.Diagnostics.Process.Start(psi);
+            if (proc is null)
+                return null;
+
+            var output = proc.StandardOutput.ReadToEnd().Trim();
+            proc.WaitForExit();
+            return string.IsNullOrWhiteSpace(output) ? null : output;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task<string?> TryPickFolderWithWinRtAsync()
+    {
+        var app = (App)App.Current;
+        if (app.MainWindowInstance is null)
+            throw new InvalidOperationException("Window aplikasi tidak tersedia untuk membuka pemilih folder.");
+
+        var folderPicker = new FolderPicker();
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(app.MainWindowInstance);
+        WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
+        folderPicker.FileTypeFilter.Add("*");
+
+        var folder = await folderPicker.PickSingleFolderAsync();
+        return folder?.Path;
+    }
+
+    private async Task ShowInfoDialogAsync(string title, string message)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = title,
+            Content = new TextBlock
+            {
+                Text = message,
+                TextWrapping = TextWrapping.WrapWholeWords
+            },
+            PrimaryButtonText = "Tutup",
+            DefaultButton = ContentDialogButton.Primary
+        };
+        ApplyBypassDialogButtonTheme(dialog);
+
+        await dialog.ShowAsync();
+    }
+
+    private static void ApplyBypassDialogButtonTheme(ContentDialog dialog)
+    {
+        dialog.Resources["SystemControlBackgroundAccentBrush"] = new SolidColorBrush(Microsoft.UI.Colors.White);
+        dialog.Resources["SystemControlForegroundChromeWhiteBrush"] = new SolidColorBrush(Microsoft.UI.Colors.Black);
+        dialog.Resources["SystemControlHighlightAccentBrush"] = new SolidColorBrush(Windows.UI.Color.FromArgb(38, 255, 255, 255));
+
+        // Fallback keys across WinUI versions.
+        dialog.Resources["AccentButtonBackground"] = new SolidColorBrush(Microsoft.UI.Colors.White);
+        dialog.Resources["AccentButtonForeground"] = new SolidColorBrush(Microsoft.UI.Colors.Black);
+        dialog.Resources["AccentButtonBackgroundPointerOver"] = new SolidColorBrush(Windows.UI.Color.FromArgb(38, 255, 255, 255));
+        dialog.Resources["AccentButtonBackgroundPressed"] = new SolidColorBrush(Windows.UI.Color.FromArgb(56, 255, 255, 255));
+        dialog.Resources["AccentButtonForegroundPointerOver"] = new SolidColorBrush(Microsoft.UI.Colors.White);
+        dialog.Resources["AccentButtonForegroundPressed"] = new SolidColorBrush(Microsoft.UI.Colors.White);
+    }
 
     public static Uri SafeUri(string? raw)
     {

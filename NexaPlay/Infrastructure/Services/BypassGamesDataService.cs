@@ -250,7 +250,14 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
             {
                 try
                 {
-                    var appId    = g.TryGetProperty("appid",      out var aid) ? aid.GetInt32()  : 0;
+                    var appId    = 0;
+                    if (g.TryGetProperty("appid", out var aid))
+                    {
+                        if (aid.ValueKind == JsonValueKind.Number)
+                            appId = aid.GetInt32();
+                        else if (aid.ValueKind == JsonValueKind.String)
+                            int.TryParse(aid.GetString(), out appId);
+                    }
                     var title    = g.TryGetProperty("title",      out var t)   ? t.GetString()   ?? "" : "";
                     var pub      = g.TryGetProperty("publisher",  out var p)   ? p.GetString()   ?? "" : "";
                     var catStr   = g.TryGetProperty("category",   out var c)   ? c.GetString()   ?? "" : "";
@@ -260,6 +267,10 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
                     var premium  = g.TryGetProperty("premium",    out var pr)  && pr.GetBoolean();
                     var offline  = g.TryGetProperty("aktivasi_offline", out var aof) && aof.GetBoolean();
                     var exeHint  = g.TryGetProperty("exe_hint",   out var ex)  ? ex.GetString()  : null;
+                    var launchOption = g.TryGetProperty("launch_option", out var lo) ? lo.GetString()
+                        : g.TryGetProperty("launch_options", out var los) ? los.GetString()
+                        : g.TryGetProperty("launch", out var lz) ? lz.GetString()
+                        : null;
                     var shortcut = g.TryGetProperty("use_shortcut", out var sc) && sc.GetBoolean();
 
                     var files = new List<FixFile>();
@@ -293,7 +304,7 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
                     {
                         AppId = appId, Title = title, Publisher = pub, Category = category,
                         PosterUrl = poster, Username = username, Password = password, IsPremium = premium,
-                        AktivasiOffline = offline, ExeHint = exeHint, UseShortcut = shortcut, Files = files
+                        AktivasiOffline = offline, ExeHint = exeHint, LaunchOption = launchOption, UseShortcut = shortcut, Files = files
                     });
                 }
                 catch { /* skip malformed entries */ }

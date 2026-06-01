@@ -86,6 +86,85 @@ public sealed class WindowsDefenderService : IWindowsDefenderService
         }
     }
 
+    public async Task<DefenderExclusionResult> EnsurePathExcludedAsync(string path)
+    {
+        var result = new DefenderExclusionResult();
+        try
+        {
+            if (await IsPathExcludedAsync(path))
+            {
+                result.Success = true;
+                return result;
+            }
+
+            // Keep this non-elevated to detect true "needs admin" condition like GameHub flow.
+            var escapedPath = EscapePs(path);
+            var command =
+                "$p='" + escapedPath + "';" +
+                "if (-not (Get-Command Get-MpPreference -ErrorAction SilentlyContinue)) { Write-Output 'DEFENDER_MISSING'; exit 0 };" +
+                "try { $existing = Get-MpPreference -ErrorAction Stop | Select-Object -ExpandProperty ExclusionPath; if ($existing -contains $p) { Write-Output 'ALREADY'; exit 0 } } catch { Write-Output 'DEFENDER_MISSING'; exit 0 };" +
+                "try { Add-MpPreference -ExclusionPath $p -ErrorAction Stop; Write-Output 'ADDED'; exit 0 } catch { Write-Output ('ADD_FAILED:' + $_.Exception.Message); exit 1 }";
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"{command}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            using var proc = Process.Start(psi);
+            if (proc is null)
+            {
+                result.Error = "Gagal memulai proses PowerShell.";
+                return result;
+            }
+
+            var output = await proc.StandardOutput.ReadToEndAsync();
+            var error = await proc.StandardError.ReadToEndAsync();
+            await proc.WaitForExitAsync();
+            var merged = $"{output}\n{error}".Trim();
+
+            if (merged.Contains("DEFENDER_MISSING", StringComparison.OrdinalIgnoreCase))
+            {
+                result.Success = true;
+                result.DefenderMissing = true;
+                return result;
+            }
+
+            if (merged.Contains("ALREADY", StringComparison.OrdinalIgnoreCase) ||
+                merged.Contains("ADDED", StringComparison.OrdinalIgnoreCase))
+            {
+                result.Success = true;
+                return result;
+            }
+
+            var lower = merged.ToLowerInvariant();
+            if (lower.Contains("access is denied") ||
+                lower.Contains("requested operation requires elevation") ||
+                lower.Contains("administrator") ||
+                lower.Contains("unauthorizedaccess"))
+            {
+                result.NeedsAdmin = true;
+                result.Error = "Aplikasi perlu dijalankan sebagai Administrator untuk menambahkan exclusion.";
+                return result;
+            }
+
+            result.Error = string.IsNullOrWhiteSpace(merged)
+                ? "Gagal menambahkan exclusion Windows Defender."
+                : merged;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _log.Log("Defender", $"EnsurePathExcluded error: {ex.Message}");
+            result.Error = ex.Message;
+            return result;
+        }
+    }
+
     public async Task<bool> IsPathExcludedAsync(string path)
     {
         return await Task.Run(() =>

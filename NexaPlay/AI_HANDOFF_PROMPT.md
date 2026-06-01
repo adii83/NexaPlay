@@ -20,7 +20,6 @@ Sebelum mengubah kode, WAJIB baca dokumen ini berurutan:
 4. NexaPlay/MIGRATION_PARITY_MATRIX.md
 5. NexaPlay/AI_HANDOFF_PROMPT.md
 6. NexaPlay/AI_HANDOFF_HOME_HISTORY.md (riwayat detail perbaikan page Home)
-7. NexaPlay/.agents/rules/antigravity-rtk-rules.md (aturan menggunakan rtk)
 
 
 Lokasi project utama:
@@ -340,6 +339,44 @@ Tanggal:
 - Build:
 - Next:
 ```
+
+### 2026-06-01 (Batch : Penutupan Gap Parity Alur Fix 3rd-Party)
+- Fokus: Menutup gap parity lanjutan alur fix 3rd-party di Bypass Detail agar semakin setara dengan pola GameHub.
+- Perubahan:
+  - Menambahkan konfirmasi antivirus pihak ketiga sebelum lanjut proses (user bisa lanjutkan atau batalkan).
+  - Menambahkan fallback manual path selection menggunakan `FolderPicker` saat path instalasi game tidak terdeteksi otomatis.
+  - Menambahkan dukungan extract non-zip melalui fallback `7z` CLI (ZIP tetap lewat extractor native).
+  - Menambahkan auto-create shortcut desktop setelah sukses fix saat `use_shortcut=true`, dengan prioritas `exe_hint`.
+  - Menambahkan akses window aktif di `App.xaml.cs` (`MainWindowInstance`) untuk inisialisasi picker.
+- Build: `Build succeeded` (`0 Error(s)`, `0 Warning(s)`) pada `Debug x64`.
+- Next: QA runtime end-to-end untuk skenario:
+  1) third-party AV terdeteksi (batal vs lanjut),
+  2) auto path gagal lalu pilih manual folder,
+  3) archive non-zip dengan/ tanpa `7z`,
+  4) shortcut creation saat `use_shortcut=true`.
+
+### 2026-06-01 (Batch : Implementasi Alur Fix 3rd-Party di Bypass Detail)
+- Fokus: Menerapkan alur proses fix untuk kategori `3rd-party` pada `BypassGameDetail` dan memastikan `Aktivasi Offline` baru memulai proses setelah user menekan dialog **Lanjut Bypass**.
+- Perubahan:
+  - `BypassGameDetailViewModel`:
+    - Mengubah `StartBypassGameCommand` dari placeholder menjadi proses async ber-step:
+      1) check antivirus aktif,
+      2) detect install path Steam,
+      3) tambah exclusion Defender,
+      4) download file fix,
+      5) extract,
+      6) replace file game,
+      7) cleanup.
+    - Menambahkan state UI proses: `IsBypassProcessing`, `BypassProgressPercent`, `BypassProgressMessage`, `BypassErrorMessage`.
+    - Menambahkan guard kategori: `Steam Account/Steam Sharing` tidak menjalankan alur fix 3rd-party.
+  - `BypassGameDetailPage.xaml`:
+    - Tombol `Mulai Bypass Game` sekarang disable saat proses berjalan.
+    - Menambahkan progress bar + pesan progress + pesan error di bawah tombol aksi.
+  - `BypassGameDetailPage.xaml.cs`:
+    - Untuk badge `Aktivasi Offline`, proses fix benar-benar dimulai saat user klik **Lanjut Bypass** di dialog.
+    - Untuk non-offline langsung jalankan command async.
+- Build: `Build succeeded` (`0 Error(s)`, `0 Warning(s)`) pada `Debug x64`.
+- Next: parity lanjutan agar 100% setara GameHub: manual path picker saat game tidak terdeteksi, confirm antivirus pihak ketiga (lanjut/batal), dukungan extract non-zip (jika source bukan zip), serta auto-create shortcut berbasis `exe_hint`.
 
 ### 2026-06-01 (Batch : UX Dialog Add Game + Case Denuvo + Polish Dialog Remove)
 - Fokus: Menambahkan feedback proses `Add Game` yang jelas untuk user (seperti GameHub) dengan tema monokrom NexaPlay.
@@ -688,6 +725,108 @@ Tanggal: 1 Juni 2026
   - GameDetailPage.xaml: blok progress Add Game kini bind ke visibilitas ShowAddGameDialogProgress.
 - Build: dotnet build NexaPlay.slnx -c Debug sukses (0 error).
 - Next: QA runtime case add game unavailable untuk memastikan dialog tampil informatif tanpa 0%.
+Tanggal: 2026-06-01
+- Fokus: Kejelasan pesan user pada alur Bypass Game 3rd-party.
+- Perubahan: Menambahkan dialog info/sukses/gagal di BypassGameDetail agar case penting tampil sebagai popup (kategori tidak didukung, file fix kosong, error proses, butuh Administrator, dan sukses akhir); teks konfirmasi antivirus disamakan substansinya dengan GameHub tetapi tetap memakai UI NexaPlay.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Samakan wording dialog error edge-case lain bila diperlukan, tanpa mengubah alur teknis fix.
+
+Tanggal: 2026-06-01
+- Fokus: Konsistensi wording dialog Bypass Game agar pesan user lebih jelas.
+- Perubahan: Menyelaraskan copy dialog/error untuk case utama (kategori tidak didukung, file fix belum ada, antivirus dibatalkan, manual folder invalid, dan kebutuhan Administrator); mempertegas title/CTA dialog antivirus serta picker folder agar action user tidak ambigu.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Jika diperlukan, samakan wording ini ke halaman bypass lain agar tone pesan global konsisten.
+
+Tanggal: 2026-06-01
+- Fokus: Konsistensi style tombol dialog bypass.
+- Perubahan: Menambahkan helper tema tombol dialog pada `BypassGameDetailPage` untuk seluruh dialog baru (konfirmasi antivirus, pilih folder, info hasil) dengan kombinasi tombol putih dan hover transparan/soft sesuai style NexaPlay.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Jika diinginkan, samakan helper ini ke dialog bypass lama agar seluruh halaman bypass satu gaya.
+
+Tanggal: 2026-06-01
+- Fokus: Konsistensi terminologi UI Bypass.
+- Perubahan: Mengganti seluruh teks UI user-facing pada alur Bypass Detail yang masih memakai kata `fix` menjadi `bypass` (progress message, judul dialog, dan instruksi offline) agar selaras dengan rename GameHub.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Audit ringan halaman bypass lain untuk memastikan tidak ada istilah `Fix Games` tersisa di UI user-facing.
+
+Tanggal: 2026-06-01
+- Fokus: Stabilitas ekstraksi archive bypass saat WinRAR gagal.
+- Perubahan: Memperbaiki fallback ekstraksi agar jika WinRAR gagal otomatis mencoba 7-Zip; memperbaiki argumen password WinRAR (quoted) dan mode tanpa password (`-p-`) untuk menghindari prompt interaktif/error saat proses background.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Jika user masih menemui error code spesifik, capture pesan lengkap error gabungan WinRAR/7-Zip untuk pemetaan penyebab per game archive.
+
+Tanggal: 2026-06-01
+- Fokus: Parity teknis download Google Drive agar ekstraksi bypass konsisten dengan GameHub.
+- Perubahan: Port logika download GameHub ke BypassGameDetailViewModel: ekstraksi fileId dari URL, multi-metode URL (`drive.usercontent` -> extracted confirm link -> `drive.google.com/uc`), deteksi respons HTML konfirmasi, retry/backoff, validasi signature file archive (RAR/ZIP) sebelum ekstrak, dan pesan error spesifik jika file hasil download bukan archive.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Uji runtime pada link GDrive yang sebelumnya gagal (termasuk multipart RAR) dan verifikasi file hasil download tidak lagi berukuran HTML kecil.
+
+Tanggal: 2026-06-01
+- Fokus: Hard parity cabang antivirus dan Windows Defender exclusion pada alur Bypass.
+- Perubahan: Menambahkan `EnsurePathExcludedAsync` dengan hasil detail (`success`, `needsAdmin`, `defenderMissing`, `error`) agar flow keputusan setara GameHub; antivirus check error teknis kini non-fatal (tetap lanjut), sementara penolakan user tetap fatal; saat Defender tidak tersedia langkah exclusion dilewati dengan dialog info, dan saat butuh admin ditampilkan pesan instruktif yang tegas.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Validasi runtime 3 skenario cabang (Defender available, Defender missing, butuh admin) untuk memastikan perilaku identik dengan GameHub.
+
+Tanggal: 2026-06-01
+- Fokus: Perbaikan crash format pada langkah exclusion saat rerun bypass.
+- Perubahan: Memperbaiki konstruksi command PowerShell di `EnsurePathExcludedAsync` (hapus `string.Format` yang berbenturan dengan kurung kurawal script) sehingga error `Input string was not in a correct format...` tidak muncul lagi saat proses bypass ulang.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Uji ulang bypass pada game yang sama untuk memastikan exclusion step lanjut normal ke download/extract.
+
+Tanggal: 2026-06-01
+- Fokus: Peningkatan UX progress bypass agar lebih informatif seperti GameHub.
+- Perubahan: Menambah tampilan persen global progress di UI Bypass Detail (`BypassProgressPercentText`), menambah detail status kecil (`BypassProgressDetail`), serta membuat progress download lebih halus berbasis bytes (bukan loncat per-file) dengan pemetaan tetap pada rentang 40%-70%.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Validasi runtime pada file besar agar animasi progress download terlihat halus dan akurat.
+
+Tanggal: 2026-06-01
+- Fokus: Kejelasan flow manual folder saat game path tidak terdeteksi.
+- Perubahan: Menyamakan behavior dengan GameHub untuk case manual path: jika user batal/tidak memilih folder kini muncul pesan jelas `Anda belum memilih folder game.` (bukan dialog kosong); menambahkan fallback friendly error jika exception tanpa message agar popup `Bypass Gagal` selalu berisi informasi.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Uji ulang skenario `detect path gagal -> pilih manual -> cancel` dan `detect path gagal -> pilih manual -> pilih folder` untuk memastikan UX sesuai.
+
+Tanggal: 2026-06-01
+- Fokus: Perbaikan pesan error kosong pada kegagalan membuka folder picker manual.
+- Perubahan: Menambahkan fallback detail error di `SelectManualFolderAsync` agar popup tidak lagi berhenti pada teks `Gagal membuka pemilih folder:` kosong; sekarang selalu tampil alasan default yang jelas jika message exception kosong.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Validasi ulang pada mesin/user yang sebelumnya memunculkan pesan kosong untuk memastikan informasi kini konsisten tampil.
+
+Tanggal: 2026-06-01
+- Fokus: Parity mekanisme pilih folder manual dengan GameHub.
+- Perubahan: Mengganti jalur utama pemilih folder manual menjadi dialog `FolderBrowserDialog` via proses PowerShell STA (mirip pendekatan GameHub) untuk menghindari kegagalan `FolderPicker` WinRT di environment tertentu; `FolderPicker` WinRT tetap dipakai sebagai fallback.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Uji runtime `detect path gagal -> pilih folder manual` pada mesin yang sebelumnya gagal untuk memastikan dialog folder kini terbuka normal.
+
+Tanggal: 2026-06-01
+- Fokus: Menyamakan tampilan dialog pilih folder agar modern seperti GameHub.
+- Perubahan: Mengubah prioritas pemilih folder manual ke WinRT `FolderPicker` (UI explorer modern) sebagai jalur utama; dialog legacy `FolderBrowserDialog` dipertahankan hanya sebagai fallback saat WinRT gagal di environment tertentu.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Verifikasi visual bahwa dialog folder kini tampil modern pada flow `path tidak terdeteksi`.
+
+Tanggal: 2026-06-01
+- Fokus: Konsistensi tampilan pemilih folder agar tetap modern.
+- Perubahan: Menghapus percobaan API `Microsoft.Windows.Storage.Pickers` (belum tersedia di Windows App SDK project saat ini) yang menyebabkan fallback ke dialog lama; memperbarui jalur fallback ke `OpenFileDialog` mode folder (`CheckFileExists=false`, `ValidateNames=false`) via PowerShell STA sehingga tampilan picker tetap explorer-style modern, bukan tree-view klasik.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Verifikasi visual di flow manual path bahwa dialog yang tampil konsisten modern pada mesin user.
+
+Tanggal: 2026-06-01
+- Fokus: Parity proses akhir bypass untuk sinkronisasi Steam Launch Options.
+- Perubahan: Menambahkan dukungan `launch_option` pada `FixEntry` parser; menambahkan API `ISteamService.SetLaunchOptionsAndRestartAsync` dan implementasi di `SteamPlatformService` (kill Steam -> backup `localconfig.vdf` -> upsert `LaunchOptions` berdasarkan AppID -> restart Steam); menghubungkan flow ini di akhir `StartBypassGameAsync` setelah replace file; mendukung token `{exe_name}` dan `{exe_path}` berbasis `exe_hint` + folder game terpilih.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Validasi runtime pada entri JSON yang memiliki `launch_option` dan cek hasil di Steam Properties > General > Launch Options.
+
+Tanggal: 2026-06-01
+- Fokus: Penyesuaian aturan launch option custom agar sesuai skema JSON user.
+- Perubahan: Gating launch option di akhir bypass kini hanya aktif jika `use_shortcut=true` dan `exe_hint` tersedia; sumber command diambil dari field entry (`launch_option`/alias) atau mapping eksternal `launch_options.json` berbasis AppID (mendukung format seperti `"204100": "\"...exe\" %command%"`); parser `appid` pada `new_fix_games.json` juga dibuat toleran untuk tipe string/number.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Uji runtime pada satu game dengan `use_shortcut+exe_hint` dan satu game tanpa field tersebut untuk memastikan hanya game target yang mendapat LaunchOptions.
+
+Tanggal: 2026-06-01
+- Fokus: Otomatisasi penuh launch option tanpa mapping JSON manual.
+- Perubahan: Menghapus ketergantungan runtime ke `launch_options.json`; launch option kini dibentuk otomatis sebagai `"full_exe_path" %command%` dari hasil deteksi `gamePath` + `exe_hint` (langsung cek path direct lalu fallback pencarian rekursif di folder instalasi game); gating tetap hanya untuk entry `use_shortcut=true` dan `exe_hint` tersedia.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Uji runtime beberapa game dengan struktur subfolder exe berbeda untuk memastikan resolve `exe_hint` selalu tepat.
+
 ## 10. Update Log Ringkas
 
 Tambahkan catatan baru di atas bagian ini setiap selesai batch penting.
