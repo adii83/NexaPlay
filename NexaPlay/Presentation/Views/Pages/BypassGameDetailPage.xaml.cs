@@ -4,11 +4,13 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
+using Microsoft.Web.WebView2.Core;
 using NexaPlay.Contracts.Navigation;
 using NexaPlay.Presentation.ViewModels;
 using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using Windows.System;
 using Windows.Storage.Pickers;
 
 namespace NexaPlay.Presentation.Views.Pages;
@@ -20,6 +22,8 @@ public sealed partial class BypassGameDetailPage : Page
     private Storyboard? _shimmerStoryboard;
     private Storyboard? _heroShimmerStoryboard;
     private Storyboard? _topIconShimmerStoryboard;
+    private bool _tutorialWebViewInitialized;
+    private bool _tutorialVirtualHostMapped;
 
     public BypassGameDetailPage()
     {
@@ -249,6 +253,7 @@ public sealed partial class BypassGameDetailPage : Page
 
     private void BackButton_Click(object sender, RoutedEventArgs e)
     {
+        StopTutorialVideoPlayback();
         if (_nav.CanGoBack)
         {
             _nav.GoBack();
@@ -277,6 +282,7 @@ public sealed partial class BypassGameDetailPage : Page
 
     private void OnPageUnloaded(object sender, RoutedEventArgs e)
     {
+        StopTutorialVideoPlayback();
         StopHeroShimmerAnimation();
         StopTopIconShimmerAnimation();
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
@@ -400,35 +406,116 @@ public sealed partial class BypassGameDetailPage : Page
 
     private async void TutorialThumbnail_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
     {
-        if (TutorialThumbnailOverlay != null && TutorialWebView != null)
-        {
-            TutorialThumbnailOverlay.Visibility = Visibility.Collapsed;
-            TutorialWebView.Visibility = Visibility.Visible;
-            try
-            {
-                await TutorialWebView.EnsureCoreWebView2Async();
-                
-                string html = @"
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <style>
-                        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #141414; }
-                        iframe { width: 100vw; height: 100vh; border: none; }
-                    </style>
-                </head>
-                <body>
-                    <iframe src='https://www.youtube-nocookie.com/embed/lkETeFanN7c?autoplay=1&rel=0&modestbranding=1&origin=http://localhost' 
-                            title='YouTube video player' 
-                            allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' 
-                            allowfullscreen>
-                    </iframe>
-                </body>
-                </html>";
+        if (!ViewModel.HasTutorialVideo || TutorialOverlayWebView is null || TutorialVideoOverlayRoot is null)
+            return;
 
-                TutorialWebView.NavigateToString(html);
+        try
+        {
+            if (!_tutorialWebViewInitialized)
+            {
+                await TutorialOverlayWebView.EnsureCoreWebView2Async();
+                ConfigureTutorialWebView(TutorialOverlayWebView.CoreWebView2);
+                _tutorialWebViewInitialized = true;
             }
-            catch { }
+
+            TutorialVideoOverlayRoot.Visibility = Visibility.Visible;
+            TutorialVideoOverlayRoot.IsHitTestVisible = true;
+            var videoId = ExtractYouTubeVideoId(ViewModel.TutorialVideoEmbedUrl);
+            if (string.IsNullOrWhiteSpace(videoId))
+                return;
+
+            var playerUrl = $"https://appassets.example/youtube-player.html?videoId={Uri.EscapeDataString(videoId)}&autoplay=1";
+            TutorialOverlayWebView.Source = new Uri(playerUrl);
+        }
+        catch
+        {
+            // Keep UX safe: if embed fails, user still can use watch URL from metadata.
+        }
+    }
+
+    private void TutorialVideoOverlayCloseBtn_Click(object sender, RoutedEventArgs e)
+    {
+        StopTutorialVideoPlayback();
+    }
+
+    private void ConfigureTutorialWebView(CoreWebView2 core)
+    {
+        if (!_tutorialVirtualHostMapped)
+        {
+            var webFolder = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Web");
+            core.SetVirtualHostNameToFolderMapping(
+                "appassets.example",
+                webFolder,
+                CoreWebView2HostResourceAccessKind.DenyCors);
+            _tutorialVirtualHostMapped = true;
+        }
+
+        core.Settings.AreDefaultContextMenusEnabled = false;
+        core.Settings.AreDevToolsEnabled = false;
+        core.Settings.IsStatusBarEnabled = false;
+        core.Settings.AreHostObjectsAllowed = false;
+        core.WebMessageReceived -= TutorialWebView_WebMessageReceived;
+        core.WebMessageReceived += TutorialWebView_WebMessageReceived;
+    }
+
+    private async void TutorialWebView_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        try
+        {
+            var msg = e.TryGetWebMessageAsString();
+            if (string.IsNullOrWhiteSpace(msg) || !msg.StartsWith("YT_ERROR_", StringComparison.Ordinal))
+                return;
+
+            var watch = ViewModel.TutorialVideoWatchUrl;
+            if (!string.IsNullOrWhiteSpace(watch) && Uri.TryCreate(watch, UriKind.Absolute, out var uri))
+            {
+                await Launcher.LaunchUriAsync(uri);
+            }
+        }
+        catch
+        {
+            // Swallow fallback failures; user still can close overlay.
+        }
+    }
+
+    private static string? ExtractYouTubeVideoId(string? source)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+            return null;
+
+        if (!Uri.TryCreate(source, UriKind.Absolute, out var uri))
+            return null;
+
+        if (uri.AbsolutePath.Contains("/embed/", StringComparison.OrdinalIgnoreCase))
+        {
+            var parts = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var idx = Array.FindIndex(parts, p => p.Equals("embed", StringComparison.OrdinalIgnoreCase));
+            if (idx >= 0 && idx + 1 < parts.Length)
+                return parts[idx + 1];
+        }
+
+        var query = uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var q in query)
+        {
+            var kv = q.Split('=', 2);
+            if (kv.Length == 2 && kv[0] == "v")
+                return Uri.UnescapeDataString(kv[1]);
+        }
+
+        return null;
+    }
+
+    private void StopTutorialVideoPlayback()
+    {
+        if (TutorialVideoOverlayRoot is not null)
+        {
+            TutorialVideoOverlayRoot.Visibility = Visibility.Collapsed;
+            TutorialVideoOverlayRoot.IsHitTestVisible = false;
+        }
+
+        if (TutorialOverlayWebView?.CoreWebView2 is not null)
+        {
+            TutorialOverlayWebView.CoreWebView2.Navigate("about:blank");
         }
     }
 

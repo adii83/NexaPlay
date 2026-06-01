@@ -340,6 +340,46 @@ Tanggal:
 - Next:
 ```
 
+### 2026-06-01 (Batch : Fix Error 153 YouTube via Local Wrapper + Virtual Host)
+- Fokus: Menuntaskan error `153` pada tutorial video Bypass tanpa mengubah tampilan UI overlay yang sudah diset.
+- Perubahan:
+  - Menambahkan wrapper HTML lokal `Assets/Web/youtube-player.html` yang memuat YouTube IFrame API.
+  - `WebView2` di `BypassGameDetailPage` sekarang memuat wrapper lewat virtual host mapping:
+    - host: `appassets.example`
+    - URL player: `https://appassets.example/youtube-player.html?videoId=...`
+  - Menghapus pola load langsung embed/NavigateToString untuk player utama agar origin/referrer valid.
+  - Tetap mempertahankan overlay video, ukuran, tombol close, dan stop playback saat close/back/unload (UI sama seperti sebelumnya).
+  - Menambahkan wrapper HTML sebagai content yang di-copy ke output build (`PreserveNewest`).
+- Build: `Build succeeded` (`0 Error(s)`, `0 Warning(s)`) pada `Debug x64` dengan `OutDir=Debug-preview`.
+- Next: Validasi runtime 2 skenario:
+  1) video embeddable harus play normal in-app tanpa `153`,
+  2) video non-embeddable tetap fallback aman.
+
+### 2026-06-01 (Batch : Tutorial Video Bypass via youtube.json + ETag)
+- Fokus: BypassGameDetail tutorial video memakai metadata `youtube.json` (remote update + ETag) dan player overlay besar (parity feel seperti modal media GameDetail).
+- Perubahan:
+  - Tambah service baru `IBypassTutorialVideoService` + `BypassTutorialVideoService` untuk load `youtube.json` dari repo override dengan cache lokal + validasi `If-None-Match` / `ETag`.
+  - Tambah model `BypassTutorialVideo` serta konstanta baru:
+    - `YoutubeTutorialUrl`
+    - `YoutubeTutorialCacheFileName`
+    - `YoutubeTutorialEtagFileName`
+  - `BypassGameDetailViewModel` sekarang menarik metadata tutorial video per game/kategori (`byAppId` -> `byCategory` -> `default`) dan expose:
+    - `TutorialVideoTitle`
+    - `TutorialVideoEmbedUrl`
+    - `TutorialVideoWatchUrl`
+    - `TutorialVideoThumbnailUrl`
+  - `BypassGameDetailPage`:
+    - hapus embed hardcoded di kotak kecil,
+    - thumbnail tetap ringan di halaman,
+    - klik thumbnail membuka `WebView2` overlay besar (modal) agar nyaman ditonton,
+    - saat ditutup/back/unload otomatis `Navigate("about:blank")` agar video berhenti (tidak lanjut muter di background),
+    - konfigurasi WebView2 diperkecil overhead UI (status bar/context menu/devtools dimatikan).
+- Build: `Build succeeded` (`0 Error(s)`, `0 Warning(s)`) pada `Debug x64` dengan `OutDir=Debug-preview`.
+- Next: Uji runtime langsung beberapa video dari `youtube.json` untuk verifikasi:
+  1) update remote terdeteksi tanpa rebuild,
+  2) close overlay menghentikan audio/video,
+  3) tidak ada lagi Error 153 pada video valid embeddable.
+
 ### 2026-06-01 (Batch : Penutupan Gap Parity Alur Fix 3rd-Party)
 - Fokus: Menutup gap parity lanjutan alur fix 3rd-party di Bypass Detail agar semakin setara dengan pola GameHub.
 - Perubahan:

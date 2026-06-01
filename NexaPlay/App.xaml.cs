@@ -52,6 +52,7 @@ public partial class App : Application
         services.AddSingleton<ISteamService, SteamPlatformService>();
         services.AddSingleton<IWindowsDefenderService, WindowsDefenderService>();
         services.AddSingleton<INexaPlayOverrideService, NexaPlayOverrideService>();
+        services.AddSingleton<IBypassTutorialVideoService, BypassTutorialVideoService>();
         services.AddSingleton<IMetadataService, MetadataService>();
         services.AddSingleton<IBypassGamesDataService, BypassGamesDataService>();
         services.AddSingleton<IOnlineFixService, OnlineFixService>();

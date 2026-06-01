@@ -27,6 +27,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     private readonly ISteamStoreService _storeService;
     private readonly IBypassGamesDataService _bypassGamesData;
     private readonly INexaPlayOverrideService _nexaPlayOverride;
+    private readonly IBypassTutorialVideoService _tutorialVideoService;
     private readonly IAppLogService _log;
     private readonly INavigationService _nav;
     private readonly IWindowsDefenderService _defender;
@@ -42,6 +43,11 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     [ObservableProperty] public partial string GameIconUrl { get; set; }
     [ObservableProperty] public partial FixEntry? BypassEntry { get; set; }
     [ObservableProperty] public partial string CoverArtUrl { get; set; }
+    [ObservableProperty] public partial string TutorialVideoTitle { get; set; } = "Tutorial Video";
+    [ObservableProperty] public partial string TutorialVideoEmbedUrl { get; set; } = string.Empty;
+    [ObservableProperty] public partial string TutorialVideoWatchUrl { get; set; } = string.Empty;
+    [ObservableProperty] public partial string TutorialVideoThumbnailUrl { get; set; } = string.Empty;
+    public bool HasTutorialVideo => !string.IsNullOrWhiteSpace(TutorialVideoEmbedUrl);
 
     public IReadOnlyList<string> GenreTags => BuildGenreTags(Game?.Genre);
     public string DisplayShortDescription => Detail?.ShortDescription ?? Game?.ShortDescription ?? string.Empty;
@@ -84,6 +90,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         ISteamStoreService storeService,
         IBypassGamesDataService bypassGamesData,
         INexaPlayOverrideService nexaPlayOverride,
+        IBypassTutorialVideoService tutorialVideoService,
         IAppLogService log,
         INavigationService nav,
         IWindowsDefenderService defender,
@@ -93,6 +100,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         _storeService = storeService;
         _bypassGamesData = bypassGamesData;
         _nexaPlayOverride = nexaPlayOverride;
+        _tutorialVideoService = tutorialVideoService;
         _log = log;
         _nav = nav;
         _defender = defender;
@@ -101,6 +109,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         HeroBackgroundUrl = string.Empty;
         GameIconUrl = string.Empty;
         CoverArtUrl = string.Empty;
+        TutorialVideoThumbnailUrl = "https://img.youtube.com/vi/lkETeFanN7c/maxresdefault.jpg";
     }
 
     public async Task LoadAsync(int appId, FixEntry? preferredBypassEntry, CancellationToken ct = default)
@@ -177,6 +186,13 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
             OnPropertyChanged(nameof(SteamPassword));
             SteamGuardCode = string.Empty;
             IsLoadingKode = false;
+
+            var tutorial = await _tutorialVideoService.GetTutorialVideoAsync(appId, BypassEntry?.Category ?? GameCategory.SteamAccount, ct);
+            TutorialVideoTitle = tutorial.Title;
+            TutorialVideoEmbedUrl = tutorial.EmbedUrl;
+            TutorialVideoWatchUrl = tutorial.WatchUrl;
+            TutorialVideoThumbnailUrl = tutorial.ThumbnailUrl;
+            OnPropertyChanged(nameof(HasTutorialVideo));
         }
         finally
         {

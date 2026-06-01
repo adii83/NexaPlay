@@ -802,14 +802,11 @@
                                     
                                     <!-- Video Embed -->
                                     <StackPanel Spacing="16">
-                                        <TextBlock Text="Tutorial Video" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="20" FontWeight="SemiBold" CharacterSpacing="-10" />
+                                        <TextBlock Text="{x:Bind ViewModel.TutorialVideoTitle, Mode=OneWay}" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="20" FontWeight="SemiBold" CharacterSpacing="-10" />
                                         <Border CornerRadius="12" BorderBrush="#2E2E2E" BorderThickness="1" Background="#141414" Height="240">
                                             <Grid x:Name="TutorialVideoContainer">
-                                                <!-- WebView2 is hidden by default to save RAM -->
-                                                <WebView2 x:Name="TutorialWebView" Visibility="Collapsed" DefaultBackgroundColor="Black" />
-                                                
                                                 <Grid x:Name="TutorialThumbnailOverlay" Background="Black" Tapped="TutorialThumbnail_Tapped" CornerRadius="11">
-                                                <Image Source="https://img.youtube.com/vi/lkETeFanN7c/maxresdefault.jpg" Stretch="UniformToFill" Opacity="0.75" />
+                                                <Image Source="{x:Bind ViewModel.TutorialVideoThumbnailUrl, Mode=OneWay}" Stretch="UniformToFill" Opacity="0.75" />
                                                 <Border Background="#CC000000" CornerRadius="30" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center">
                                                     <FontIcon Glyph="&#xE768;" FontSize="24" Foreground="#FFFFFF" Margin="4,0,0,0" />
                                                 </Border>
@@ -1087,6 +1084,42 @@
                     TextTrimming="CharacterEllipsis" />
             </Grid>
         </Border>
+
+        <Grid x:Name="TutorialVideoOverlayRoot"
+              Visibility="Collapsed"
+              Background="#DD000000"
+              IsHitTestVisible="False">
+            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Border HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Margin="80,80,80,120"
+                        Background="#0A0A0A"
+                        BorderBrush="#30FFFFFF"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                    <Grid>
+                        <WebView2 x:Name="TutorialOverlayWebView"
+                                 DefaultBackgroundColor="Black"
+                                 HorizontalAlignment="Stretch"
+                                 VerticalAlignment="Stretch" />
+                    </Grid>
+                </Border>
+
+                <Button x:Name="TutorialVideoOverlayCloseBtn"
+                        Width="50"
+                        Height="50"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="0,44,42,0"
+                        Click="TutorialVideoOverlayCloseBtn_Click"
+                        Background="#1F1F1F"
+                        BorderBrush="#4AFFFFFF"
+                        BorderThickness="1"
+                        CornerRadius="25">
+                    <FontIcon Glyph="&#xE711;" FontFamily="Segoe Fluent Icons" Foreground="#FFFFFF" FontSize="20" />
+                </Button>
+            </Grid>
+        </Grid>
 
         <ContentDialog x:Name="OfflineActivationDialog"
                        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"

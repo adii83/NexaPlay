@@ -17,6 +17,7 @@ public static class AppConstants
 
     // NexaPlay-specific override (separate repo)
     public const string NexaPlayOverrideUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/nexaplay_override.json";
+    public const string YoutubeTutorialUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/youtube.json";
 
     // Online fix base URL
     public const string OnlineFixBaseUrl = "https://files.luatools.work/OnlineFix1/";
@@ -46,4 +47,6 @@ public static class AppConstants
     public const string OverrideDataCacheFileName = "override_data.json";
     public const string UserOverrideDataCacheFileName = "user_override_data.json";
     public const string NexaPlayOverrideCacheFileName = "nexaplay_override.json";
+    public const string YoutubeTutorialCacheFileName = "youtube_tutorial.json";
+    public const string YoutubeTutorialEtagFileName = "youtube_tutorial.etag";
 }
