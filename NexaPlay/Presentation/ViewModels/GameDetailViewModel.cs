@@ -33,6 +33,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
     private readonly IAddGameService _addGame;
     private readonly ISteamService _steam;
     private readonly IBypassGamesDataService _fixData;
+    private readonly ILicenseService _licenseService;
     private readonly IAppLogService _log;
     private readonly INexaPlayOverrideService _nexaPlayOverride;
     private readonly INavigationService _nav;
@@ -171,6 +172,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
     public string AddGameDialogPercentText => $"{Math.Max(0, AddGameDialogPercent)}%";
     public string AddGameDialogActionText => CanCloseAddGameDialog ? "Mengerti" : "Batal";
     public string OnlineFixDialogPercentText => $"{Math.Max(0, OnlineFixDialogPercent)}%";
+    public Func<string, Task>? ShowLicenseGateDialogAsync { get; set; }
 
     private CancellationTokenSource? _fixCts;
     private CancellationTokenSource? _addGameCts;
@@ -204,6 +206,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
         IAddGameService addGame,
         ISteamService steam,
         IBypassGamesDataService fixData,
+        ILicenseService licenseService,
         INexaPlayOverrideService nexaPlayOverride,
         IAppLogService log,
         INavigationService nav)
@@ -214,6 +217,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
         _addGame      = addGame;
         _steam        = steam;
         _fixData      = fixData;
+        _licenseService = licenseService;
         _nexaPlayOverride = nexaPlayOverride;
         _log          = log;
         _nav          = nav;
@@ -452,6 +456,8 @@ public sealed partial class GameDetailViewModel : ObservableObject
     private async Task AddGameAsync()
     {
         if (Game is null || IsAddingGame) return;
+        if (!await EnsurePremiumAccessAsync(Game.IsPremium))
+            return;
 
         if (IsGameInstalled)
         {
@@ -860,6 +866,39 @@ public sealed partial class GameDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(CanAddGame));
         OnPropertyChanged(nameof(CanApplyOnlineFix));
         OnPropertyChanged(nameof(CanRestartSteam));
+    }
+
+    private async Task<bool> EnsurePremiumAccessAsync(bool requiresPremium)
+    {
+        if (!requiresPremium)
+            return true;
+
+        try
+        {
+            var license = await _licenseService.LoadAsync();
+            if (!license.IsValid)
+            {
+                if (ShowLicenseGateDialogAsync is not null)
+                    await ShowLicenseGateDialogAsync("license-invalid");
+                return false;
+            }
+
+            if (!license.IsPremium)
+            {
+                if (ShowLicenseGateDialogAsync is not null)
+                    await ShowLicenseGateDialogAsync("premium-required");
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _log.Log("LicenseGate", $"GameDetail premium gate failed appid={Game?.AppId} err={ex.Message}");
+            if (ShowLicenseGateDialogAsync is not null)
+                await ShowLicenseGateDialogAsync("verification-failed");
+            return false;
+        }
     }
 
     private void SetOnlineFixDialogChecking(int appId)

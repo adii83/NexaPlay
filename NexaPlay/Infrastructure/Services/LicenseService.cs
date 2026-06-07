@@ -22,27 +22,93 @@ public sealed class LicenseService : ILicenseService
 
     public async Task<LicenseInfo> LoadAsync()
     {
-        if (_cached is not null) return _cached;
-        var stored = _store.Load();
-        if (stored is null)
+        try
         {
-            _cached = new LicenseInfo { Status = LicenseStatus.Unknown };
+            _log.Log("License", $"LoadAsync entered. cache_hit={_cached is not null}");
+            if (_cached is not null)
+            {
+                _log.Log("License", $"LoadAsync returning cached license status={_cached.Status} valid={_cached.IsValid}");
+                return _cached;
+            }
+
+            _log.Log("License", "LoadAsync reading license store on background thread...");
+            var stored = await Task.Run(() => _store.Load());
+            if (stored is null)
+            {
+                _log.Log("License", "LoadAsync store returned null");
+                _cached = new LicenseInfo { Status = LicenseStatus.Unknown };
+                return _cached;
+            }
+
+            _log.Log("License", $"Loaded license: plan={stored.Plan} status={stored.Status}");
+            _cached = stored;
+            return stored;
+        }
+        catch (Exception ex)
+        {
+            _log.Log("License", $"LoadAsync exception: {ex}");
+            _cached = new LicenseInfo
+            {
+                Status = LicenseStatus.Invalid,
+                Message = "Gagal membaca license lokal."
+            };
             return _cached;
         }
-        _log.Log("License", $"Loaded license: plan={stored.Plan} status={stored.Status}");
-        _cached = stored;
-        return stored;
     }
 
     public async Task<LicenseInfo> ActivateAsync(string licenseKey, CancellationToken ct = default)
     {
         _log.Log("License", $"Activating key (hidden)");
-        var deviceId = GetDeviceId();
+        var deviceId = await Task.Run(() => GetDeviceId(), ct);
         var result = await ValidateOnlineAsync(licenseKey, deviceId, ct);
         if (result.IsValid)
         {
             await SaveAsync(result);
         }
+        return result;
+    }
+
+    public async Task<LicenseInfo> ValidateExistingAsync(CancellationToken ct = default)
+    {
+        var existing = await LoadAsync();
+        if (!existing.IsValid || string.IsNullOrEmpty(existing.Key))
+        {
+            return existing;
+        }
+
+        var currentDeviceId = await Task.Run(() => GetDeviceId(), ct);
+        _log.Log("License", $"ValidateExistingAsync using current device id. stored_device_present={!string.IsNullOrWhiteSpace(existing.DeviceId)}");
+
+        if (!string.IsNullOrWhiteSpace(existing.DeviceId) &&
+            !string.Equals(existing.DeviceId, currentDeviceId, StringComparison.Ordinal))
+        {
+            _log.Log("License", "ValidateExistingAsync detected offline device mismatch before online validation");
+            return new LicenseInfo
+            {
+                Key = existing.Key,
+                Plan = existing.Plan,
+                Status = LicenseStatus.DeviceMismatch,
+                DeviceId = currentDeviceId,
+                Message = "License terikat dengan perangkat lain."
+            };
+        }
+
+        var result = await ValidateOnlineAsync(existing.Key, currentDeviceId, ct);
+        
+        // If banned, reset, or not found during background check, clean up
+        if (result.Status == LicenseStatus.Banned || 
+            result.Status == LicenseStatus.Reset || 
+            result.Status == LicenseStatus.NotFound)
+        {
+            _log.Log("License", $"Background check returned {result.Status}, cleaning up offline license...");
+            await DeactivateAsync();
+        }
+        // If successful, update cache/file just in case plan changed
+        else if (result.IsValid)
+        {
+            await SaveAsync(result);
+        }
+
         return result;
     }
 
@@ -63,12 +129,16 @@ public sealed class LicenseService : ILicenseService
             req.Headers.Add("apikey", AppConstants.SupabaseAnonKey);
             req.Headers.Add("Authorization", $"Bearer {AppConstants.SupabaseAnonKey}");
 
+            // Prefer representations to get JSON back
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+            content.Headers.Add("Prefer", "return=representation");
+
             using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cts.Token);
             var body = await resp.Content.ReadAsStringAsync(cts.Token);
 
             if (!resp.IsSuccessStatusCode)
             {
-                _log.Log("License", $"HTTP error {resp.StatusCode}");
+                _log.Log("License", $"HTTP error {resp.StatusCode}: {body}");
                 return new LicenseInfo { Key = licenseKey, Status = LicenseStatus.Invalid, Message = $"Server error: {resp.StatusCode}", DeviceId = deviceId };
             }
 
@@ -80,13 +150,41 @@ public sealed class LicenseService : ILicenseService
             var msg    = root.TryGetProperty("message", out var m) ? m.GetString()
                        : root.TryGetProperty("reason",  out var r) ? r.GetString() : null;
 
-            var licStatus = status switch
+            var licStatus = LicenseStatus.Unknown;
+            
+            if (status == "success")
             {
-                "active" => LicenseStatus.Valid,
-                "banned" => LicenseStatus.Banned,
-                "invalid" or "error" => LicenseStatus.Invalid,
-                _ => LicenseStatus.Invalid
-            };
+                licStatus = LicenseStatus.Valid;
+            }
+            else if (status == "error")
+            {
+                string msgLower = msg?.ToLowerInvariant() ?? "";
+                
+                if (msgLower.Contains("banned") || msgLower.Contains("dibanned"))
+                {
+                    licStatus = LicenseStatus.Banned;
+                }
+                else if (msgLower.Contains("not_found") || msgLower.Contains("license tidak ditemukan"))
+                {
+                    licStatus = LicenseStatus.NotFound;
+                }
+                else if (msgLower.Contains("wrong_device") || msgLower.Contains("device berbeda"))
+                {
+                    licStatus = LicenseStatus.DeviceMismatch;
+                }
+                else if (msgLower.Contains("reset"))
+                {
+                    licStatus = LicenseStatus.Reset;
+                }
+                else
+                {
+                    licStatus = LicenseStatus.Invalid;
+                }
+            }
+            else
+            {
+                licStatus = LicenseStatus.Invalid;
+            }
 
             var licPlan = plan?.ToLowerInvariant() switch
             {

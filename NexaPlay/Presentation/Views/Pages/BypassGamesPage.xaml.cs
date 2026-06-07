@@ -5,7 +5,10 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml;
+using NexaPlay.Contracts.Services;
 using NexaPlay.Contracts.Navigation;
+using NexaPlay.Core.Enums;
+using NexaPlay.Presentation.Helpers;
 using NexaPlay.Presentation.ViewModels;
 using System.ComponentModel;
 using System.Collections.Generic;
@@ -18,6 +21,7 @@ public sealed partial class BypassGamesPage : Page
 {
     public BypassGamesViewModel ViewModel { get; }
     private readonly INavigationService _nav;
+    private readonly ILicenseService _licenseService;
     private int _lastColumns = -1;
     private DispatcherTimer? _gridResizeDebounceTimer;
 
@@ -25,6 +29,7 @@ public sealed partial class BypassGamesPage : Page
     {
         ViewModel = ((App)App.Current).GetRequiredService<BypassGamesViewModel>();
         _nav      = ((App)App.Current).GetRequiredService<INavigationService>();
+        _licenseService = ((App)App.Current).GetRequiredService<ILicenseService>();
         InitializeComponent();
         DataContext = ViewModel;
         SetupGridResizeDebounce();
@@ -133,11 +138,37 @@ public sealed partial class BypassGamesPage : Page
 
     // ── Navigation ───────────────────────────────────────────────────────────
 
-    private void OnGameCardClicked(object sender, RoutedEventArgs e)
+    private async void OnGameCardClicked(object sender, RoutedEventArgs e)
     {
         if (sender is Button button && button.Tag is int appId)
         {
             var selectedEntry = ViewModel.DisplayGames.FirstOrDefault(x => x.AppId == appId);
+            if (selectedEntry is not null &&
+                string.Equals(ViewModel.ActiveCategory, "steam-sharing", StringComparison.OrdinalIgnoreCase) &&
+                selectedEntry.IsPremium)
+            {
+                try
+                {
+                    var license = await _licenseService.LoadAsync();
+                    if (!license.IsValid)
+                    {
+                        await LicenseAccessDialogHelper.ShowLicenseInvalidAsync(XamlRoot);
+                        return;
+                    }
+
+                    if (!license.IsPremium)
+                    {
+                        await LicenseAccessDialogHelper.ShowPremiumFeatureAsync(XamlRoot);
+                        return;
+                    }
+                }
+                catch
+                {
+                    await LicenseAccessDialogHelper.ShowVerificationFailedAsync(XamlRoot);
+                    return;
+                }
+            }
+
             _nav.Navigate<BypassGameDetailPage>((appId, selectedEntry));
         }
     }

@@ -7,9 +7,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     Background="#080808">
-
-    <ScrollViewer Padding="56,40,56,80">
-        <StackPanel Spacing="32" MaxWidth="1000" HorizontalAlignment="Left">
+    <Grid>
+        <ScrollViewer>
+            <StackPanel Padding="56,40,56,80" Spacing="32" MaxWidth="1000" HorizontalAlignment="Left">
             
             <!-- License Information -->
             <StackPanel Spacing="16">
@@ -32,19 +32,19 @@
 
                     <!-- Plan -->
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Plan" Foreground="#A0A0A0" VerticalAlignment="Center" Margin="0,0,0,16"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Premium" Foreground="#FFFFFF" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,0,16"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.CurrentLicense.Plan, Mode=OneWay}" Foreground="#FFFFFF" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,0,16"/>
 
                     <!-- License Key -->
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="License Key" Foreground="#A0A0A0" VerticalAlignment="Center" Margin="0,0,0,16"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="GHUB-5RO...TYE-SADQ" Foreground="#FFFFFF" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,0,16"/>
-                    <Button Grid.Row="1" Grid.Column="2" Background="Transparent" BorderThickness="0" Padding="8" Margin="0,0,0,16" ToolTipService.ToolTip="Copy License Key">
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.CurrentLicense.Key, Mode=OneWay}" Foreground="#FFFFFF" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,0,16"/>
+                    <Button Grid.Row="1" Grid.Column="2" Background="Transparent" BorderThickness="0" Padding="8" Margin="0,0,0,16" ToolTipService.ToolTip="Copy License Key" Click="OnCopyLicenseKeyClicked">
                         <FontIcon Glyph="&#xE8C8;" FontSize="14" Foreground="#FFFFFF"/>
                     </Button>
 
                     <!-- Device ID -->
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="Device ID" Foreground="#A0A0A0" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="387531f4981c42e811eb836f1b4401f0d2ac22b1c7f60654e8e5a888d7396923" Foreground="#FFFFFF" FontFamily="Consolas" VerticalAlignment="Center" TextWrapping="Wrap"/>
-                    <Button Grid.Row="2" Grid.Column="2" Background="Transparent" BorderThickness="0" Padding="8" ToolTipService.ToolTip="Copy Device ID">
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.DeviceId, Mode=OneWay}" Foreground="#FFFFFF" FontFamily="Consolas" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                    <Button Grid.Row="2" Grid.Column="2" Background="Transparent" BorderThickness="0" Padding="8" ToolTipService.ToolTip="Copy Device ID" Click="OnCopyDeviceIdClicked">
                         <FontIcon Glyph="&#xE8C8;" FontSize="14" Foreground="#FFFFFF"/>
                     </Button>
                 </Grid>
@@ -58,19 +58,20 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Spacing="16">
-                    <Button Background="#111111" BorderBrush="#333333" BorderThickness="1" Foreground="#FFFFFF" CornerRadius="4" Padding="16,10">
+                    <Button Click="OnLoadGamesClicked"
+                            Background="#111111" BorderBrush="#333333" BorderThickness="1" Foreground="#FFFFFF" CornerRadius="4" Padding="16,10">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xE72C;" FontSize="14" />
                             <TextBlock Text="Load Games" />
                         </StackPanel>
                     </Button>
-                    <Button Background="#111111" BorderBrush="#333333" BorderThickness="1" Foreground="#FFFFFF" CornerRadius="4" Padding="16,10">
+                    <Button Click="OnClearCacheClicked" Background="#111111" BorderBrush="#333333" BorderThickness="1" Foreground="#FFFFFF" CornerRadius="4" Padding="16,10">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xEA99;" FontSize="14" />
                             <TextBlock Text="Clear Cache" />
                         </StackPanel>
                     </Button>
-                    <Button Background="#111111" BorderBrush="#333333" BorderThickness="1" Foreground="#FFFFFF" CornerRadius="4" Padding="16,10">
+                    <Button Click="OnClearDataClicked" Background="#111111" BorderBrush="#333333" BorderThickness="1" Foreground="#FFFFFF" CornerRadius="4" Padding="16,10">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xE74D;" FontSize="14" />
                             <TextBlock Text="Clear Data" />
@@ -170,5 +171,18 @@
             </StackPanel>
 
         </StackPanel>
-    </ScrollViewer>
+        </ScrollViewer>
+        
+        <!-- Loading Dialog Overlay -->
+        <Grid x:Name="LoadingOverlay" Visibility="Collapsed" Background="#D8000000" Canvas.ZIndex="100">
+            <Border Background="#111111" BorderBrush="#333333" BorderThickness="1" CornerRadius="8" Padding="24" Width="400" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Memuat Data Terbaru" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                    <TextBlock Text="{Binding ActivationMessage, Mode=OneWay}" Foreground="#A0A0A0" TextWrapping="Wrap"/>
+                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding DownloadProgress, Mode=OneWay}" Foreground="#FFFFFF" Background="#333333" Height="4" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding DownloadProgressText, Mode=OneWay}" Foreground="#A0A0A0" HorizontalAlignment="Right" FontSize="12"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
 </Page>

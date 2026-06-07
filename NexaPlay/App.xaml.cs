@@ -94,7 +94,8 @@ public partial class App : Application
     {
         this.UnhandledException += (s, e) =>
         {
-            AppendCrashLog("WinUI.UnhandledException", e.Exception?.ToString() ?? "(null exception)");
+            AppendCrashLog("WinUI.UnhandledException", e.Exception?.ToString() ?? e.Message ?? "(null exception)");
+            e.Handled = true;
         };
 
         AppDomain.CurrentDomain.UnhandledException += (s, e) =>

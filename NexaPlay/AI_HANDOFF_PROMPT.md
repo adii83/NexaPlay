@@ -327,18 +327,336 @@ Docs:
 - `NexaPlay/MIGRATION_PARITY_MATRIX.md`
 - `NexaPlay/AI_HANDOFF_PROMPT.md`
 
+  - `price_display`
+  - `price_normalized`
+  - `protection`
 
-## 10. Update Log dan catatan AI
-Tambahkan catatan baru di atas bagian ## 10. Update Log Ringkas setiap selesai batch penting.
-Format:
+Source merge catalog ringan:
+
+1. `steam_data.json.gz`
+2. `steam_data.json`
+3. `override_data.json`
+
+Urutan override:
+
+- `steam_data.json.gz` sebagai baseline.
+- `steam_data.json` menimpa baseline jika AppID sama.
+- `override_data.json` menimpa hasil akhir jika AppID sama.
+
+Catatan protection:
+
+- `true` berarti tampilkan Denuvo/protection.
+- `false` dan `null` dari raw lama dianggap tidak perlu label Denuvo di UI.
+- Selain field `protection`, AppID juga dianggap Denuvo jika muncul di salah satu sumber ini:
+  - `fix_games.json`
+  - `new_fix_games.json`
+  - `steam_games/steam_games.json`
+
+Contoh hasil cek sebelumnya untuk AppID `3321460`:
+
+- `fix_games.json`: tidak ada.
+- `new_fix_games.json`: ada.
+- `steam_games.json`: ada.
+- Maka Game Detail harus menampilkan label `DENUVO`.
+
+Detail API/on-demand diharapkan bisa menyediakan struktur besar:
+
+- `success`
+- `source_priority`
+- `fetch_status`
+- `name`
+- `steam_appid`
+- `steamgriddb_game_id`
+- `store_asset_mtime`
+- `assets_count`
+- `assets`
+- `store_data`
+
+Field penting yang diharapkan ada jika tersedia dari API:
+
+- `assets.header`
+- `assets.library_hero_2x`
+- `assets.icon`
+- `assets.background_raw`
+- `assets.screenshots`
+- `assets.movies`
+- `assets.embedded_media`
+- `store_data.about_the_game`
+- `store_data.detailed_description`
+- `store_data.short_description`
+- `store_data.developers`
+- `store_data.publishers`
+- `store_data.release_date`
+- `store_data.genres`
+- `store_data.price_overview`
+
+## 5. Aturan UI Wajib
+
+Aturan utama:
+
+1. Fitur NexaPlay harus tetap sama dengan GameHub secara behavior penting.
+2. Ubah hanya tampilan atau struktur UI native, jangan ubah behavior inti tanpa alasan kuat.
+3. Gaya visual harus profesional, clean, netral, dan konsisten.
+4. UI tidak boleh terasa AI-generated.
+
+Larangan UI:
+
+- Jangan pakai emoji di UI, kecuali benar-benar lebih tepat dari ikon dan tetap satu warna.
+- Jangan pakai warna campur/random.
+- Jangan pakai gradient berlebihan.
+- Jangan pakai style ramai, gimmick, atau dekorasi yang tidak perlu.
+- Jangan pakai copywriting hiperbolik atau terlalu marketing.
+- Jangan redesign semua halaman sekaligus.
+- Jangan membuat komponen baru yang tidak punya fungsi jelas.
+
+Design system sederhana:
+
+- Dark theme fokus hitam dan putih.
+- Netral dark surface yang konsisten.
+- Satu warna aksen utama jika benar-benar perlu.
+- Tombol utama cenderung putih.
+- Tipografi rapi, hierarchy jelas, spacing stabil.
+- Border dan surface depth boleh dipakai secukupnya.
+- Hindari efek visual ramai.
+
+Target desain:
+
+- Modern tetapi enterprise-clean.
+- Sidebar, topbar, dan content area rapi.
+- Teks ringkas, formal, tidak alay, tidak dekoratif berlebihan.
+- Visual depth secukupnya melalui border/surface level, bukan efek ramai.
+
+## 6. Aturan Performa Wajib
+
+Jaga performa sebagai prioritas:
+
+- Startup harus ringan.
+- Gunakan lazy loading untuk data/detail berat.
+- Games list harus virtualized.
+- Hindari operasi berat di UI thread.
+- Detail metadata/media dipanggil saat dibutuhkan, bukan dimuat semua saat startup.
+- Cache boleh dipakai, tetapi jangan membuat app menunggu download besar tanpa perlu.
+
+Performance guardrail tambahan (wajib dipertahankan untuk fitur action seperti Add Game / Online-Fix):
+
+- UI progress harus di-throttle (minimal perubahan persen atau interval waktu), hindari spam update per chunk kecil.
+- Operasi file/network wajib jalan async + `CancellationToken` agar aksi user `Batal` responsif.
+- Jangan lakukan logging verbose di loop panas; log cukup event penting: start, success, failed, cancelled.
+- Jangan menaruh parse/download besar di constructor ViewModel atau startup window.
+- Dialog proses harus state-driven dari ViewModel (bukan logic bisnis di code-behind) agar tidak memblok UI thread.
+- Gunakan guard re-entrancy (`IsApplyingFix`, `IsAddingGame`) untuk mencegah proses ganda di AppID yang sama.
+
+## 7. Workflow Wajib Per Batch
+
+Kerjakan per halaman dan per batch kecil.
+
+Urutan aman:
+
+1. Pahami behavior dari GameHub jika fitur berkaitan parity.
+2. Pilih satu area kecil.
+3. Edit terbatas.
+4. Build.
+5. Jika error, perbaiki sampai hijau.
+6. Baru lanjut batch berikutnya.
+7. Update dokumen ini jika status/konteks berubah.
+
+Build wajib:
+
+```powershell
+& 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe' `
+  'D:\My Project\NexaPlay\NexaPlay\NexaPlay.csproj' /restore /p:Configuration=Debug /p:Platform=x64
+```
+
+Jika output normal terkunci karena app sedang berjalan, gunakan output preview:
+
+```powershell
+& 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe' `
+  'D:\My Project\NexaPlay\NexaPlay\NexaPlay.csproj' /restore /p:Configuration=Debug /p:Platform=x64 /p:OutDir='D:\My Project\NexaPlay\NexaPlay\bin\x64\Debug-preview\'
+```
+
+Jangan lanjut jika build merah.
+
+## 8. Catatan Build Terakhir
+
+Build terakhir yang sudah dicek:
+
+- Command: MSBuild `Debug x64` dengan `OutDir=Debug-preview`.
+- Result: `Build succeeded`.
+- Error: `0`.
+- Warning terakhir yang diketahui: `2`, keduanya NU1902 `SharpCompress` advisory.
+
+Jika AI baru masuk, tetap jalankan build ulang karena state lokal bisa berubah.
+
+## 9. File Penting yang Perlu Dicek Untuk Fokus Aktif
+
+Metadata/catalog:
+
+- `NexaPlay/Core/Constants/AppConstants.cs`
+- `NexaPlay/Core/Models/GameEntry.cs`
+- `NexaPlay/Contracts/Services/IMetadataService.cs`
+- `NexaPlay/Infrastructure/Services/MetadataService.cs`
+- `NexaPlay/Contracts/Services/ISteamStoreService.cs`
+- `NexaPlay/Infrastructure/Services/SteamStoreService.cs`
+
+Game Detail:
+
+- `NexaPlay/Presentation/ViewModels/GameDetailViewModel.cs`
+- `NexaPlay/Presentation/Views/Pages/GameDetailPage.xaml`
+- `NexaPlay/Presentation/Views/Pages/GameDetailPage.xaml.cs`
+
+Games/Home navigation impact:
+
+- `NexaPlay/Presentation/ViewModels/GamesViewModel.cs`
+- `NexaPlay/Presentation/Views/Pages/GamesPage.xaml`
+- `NexaPlay/Presentation/Views/Pages/GamesPage.xaml.cs`
+- `NexaPlay/Presentation/Views/Pages/HomePage.xaml`
+- `NexaPlay/Presentation/Views/Pages/HomePage.xaml.cs`
+- `NexaPlay/MainWindow.xaml`
+- `NexaPlay/MainWindow.xaml.cs`
+
+Docs:
+
+- `NexaPlay/README.md`
+- `NexaPlay/AGENTS.md`
+- `NexaPlay/ONBOARDING_ZERO_TO_PARITY.md`
+- `NexaPlay/MIGRATION_PARITY_MATRIX.md`
+- `NexaPlay/AI_HANDOFF_PROMPT.md`
+
+
+Tanggal: 2026-06-07
+- Fokus: Hardening startup license activation setelah repro crash first-run pasca banned.
+- Perubahan: Jalur startup lisensi di `MainWindow` kini dibungkus fallback agar exception tidak langsung membunuh window; `LicenseService.LoadAsync()` dipindah ke background thread dan diberi catch+fallback result; `LicenseStore.Load()` tidak lagi memakai `JsonSerializer.Deserialize<StoredLicense>` untuk path baca startup, tetapi parse manual via `JsonDocument` sambil tetap menjaga AES parity dan trace log.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` pending setelah patch ini.
+- Next: Rebuild lalu repro skenario aktivasi -> banned -> tutup app -> run pertama untuk memastikan crash berubah menjadi fallback/activation overlay dan log menulis exception lengkap bila masih ada.
+
+Tanggal: 2026-06-07
+- Fokus: Koreksi guard card premium pada tab Steam Sharing.
+- Perubahan: `BypassGamesPage` guard klik card premium sekarang mengacu ke tab aktif `steam-sharing`, bukan enum item `Category` saja, karena data `_steamGames` di katalog Akun Steam bisa tetap lolos walau card sedang dibuka dari tab Steam Sharing.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Re-test klik card premium di tab Steam Sharing dengan license Standard untuk memastikan langsung muncul dialog dan tidak membuka `BypassGameDetailPage`.
+
+Tanggal: 2026-06-07
+- Fokus: Premium gating parity untuk action detail dan card Akun Steam premium.
+- Perubahan: `GameDetail` kini memblok `Add Game` premium untuk license Standard; `BypassGameDetail` memblok `Mulai Proses Bypass` premium; `BypassGamesPage` memblok klik card `steam-sharing` premium langsung dari card. Semua blokir memakai copy parity GameHub (`Fitur Premium` / `Upgrade Ke Premium Dulu, Ya, Untuk Buka Fitur Ini 😁`) lewat dialog dark rounded reusable.
+- Build: `dotnet build NexaPlay/NexaPlay.csproj -c Debug -p:Platform=x64` sukses (0 error, 0 warning).
+- Next: Smoke test 3 skenario: Standard klik `Add Game` game premium, Standard klik `Mulai Proses Bypass` premium, Standard klik card `steam-sharing` premium.
+
+Tanggal: 2026-06-08
+- Fokus: Sinkronisasi sumber label premium antara Home, Bypass card, dan Bypass detail.
+- Perubahan: `BypassGameDetailViewModel` tidak lagi memprioritaskan `Game.IsPremium` untuk badge/action bypass jika `BypassEntry` tersedia; detail bypass sekarang mengikuti flag premium yang sama dengan card bypass/GameHub. `HomeViewModel` section `New Bypass Games` juga sekarang mencoba mewarisi `premium`, `category`, dan field bypass lain dari katalog bypass lebih dulu sebelum fallback ke metadata umum. Jalur `Home > Popular Games` disamakan lagi ke snapshot katalog yang sama dengan `Games` page, lalu setiap item di-clone dari snapshot itu agar label premium/standard mengikuti sumber yang sama dan tidak melenceng karena object metadata referensi yang berubah.
+- Build: `MSBuild Debug x64 /p:OutDir=Debug-preview` sukses (`0 Error(s)`, `0 Warning(s)`). Build normal sempat tertahan lock `NexaPlay.exe` aktif.
+- Next: build ulang lalu validasi dua skenario utama: card 3rd-party/steam-sharing standard tidak berubah premium saat masuk detail bypass, dan section `New Bypass Games` di Home tidak lagi berbeda label dengan sumber bypass yang sama.
+
+## 10. Update Log Ringkas
 
 ```text
-Tanggal:
-- Fokus:
+Tanggal: 7 Juni 2026
+- Fokus: Mempersempit titik crash startup banned ke jalur load license
 - Perubahan:
-- Build:
-- Next:
+  - Dari repro baru, `nexaplay.log` menunjukkan app mencapai `OnFirstActivated` dan `ContentFrame.Loaded`, lalu berhenti sebelum log lanjutan `ValidateLicenseAsync`, sehingga crash menyempit ke awal masuk validasi lisensi startup.
+  - `MainWindow.xaml.cs` ditambah log paling awal `ValidateLicenseAsync entered`.
+  - `LicenseService.LoadAsync()` ditambah breadcrumb sebelum baca cache, sebelum panggil store, dan sesudah hasil store kembali.
+  - `LicenseStore.Load()` ditambah trace langsung ke `nexaplay.log`: file mana yang dipakai, panjang payload terenkripsi/terdekripsi, hasil parse, device match, migrasi GameHub -> NexaPlay, dan exception jika ada.
+- Build: Pass (`Debug x64`, `0 Error(s)`, `0 Warning(s)`).
+- Next: Repro ulang skenario banned dan baca urutan log `LicenseFlow` + `LicenseStore` di `%LOCALAPPDATA%\NexaPlay\nexaplay.log` untuk tahu apakah crash terjadi sebelum `LoadAsync`, saat decrypt/parse license file, atau sesudah hasil load kembali.
 ```
+
+```text
+Tanggal: 7 Juni 2026
+- Fokus: Hardening diagnosis crash first-run setelah license dibanned
+- Perubahan:
+  - Ditemukan mismatch path logging: `App.xaml.cs` menulis crash ke `D:\My Project\NexaPlay\crash.txt`, tetapi `run_nexaplay.bat` sebelumnya membaca file lain di folder `bin`, sehingga output crash bisa stale/tidak relevan.
+  - `run_nexaplay.bat` diperbaiki agar membaca `D:\My Project\NexaPlay\crash.txt` dan ikut menyalin tail `%LOCALAPPDATA%\NexaPlay\nexaplay.log` ke `nexaplay_crash_context.log`.
+  - `MainWindow.xaml.cs` ditambah breadcrumb log `LicenseFlow` untuk alur startup: first activation, status offline license, hasil `ValidateExistingAsync`, buka/tutup overlay validasi, dan transisi ke activation overlay.
+- Build: Pass (`Debug x64`, `0 Error(s)`, `0 Warning(s)`).
+- Next: Repro ulang skenario aktivasi -> banned -> tutup app -> run pertama, lalu baca `nexaplay_crash_context.log` baru karena sekarang harus sudah memuat trace `LicenseFlow` yang relevan.
+```
+
+```text
+Tanggal: 7 Juni 2026
+- Fokus: Crash startup pertama setelah license dibanned
+- Perubahan:
+  - Root cause diidentifikasi pada `ValidatingLicenseOverlay` yang masih memakai `Image Source="/Assets/logo.svg"` langsung di `MainWindow.xaml`.
+  - Saat license offline masih valid lalu hasil validasi online mengembalikan `Banned`, app menampilkan overlay validasi ini tepat sebelum cache license dibersihkan, sehingga WinUI 3 memicu crash fatal `0xc000027b` pada first-run.
+  - Logo overlay validasi diubah ke `<SvgImageSource UriSource="ms-appx:///Assets/logo.svg"/>` agar konsisten dengan perbaikan crash SVG sebelumnya di `LicenseOverlay`.
+- Build: Pass (`Debug x64`, `0 Error(s)`, `0 Warning(s)`).
+- Next: Uji ulang skenario aktivasi -> banned -> tutup app -> run pertama untuk memastikan overlay validasi tidak crash lagi dan startup berikutnya tetap aman.
+```
+
+```text
+Tanggal: 7 Juni 2026
+- Fokus: Bug Fix Crash saat Lisensi Banned (0xc000027b)
+- Perubahan: 
+  - Membungkus operasi UI paska `_licenseService.ValidateExistingAsync()` dengan `DispatcherQueue.TryEnqueue` di `MainWindow.xaml.cs`.
+  - Crash `NexaPlay exited with code: -1073741189` terjadi karena `HttpClient` callback kembali ke background thread dan XAML throw `RPC_E_WRONG_THREAD`.
+  - Log crash `GamesPage` yang dilihat sebelumnya ternyata log lama dari cache `crash.txt` karena fast-fail WinUI 3 mem-bypass `UnhandledException`.
+- Build: Pass.
+- Next: Uji coba flow lisensi (ban, input baru) dan melanjutkan migration parity.
+```
+
+```text
+Tanggal: 7 Juni 2026
+- Fokus: Infrastruktur Lisensi Offline (WMI + AES) & UI MainWindow
+- Perubahan: 
+  - Membuat `DeviceIdHelper.cs` (WMI Win32_BaseBoard & Win32_BIOS, di-hash SHA-256).
+  - Membuat `LicenseStore.cs` (AES-256 GCM) untuk menyimpan lisensi secara lokal yang terikat dengan device ID.
+  - Memperbarui `LicenseService.cs` untuk mengintegrasikan validasi Supabase dengan penyimpanan offline.
+  - Menambahkan `ValidatingLicenseOverlay` di `MainWindow.xaml` dan routing navigasi saat *banned*.
+  - Menyambungkan *copy to clipboard* di `SettingsPage`.
+- Build: Success (dengan beberapa warning WinRT yang diabaikan).
+- Next: Menstabilkan flow startup dan error handling saat offline.
+```
+
+### 2026-06-07 (Batch : License Parity dengan GameHub)
+- Fokus: Parity penuh alur aktivasi license NexaPlay dengan GameHub (WMI DeviceID, AES Encryption, Online Validation response parsing, dan ValidatingLicenseOverlay di startup).
+- Perubahan:
+  - `LicensePlan.cs`: Menambah status `NotFound` dan `Reset`.
+  - `DeviceIdHelper.cs`: Re-write algoritma agar match dengan WMI WQL GameHub (ProcessorId, MotherboardSerial, UUID + SHA256 lowercase hex). Menambahkan dependensi `System.Management`.
+  - `LicenseStore.cs`: Menambah AES encryption/decryption menggunakan secret dari GameHub. Menambah fallback path load dari directory GameHub lama untuk kemudahan migrasi.
+  - `LicenseService.cs`: Memperbaiki parsing response dari Supabase RPC (`status: "success"`) dan parse `message` (banned, not_found, wrong_device, reset). Offline cleanup saat auto-validation gagal. Menambah `ValidateExistingAsync()`.
+  - `MainWindow.xaml`: Menambahkan `ValidatingLicenseOverlay` dengan progress ring dan penanganan error timeout/koneksi saat load aplikasi awal.
+  - `MainWindow.xaml.cs`: Mengubah `ValidateLicenseAsync` untuk selalu mencoba `ValidateExistingAsync` sesudah load offline, lalu redirect ke form aktivasi jika banned/tidak valid.
+  - `SettingsPage.xaml`: Menyambungkan _License Information_ (Plan, Key, Device ID) dengan DataBinding ke `SettingsViewModel.CurrentLicense`.
+  - `SettingsPage.xaml.cs`: Menambahkan fungsi copy ke Windows Clipboard untuk License Key dan Device ID.
+- Build: Pass (0 Error, 0 Warning) menggunakan MSBuild.
+- Next: Lanjut merapikan UI / menyambungkan fitur selanjutnya di Settings Page.
+
+### 2026-06-07 (Batch : Load Games JSONs on Settings Page)
+- Fokus: Menambahkan logika dan trigger pada halaman Settings untuk mengunduh semua data JSON terbaru, disertai UI Progress Overlay dan opsi Clear Cache/Data.
+- Perubahan:
+  - Menyambungkan tombol "Load Games" pada `SettingsPage.xaml` dengan event click `OnLoadGamesClicked`.
+  - Menambahkan metode `RefreshDynamicSourcesAsync` pada `IMetadataService` agar HANYA mengambil file json yang spesifik tanpa file katalog raksasa (`steam_data.json`).
+  - Menambahkan dukungan laporan progres `IProgress<double>` ke `RefreshDynamicSourcesAsync` yang membagi persentase unduhan untuk tiap file.
+  - Menambahkan `LoadGamesAsync` pada `SettingsViewModel` untuk mengambil file json terbaru dari repository GitHub, HANYA meliputi `appid_populer.json`, `fix_games.json`, `new_fix_games.json`, `override_data.json`, `steam_games.json`, dan `nexaplay_override.json` sesuai permintaan pengguna.
+  - Mengimplementasikan `LoadingOverlay` bergaya dialog monokrom di `SettingsPage.xaml` yang ter-binding ke `DownloadProgress` (berupa persentase 0-100%).
+  - Memperbarui `LoadGamesAsync` dan `ClearMetadataCacheAsync` pada ViewModel agar mengembalikan Tuple `(bool Success, string Message)` untuk mengakomodasi penanganan *status* (success, network error, exception) secara komprehensif.
+  - Memunculkan *Result Dialog* setelah proses Load Games selesai untuk memberitahu pengguna akan semua *case* yang terjadi (berhasil/gagal beserta alasannya).
+  - Menghapus penggunaan `ClearCacheAsync` pada proses unduhan spesifik agar katalog dasar (`steam_data.json.gz`) tidak terhapus.
+  - Memfungsikan tombol "Clear Cache" yang memanggil fungsi pembersihan cache aman, kemudian menampilkan *Result Dialog* konfirmasi bahwa penghapusan berhasil.
+  - Mengimplementasikan fitur "Clear Data" (`ClearAllDataAndRestartAsync`) yang menampilkan dialog konfirmasi lalu menghapus `runtime_catalog_sources` serta file esensial secara menyeluruh (reset pabrik), dilanjutkan *restart* aplikasi.
+  - Merombak *styling* tombol *Primary* (Aksi Utama) pada dialog konfirmasi Clear Data agar selaras dengan tema (menjadi putih terang, dengan *hover state* yang semi-transparan).
+  - Merombak total arsitektur Aktivasi Lisensi. Menghapus `LicenseActivationDialog.xaml` (karena sifat bawaan *ContentDialog* yang selalu menutupi `TitleBar`) dan memindahkannya langsung ke dalam `MainWindow.xaml` sebagai `LicenseOverlay` (Grid).
+  - Melakukan integrasi `LicenseOverlay` dengan menyembunyikan *sidebar* sementara saat overlay aktif, sehingga memberikan pengalaman visual *Full Page* yang memenuhi *ContentFrame* secara elegan namun tetap membiarkan `AppTitleBar` (Logo NexaPlay dan tombol Window) tetap terang dan tidak tertutup.
+- Build: Build succeeded (0 Error(s), 0 Warning(s)) dengan MSBuild.
+- Next: Menambahkan data binding untuk *fields dummy* di halaman Settings, atau merealisasikan instruksi UI page lainnya.
+
+### 2026-06-02 (Batch : AOT Pre-Fetching Metadata R2)
+- Fokus: Mengimplementasikan Background Cache Pre-warming (AOT) untuk metadata Game.
+- Perubahan:
+  - Membuat `PreFetchNextPopularGamesBackgroundAsync` di `HomeViewModel.cs` untuk mengunduh 2 batch ke depan secara senyap.
+  - Membuat `PreFetchNextPagesBackgroundAsync` di `GamesViewModel.cs` untuk mengunduh halaman ke-2 dan ke-3 saat pengguna berada di halaman ke-1.
+  - Memanfaatkan *SemaphoreSlim(4, 4)* agar unduhan background tidak mencekik *bandwidth* pengguna.
+- Build: Build succeeded (0 Error(s), 0 Warning(s)) dengan MSBuild.
+- Next: Menunggu arahan pengguna untuk fitur atau optimalisasi selanjutnya.
+
+### 2026-06-02 (Batch : Migrasi Cloudflare R2 untuk Detail Metadata)
+- Fokus: Mengganti fallback API Steam/SteamGridDB yang lambat menjadi Cloudflare R2.
+- Perubahan:
+  - Mengubah fungsi inti di `SteamStoreService.cs` menjadi tarikan HTTP GET langsung ke URL R2 (`/Metadata/{appId}.json`).
+  - Menghapus lebih dari 500 baris logika kompilasi raw JSON karena data R2 sudah ter-merge sesuai skema sebelumnya.
+  - Memastikan halaman Home dan GamesPage menerima cover `library_capsule` dan hero dengan efisiensi O(1) fetch.
+- Build: Build succeeded (`0 Error(s)`, `0 Warning(s)`) menggunakan MSBuild.
+- Next: Menunggu perintah fitur selanjutnya.
 
 ### 2026-06-01 (Batch : Fix Error 153 YouTube via Local Wrapper + Virtual Host)
 - Fokus: Menuntaskan error `153` pada tutorial video Bypass tanpa mengubah tampilan UI overlay yang sudah diset.

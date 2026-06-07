@@ -14,6 +14,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media;
+using NexaPlay.Presentation.Helpers;
 using NexaPlay.Presentation.ViewModels;
 using NexaPlay.Core.Models;
 using Windows.System;
@@ -60,6 +61,7 @@ public sealed partial class GameDetailPage : Page
     {
         ViewModel = ((App)App.Current).GetRequiredService<GameDetailViewModel>();
         InitializeComponent();
+        ViewModel.ShowLicenseGateDialogAsync = ShowLicenseGateDialogAsync;
     }
 
     protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -156,6 +158,13 @@ public sealed partial class GameDetailPage : Page
     {
         ViewModel.CloseUiInfoDialog();
     }
+
+    private Task ShowLicenseGateDialogAsync(string reason) => reason switch
+    {
+        "license-invalid" => LicenseAccessDialogHelper.ShowLicenseInvalidAsync(XamlRoot),
+        "premium-required" => LicenseAccessDialogHelper.ShowPremiumFeatureAsync(XamlRoot),
+        _ => LicenseAccessDialogHelper.ShowVerificationFailedAsync(XamlRoot)
+    };
 
     private void RemoveBlockedDialogClose_Click(object sender, RoutedEventArgs e)
     {

@@ -7,8 +7,9 @@ set "ROOT_DIR=D:\My Project\NexaPlay"
 set "PROJECT_FILE=%ROOT_DIR%\NexaPlay\NexaPlay.csproj"
 set "MSBUILD=C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe"
 set "EXE_PATH=%ROOT_DIR%\NexaPlay\bin\x64\Debug\net8.0-windows10.0.19041.0\win-x64\NexaPlay.exe"
-set "CRASH_LOG=%ROOT_DIR%\NexaPlay\bin\x64\Debug\net8.0-windows10.0.19041.0\win-x64\crash.txt"
+set "CRASH_LOG=%ROOT_DIR%\crash.txt"
 set "CRASH_CONTEXT=%ROOT_DIR%\nexaplay_crash_context.log"
+set "APP_LOG=%LOCALAPPDATA%\NexaPlay\nexaplay.log"
 
 echo.
 echo ==================================================
@@ -86,12 +87,19 @@ if %EXIT_CODE% NEQ 0 (
         echo. >> "%CRASH_CONTEXT%"
     )
 
+    if exist "%APP_LOG%" (
+        echo --- nexaplay.log (last 120 lines) --- >> "%CRASH_CONTEXT%"
+        powershell -NoProfile -Command "Get-Content '%APP_LOG%' -Tail 120" >> "%CRASH_CONTEXT%"
+        echo. >> "%CRASH_CONTEXT%"
+    )
+
     echo --- Application/Error Events (last 15m, top 30) --- >> "%CRASH_CONTEXT%"
     powershell -NoProfile -Command "Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-15)} -ErrorAction SilentlyContinue | Where-Object { .ProviderName -in @('Application Error','.NET Runtime','Windows Error Reporting') -or .Message -match 'NexaPlay' } | Select-Object -First 30 TimeCreated, Id, LevelDisplayName, ProviderName, Message | Format-List | Out-String -Width 500" >> "%CRASH_CONTEXT%"
 
     echo.
     echo [INFO] Crash context saved to: %CRASH_CONTEXT%
     echo [INFO] Crash log at: %CRASH_LOG%
+    if exist "%APP_LOG%" echo [INFO] App log at: %APP_LOG%
 
     if exist "%CRASH_LOG%" (
         echo.

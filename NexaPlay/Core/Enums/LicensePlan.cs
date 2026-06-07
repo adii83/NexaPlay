@@ -16,5 +16,7 @@ public enum LicenseStatus
     Expired,
     DeviceMismatch,
     NetworkError,
-    Offline
+    Offline,
+    NotFound,
+    Reset
 }

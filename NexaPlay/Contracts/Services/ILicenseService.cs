@@ -6,6 +6,7 @@ public interface ILicenseService
 {
     Task<LicenseInfo> LoadAsync();
     Task<LicenseInfo> ValidateOnlineAsync(string licenseKey, string deviceId, CancellationToken ct = default);
+    Task<LicenseInfo> ValidateExistingAsync(CancellationToken ct = default);
     Task<LicenseInfo> ActivateAsync(string licenseKey, CancellationToken ct = default);
     Task SaveAsync(LicenseInfo info);
     Task DeactivateAsync();

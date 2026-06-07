@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.Web.WebView2.Core;
 using NexaPlay.Contracts.Navigation;
+using NexaPlay.Presentation.Helpers;
 using NexaPlay.Presentation.ViewModels;
 using System;
 using System.ComponentModel;
@@ -660,21 +661,12 @@ public sealed partial class BypassGameDetailPage : Page
 
     private async Task ShowInfoDialogAsync(string title, string message)
     {
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = title,
-            Content = new TextBlock
-            {
-                Text = message,
-                TextWrapping = TextWrapping.WrapWholeWords
-            },
-            PrimaryButtonText = "Tutup",
-            DefaultButton = ContentDialogButton.Primary
-        };
-        ApplyBypassDialogButtonTheme(dialog);
-
-        await dialog.ShowAsync();
+        var glyph = title.Contains("Premium", StringComparison.OrdinalIgnoreCase)
+            ? "\uE7BA"
+            : title.Contains("Valid", StringComparison.OrdinalIgnoreCase) || title.Contains("Gagal", StringComparison.OrdinalIgnoreCase)
+                ? "\uEA39"
+                : "\uE946";
+        await LicenseAccessDialogHelper.ShowAsync(XamlRoot, title, message, glyph);
     }
 
     private static void ApplyBypassDialogButtonTheme(ContentDialog dialog)

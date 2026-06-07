@@ -414,6 +414,116 @@
         </Grid>
             </SplitView.Content>
         </SplitView>
+
+        <!-- ══════════════════════════════════════════════════════
+             LICENSE ACTIVATION OVERLAY
+        ══════════════════════════════════════════════════════ -->
+        <Grid x:Name="LicenseOverlay" Grid.Row="1" Background="#080808" Visibility="Collapsed">
+            <Grid Width="460" Background="#111111" CornerRadius="16" BorderBrush="#222222" BorderThickness="1" Padding="40,48" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header: Logo & Title -->
+                <StackPanel Grid.Row="0" HorizontalAlignment="Center" Spacing="16" Margin="0,0,0,32">
+                    <Image Width="64" Height="64">
+                        <Image.Source>
+                            <SvgImageSource UriSource="ms-appx:///Assets/logo.svg"/>
+                        </Image.Source>
+                    </Image>
+                    <Image Height="24" Margin="0,4,0,0">
+                        <Image.Source>
+                            <SvgImageSource UriSource="ms-appx:///Assets/logo_text.svg"/>
+                        </Image.Source>
+                    </Image>
+                    <TextBlock Text="Masukkan License Key Anda" FontSize="14" Foreground="#888888" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                </StackPanel>
+
+                <!-- Body: Input -->
+                <StackPanel Grid.Row="1" Spacing="12">
+                    <TextBlock Text="License Key" FontSize="13" FontWeight="SemiBold" Foreground="#EEEEEE"/>
+                    <TextBox x:Name="LicenseKeyBox"
+                             PlaceholderText="Masukkan license key Anda"
+                             BorderThickness="1"
+                             BorderBrush="#333333"
+                             Background="#1A1A1A"
+                             Foreground="#FFFFFF"
+                             PlaceholderForeground="#666666"
+                             FontSize="14"
+                             Padding="16,14"
+                             CornerRadius="8"
+                             CharacterCasing="Upper"/>
+                    
+                    <Border x:Name="LicenseStatusBorder" CornerRadius="6" Padding="12" Visibility="Collapsed" Margin="0,4,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                            <FontIcon x:Name="LicenseStatusIcon" FontFamily="Segoe Fluent Icons" FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="LicenseStatusText" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" MaxWidth="340"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Action Button -->
+                <Button x:Name="ActivateButton" Grid.Row="2" Margin="0,24,0,0" HorizontalAlignment="Stretch"
+                        Background="#FFFFFF" Foreground="#000000" BorderThickness="0" CornerRadius="8" Padding="0,14" Click="OnActivateClicked">
+                    <Button.Resources>
+                        <SolidColorBrush x:Key="ButtonBackground" Color="#FFFFFF"/>
+                        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#CCFFFFFF"/>
+                        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#99FFFFFF"/>
+                        <SolidColorBrush x:Key="ButtonForeground" Color="#000000"/>
+                        <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#000000"/>
+                        <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#000000"/>
+                    </Button.Resources>
+                    <Grid>
+                        <TextBlock x:Name="LicenseBtnText" Text="Aktivasi" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" />
+                        <ProgressRing x:Name="LicenseLoadingRing" IsActive="False" Visibility="Collapsed" Width="20" Height="20" Foreground="#000000" HorizontalAlignment="Center"/>
+                    </Grid>
+                </Button>
+
+                <!-- Footer -->
+                <StackPanel Grid.Row="3" Margin="0,32,0,0" Spacing="16">
+                    <Rectangle Height="1" Fill="#222222" HorizontalAlignment="Stretch" />
+                    <TextBlock Text="License key Anda akan terikat dengan perangkat ini.&#x0a;Satu license key hanya bisa digunakan di satu perangkat."
+                               FontSize="11" Foreground="#666666" TextAlignment="Center" LineHeight="18" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <!-- ══════════════════════════════════════════════════════
+             VALIDATING LICENSE OVERLAY
+        ══════════════════════════════════════════════════════ -->
+        <Grid x:Name="ValidatingLicenseOverlay" Grid.Row="1" Visibility="Collapsed" Canvas.ZIndex="150" Background="#111111">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="24">
+                <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Center">
+                    <Image Width="64" Height="64">
+                        <Image.Source>
+                            <SvgImageSource UriSource="ms-appx:///Assets/logo.svg"/>
+                        </Image.Source>
+                    </Image>
+                </StackPanel>
+                
+                <TextBlock Text="Memvalidasi Lisensi..." FontSize="24" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" />
+                
+                <StackPanel Spacing="16" HorizontalAlignment="Center" MaxWidth="400">
+                    <ProgressRing x:Name="ValidationProgressRing" IsActive="True" Foreground="#FFFFFF" Width="40" Height="40" HorizontalAlignment="Center" />
+                    <TextBlock x:Name="ValidationStatusText" Text="Menghubungkan ke server..." Foreground="#A0A0A0" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                </StackPanel>
+                
+                <!-- Error Panel -->
+                <StackPanel x:Name="ValidationErrorPanel" Visibility="Collapsed" Spacing="16" HorizontalAlignment="Center" Margin="0,16,0,0">
+                    <Border x:Name="ValidationErrorBorder" Background="#18EF4444" BorderBrush="#33EF4444" BorderThickness="1" CornerRadius="8" Padding="16">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <FontIcon x:Name="ValidationErrorIcon" Glyph="&#xEA39;" FontFamily="Segoe Fluent Icons" Foreground="#EF4444" VerticalAlignment="Center" />
+                            <TextBlock x:Name="ValidationErrorMessage" Text="Koneksi terputus." Foreground="#EF4444" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="350"/>
+                        </StackPanel>
+                    </Border>
+                    <Button x:Name="ValidationRetryButton" Content="Coba Lagi" Click="OnValidationRetryClicked" Background="#FFFFFF" Foreground="#000000" FontWeight="SemiBold" CornerRadius="4" Padding="24,10" HorizontalAlignment="Center" />
+                    <Button x:Name="ValidationEnterKeyButton" Content="Masukkan License Key Baru" Click="OnValidationEnterKeyClicked" Background="Transparent" Foreground="#A0A0A0" BorderThickness="0" HorizontalAlignment="Center" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
     </Grid>
 </Window>
-

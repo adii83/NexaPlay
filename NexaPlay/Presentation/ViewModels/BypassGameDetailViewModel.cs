@@ -28,6 +28,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     private readonly IBypassGamesDataService _bypassGamesData;
     private readonly INexaPlayOverrideService _nexaPlayOverride;
     private readonly IBypassTutorialVideoService _tutorialVideoService;
+    private readonly ILicenseService _licenseService;
     private readonly IAppLogService _log;
     private readonly INavigationService _nav;
     private readonly IWindowsDefenderService _defender;
@@ -55,7 +56,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     public string DisplayPublisher => Detail?.Publishers.Count > 0 ? string.Join(", ", Detail.Publishers) : Game?.PublisherDisplay ?? string.Empty;
     public string DisplayReleaseDate => Detail?.ReleaseDate ?? Game?.ReleaseDate ?? string.Empty;
     public string DisplayPrice => Game?.PriceNormalized > 0 ? $"Rp {Game.PriceNormalized:N0}" : "Free";
-    public bool IsPremiumGame => Game?.IsPremium == true;
+    public bool IsPremiumGame => BypassEntry?.IsPremium ?? Game?.IsPremium == true;
     public bool ShowAktivasiOfflineBadge => BypassEntry?.AktivasiOffline == true;
     public bool ShowSteamSharingBadge => BypassEntry?.Category == GameCategory.SteamSharing;
     public bool ShowThirdPartySection => BypassEntry is not null && !BypassEntry.IsSteamType;
@@ -91,6 +92,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         IBypassGamesDataService bypassGamesData,
         INexaPlayOverrideService nexaPlayOverride,
         IBypassTutorialVideoService tutorialVideoService,
+        ILicenseService licenseService,
         IAppLogService log,
         INavigationService nav,
         IWindowsDefenderService defender,
@@ -101,6 +103,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         _bypassGamesData = bypassGamesData;
         _nexaPlayOverride = nexaPlayOverride;
         _tutorialVideoService = tutorialVideoService;
+        _licenseService = licenseService;
         _log = log;
         _nav = nav;
         _defender = defender;
@@ -207,6 +210,9 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     private async Task StartBypassGameAsync()
     {
         if (BypassEntry is null || Game is null || IsBypassProcessing)
+            return;
+
+        if (!await EnsurePremiumAccessAsync(BypassEntry?.IsPremium ?? Game?.IsPremium ?? false))
             return;
 
         if (BypassEntry.IsSteamType)
@@ -515,6 +521,39 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(HasBypassProgress));
         OnPropertyChanged(nameof(HasBypassError));
         OnPropertyChanged(nameof(BypassProgressPercentText));
+    }
+
+    private async Task<bool> EnsurePremiumAccessAsync(bool requiresPremium)
+    {
+        if (!requiresPremium)
+            return true;
+
+        try
+        {
+            var license = await _licenseService.LoadAsync();
+            if (!license.IsValid)
+            {
+                if (ShowDialogAsync is not null)
+                    await ShowDialogAsync("License Tidak Valid", "License tidak valid. Silakan aktivasi license terlebih dahulu.");
+                return false;
+            }
+
+            if (!license.IsPremium)
+            {
+                if (ShowDialogAsync is not null)
+                    await ShowDialogAsync("Fitur Premium", "Upgrade Ke Premium Dulu, Ya, Untuk Buka Fitur Ini 😁");
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _log.Log("LicenseGate", $"BypassDetail premium gate failed appid={Game?.AppId} err={ex.Message}");
+            if (ShowDialogAsync is not null)
+                await ShowDialogAsync("Verifikasi Gagal", "Verifikasi license gagal. Pastikan aplikasi berjalan dengan benar.");
+            return false;
+        }
     }
 
     private void ReportProgress(int percent, string message, string? detail = null)

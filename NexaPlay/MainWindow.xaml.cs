@@ -5,7 +5,6 @@ using NexaPlay.Contracts.Navigation;
 using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Models;
 using NexaPlay.Presentation.ViewModels;
-using NexaPlay.Presentation.Views.Dialogs;
 using NexaPlay.Presentation.Views.Pages;
 using System;
 
@@ -17,13 +16,20 @@ public sealed partial class MainWindow : Window
     private readonly INavigationService _nav;
     private readonly ILicenseService _licenseService;
     private readonly IMetadataService _metadataService;
+    private readonly IAppLogService _appLog;
 
-    public MainWindow(MainViewModel vm, INavigationService nav, ILicenseService licenseService, IMetadataService metadataService)
+    public MainWindow(
+        MainViewModel vm,
+        INavigationService nav,
+        ILicenseService licenseService,
+        IMetadataService metadataService,
+        IAppLogService appLog)
     {
         _vm             = vm;
         _nav            = nav;
         _licenseService = licenseService;
         _metadataService = metadataService;
+        _appLog = appLog;
         InitializeComponent();
         
         ExtendsContentIntoTitleBar = true;
@@ -49,25 +55,51 @@ public sealed partial class MainWindow : Window
     private async void OnFirstActivated(object sender, WindowActivatedEventArgs e)
     {
         this.Activated -= OnFirstActivated;
+        LogLicenseFlow("OnFirstActivated entered");
 
         // Ensure XamlRoot is ready before showing dialogs
         if (ContentFrame.XamlRoot != null)
         {
-            await ValidateLicenseAsync();
-            NavigateTo(NavHome);
-            await WarmupMetadataStartupAsync();
+            LogLicenseFlow("ContentFrame.XamlRoot ready on first activation");
+            await RunStartupLicenseFlowAsync("first activation");
         }
         else
         {
+            LogLicenseFlow("ContentFrame.XamlRoot not ready, waiting for Loaded");
             ContentFrame.Loaded += async (s, args) => 
             {
-                await ValidateLicenseAsync();
-                NavigateTo(NavHome);
-                await WarmupMetadataStartupAsync();
+                LogLicenseFlow("ContentFrame.Loaded fired for first activation");
+                await RunStartupLicenseFlowAsync("delayed first activation");
             };
         }
+    }
 
+    private async System.Threading.Tasks.Task RunStartupLicenseFlowAsync(string source)
+    {
+        try
+        {
+            LogLicenseFlow($"RunStartupLicenseFlowAsync started from {source}");
+            await ValidateLicenseAsync();
+        }
+        catch (Exception ex)
+        {
+            LogLicenseFlow($"Startup license flow exception from {source}: {ex}");
+            await ShowLicenseActivationFallbackAsync();
+        }
 
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                LogLicenseFlow($"Navigating to Home after startup license flow ({source})");
+                NavigateTo(NavHome);
+                await WarmupMetadataStartupAsync();
+            }
+            catch (Exception ex)
+            {
+                LogLicenseFlow($"Startup navigation/warmup exception from {source}: {ex}");
+            }
+        });
     }
 
     private async System.Threading.Tasks.Task WarmupMetadataStartupAsync()
@@ -182,11 +214,134 @@ public sealed partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ValidateLicenseAsync()
     {
-        var license = await _licenseService.LoadAsync();
-        if (!license.IsValid)
+        try
         {
+            LogLicenseFlow("ValidateLicenseAsync entered");
+            var license = await _licenseService.LoadAsync();
+            LogLicenseFlow($"ValidateLicenseAsync: offline status={license.Status}, isValid={license.IsValid}, hasKey={!string.IsNullOrWhiteSpace(license.Key)}");
+            if (!license.IsValid)
+            {
+                LogLicenseFlow("Offline license invalid, showing activation overlay immediately");
+                await ShowLicenseActivation();
+                return;
+            }
+
+            // License valid offline, show validating overlay
+            LogLicenseFlow("Offline license valid, showing validating overlay");
+            ValidatingLicenseOverlay.Visibility = Visibility.Visible;
+            ValidationProgressRing.Visibility = Visibility.Visible;
+            ValidationStatusText.Visibility = Visibility.Visible;
+            ValidationErrorPanel.Visibility = Visibility.Collapsed;
+
+            var result = await _licenseService.ValidateExistingAsync();
+            LogLicenseFlow($"ValidateExistingAsync completed: status={result.Status}, isValid={result.IsValid}, message={result.Message ?? "(null)"}");
+
+            var tcs = new System.Threading.Tasks.TaskCompletionSource();
+            DispatcherQueue.TryEnqueue(async () =>
+            {
+                try
+                {
+                    LogLicenseFlow("Entered UI dispatcher continuation for license validation result");
+                    if (result.IsValid)
+                    {
+                        // Valid online, proceed to home
+                        LogLicenseFlow("License valid online, collapsing validating overlay");
+                        ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
+                        tcs.SetResult();
+                        return;
+                    }
+
+                    // Handle errors
+                    ValidationProgressRing.Visibility = Visibility.Collapsed;
+                    ValidationStatusText.Visibility = Visibility.Collapsed;
+                    ValidationErrorPanel.Visibility = Visibility.Visible;
+
+                    if (result.Status == NexaPlay.Core.Enums.LicenseStatus.Banned ||
+                        result.Status == NexaPlay.Core.Enums.LicenseStatus.Reset ||
+                        result.Status == NexaPlay.Core.Enums.LicenseStatus.NotFound)
+                    {
+                        // License was banned/reset/deleted from server, ask for new key
+                        LogLicenseFlow($"License status {result.Status}, collapsing validating overlay and showing activation overlay");
+                        ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
+                        await ShowLicenseActivation();
+                        tcs.SetResult();
+                        return;
+                    }
+
+                    // Show error message
+                    ValidationErrorMessage.Text = result.Status switch
+                    {
+                        NexaPlay.Core.Enums.LicenseStatus.DeviceMismatch => "License terikat dengan perangkat lain.",
+                        NexaPlay.Core.Enums.LicenseStatus.NetworkError   => "Kesalahan jaringan. Periksa koneksi internet Anda.",
+                        NexaPlay.Core.Enums.LicenseStatus.Offline        => "Koneksi ke server timeout (Offline mode).",
+                        _ => result.Message ?? "Gagal memvalidasi lisensi."
+                    };
+                    LogLicenseFlow($"Validation non-fatal error shown to user: status={result.Status}");
+                    
+                    // Wait for user to click Retry or Enter New Key
+                    _licenseTcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+                    await _licenseTcs.Task;
+                    
+                    LogLicenseFlow("Validation error panel completed by user action");
+                    ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
+                    tcs.SetResult();
+                }
+                catch (Exception ex)
+                {
+                    LogLicenseFlow($"Exception inside validation UI dispatcher continuation: {ex}");
+                    System.Diagnostics.Debug.WriteLine($"[License UI Error] {ex}");
+                    ValidationErrorMessage.Text = $"Internal UI Error: {ex.Message}";
+                    ValidationErrorPanel.Visibility = Visibility.Visible;
+                    ValidatingLicenseOverlay.Visibility = Visibility.Visible;
+                    
+                    // Keep the app alive, wait for user input
+                    _licenseTcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+                    await _licenseTcs.Task;
+                    
+                    tcs.TrySetResult();
+                }
+            });
+
+            await tcs.Task;
+        }
+        catch (Exception ex)
+        {
+            LogLicenseFlow($"ValidateLicenseAsync outer exception: {ex}");
+            await ShowLicenseActivationFallbackAsync();
+        }
+    }
+
+    private async System.Threading.Tasks.Task ShowLicenseActivationFallbackAsync()
+    {
+        try
+        {
+            LogLicenseFlow("ShowLicenseActivationFallbackAsync entered");
+            ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
+            ValidationProgressRing.Visibility = Visibility.Visible;
+            ValidationStatusText.Visibility = Visibility.Visible;
+            ValidationErrorPanel.Visibility = Visibility.Collapsed;
             await ShowLicenseActivation();
         }
+        catch (Exception ex)
+        {
+            LogLicenseFlow($"ShowLicenseActivationFallbackAsync exception: {ex}");
+        }
+    }
+
+    private async void OnValidationRetryClicked(object sender, RoutedEventArgs e)
+    {
+        LogLicenseFlow("Validation retry clicked");
+        ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
+        _licenseTcs?.TrySetResult(true);
+        await ValidateLicenseAsync();
+    }
+
+    private void OnValidationEnterKeyClicked(object sender, RoutedEventArgs e)
+    {
+        LogLicenseFlow("Validation enter-new-key clicked");
+        ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
+        _licenseTcs?.TrySetResult(true);
+        _ = ShowLicenseActivation();
     }
 
     private void Sidebar_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
@@ -374,22 +529,105 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private System.Threading.Tasks.TaskCompletionSource<bool>? _licenseTcs;
+
     private async System.Threading.Tasks.Task ShowLicenseActivation()
     {
-        if (ContentFrame.XamlRoot == null) return;
+        LogLicenseFlow("ShowLicenseActivation: opening activation overlay");
+        LicenseOverlay.Visibility = Visibility.Visible;
+        // Wait for license completion
+        _licenseTcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+        await _licenseTcs.Task;
+        LogLicenseFlow("ShowLicenseActivation: activation overlay completed");
+        LicenseOverlay.Visibility = Visibility.Collapsed;
+    }
 
-        var dialog = new LicenseActivationDialog(_licenseService)
+    private async void OnActivateClicked(object sender, RoutedEventArgs e)
+    {
+        try
         {
-            XamlRoot = ContentFrame.XamlRoot
-        };
+            var key = LicenseKeyBox.Text.Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                LogLicenseFlow("Activate clicked with empty key");
+                ShowLicenseStatus(false, "&#xE783;", "Masukkan license key Anda.", "#EF4444", "#18EF4444");
+                return;
+            }
 
-        try 
-        {
-            await dialog.ShowAsync();
+            LogLicenseFlow("Activate clicked with non-empty key");
+            SetLicenseLoading(true);
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(12));
+            var result = await _licenseService.ActivateAsync(key, cts.Token);
+            LogLicenseFlow($"ActivateAsync completed: status={result.Status}, isValid={result.IsValid}, message={result.Message ?? "(null)"}");
+            SetLicenseLoading(false);
+
+            if (result.IsValid)
+            {
+                ShowLicenseStatus(true, "&#xE73E;", $"Aktivasi berhasil! Paket: {result.Plan}", "#22C55E", "#1822C55E");
+                await System.Threading.Tasks.Task.Delay(1000);
+                _licenseTcs?.TrySetResult(true);
+            }
+            else
+            {
+                var msg = result.Status switch
+                {
+                    NexaPlay.Core.Enums.LicenseStatus.Banned         => "License key ini telah diblokir.",
+                    NexaPlay.Core.Enums.LicenseStatus.DeviceMismatch => "License terikat dengan perangkat lain.",
+                    NexaPlay.Core.Enums.LicenseStatus.Offline        => "Tidak dapat terhubung ke server. Disimpan untuk offline.",
+                    NexaPlay.Core.Enums.LicenseStatus.NetworkError   => "Kesalahan jaringan. Periksa koneksi dan coba lagi.",
+                    _                                                => result.Message ?? "License key tidak valid. Silakan periksa kembali."
+                };
+                ShowLicenseStatus(false, "&#xEA39;", msg, "#EF4444", "#18EF4444");
+            }
         }
         catch (Exception ex)
         {
-            System.IO.File.WriteAllText("crash_dialog.txt", "Dialog Exception: " + ex.ToString());
+            LogLicenseFlow($"OnActivateClicked exception: {ex}");
+            SetLicenseLoading(false);
+            ShowLicenseStatus(false, "&#xEA39;", $"Terjadi kesalahan: {ex.Message}", "#EF4444", "#18EF4444");
         }
+    }
+
+    private void LogLicenseFlow(string message)
+    {
+        try
+        {
+            _appLog.Log("LicenseFlow", message);
+        }
+        catch
+        {
+        }
+    }
+
+    private void SetLicenseLoading(bool loading)
+    {
+        LicenseBtnText.Visibility = loading ? Visibility.Collapsed : Visibility.Visible;
+        LicenseLoadingRing.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
+        LicenseLoadingRing.IsActive = loading;
+        
+        LicenseStatusBorder.Visibility  = loading ? Visibility.Collapsed : LicenseStatusBorder.Visibility;
+        ActivateButton.IsEnabled = !loading;
+        LicenseKeyBox.IsEnabled  = !loading;
+    }
+
+    private void ShowLicenseStatus(bool success, string glyph, string message, string fgColor, string bgColor)
+    {
+        LicenseStatusBorder.Visibility  = Visibility.Visible;
+        LicenseStatusBorder.Background  = new Microsoft.UI.Xaml.Media.SolidColorBrush(ParseColor(bgColor));
+        LicenseStatusIcon.Glyph         = System.Text.RegularExpressions.Regex.Unescape(glyph.Replace("&#x", "\\u").Replace(";", ""));
+        LicenseStatusIcon.Foreground    = new Microsoft.UI.Xaml.Media.SolidColorBrush(ParseColor(fgColor));
+        LicenseStatusText.Text          = message;
+        LicenseStatusText.Foreground    = new Microsoft.UI.Xaml.Media.SolidColorBrush(ParseColor(fgColor));
+    }
+
+    private static Windows.UI.Color ParseColor(string hex)
+    {
+        hex = hex.TrimStart('#');
+        if (hex.Length == 6) hex = "FF" + hex;
+        return Windows.UI.Color.FromArgb(
+            Convert.ToByte(hex[0..2], 16),
+            Convert.ToByte(hex[2..4], 16),
+            Convert.ToByte(hex[4..6], 16),
+            Convert.ToByte(hex[6..8], 16));
     }
 }

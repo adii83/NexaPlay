@@ -180,6 +180,45 @@ public sealed class MetadataService : IMetadataService
         await BuildIndexAsync(ct);
     }
 
+    public async Task RefreshDynamicSourcesAsync(IProgress<double>? progress = null, CancellationToken ct = default)
+    {
+        await RunWithSourceSyncLockAsync(async () =>
+        {
+            var files = new[]
+            {
+                (AppConstants.OverrideDataUrl, _overrideDataFile, "override_data.json"),
+                (AppConstants.BypassGamesUrl, _fixGamesFile, "fix_games.json"),
+                (AppConstants.NewFixGamesUrl, _newFixGamesFile, "new_fix_games.json"),
+                (AppConstants.SteamGamesUrl, _steamGamesFile, "steam_games.json")
+            };
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                var file = files[i];
+                var basePercent = i * 100.0 / files.Length;
+                var chunkPercent = 100.0 / files.Length;
+
+                var reporter = new Progress<double?>(p =>
+                {
+                    if (p.HasValue)
+                        progress?.Report(basePercent + (p.Value * chunkPercent / 100.0));
+                });
+
+                await DownloadIfNeededSafeAsync(file.Item1, file.Item2, force: true, useHeadCheck: false, ct, file.Item3, reporter);
+            }
+        }, ct);
+
+        // Delete etags for appid_populer and new_fix_games to force refresh
+        if (File.Exists(_popularEtagFile)) { try { File.Delete(_popularEtagFile); } catch { } }
+        if (File.Exists(_newFixEtagFile)) { try { File.Delete(_newFixEtagFile); } catch { } }
+        _popularEtag = null;
+        _newFixEtag = null;
+        _popularAppIdsCache = null;
+        _newFixAppIdsCache = null;
+
+        await BuildIndexAsync(ct);
+    }
+
     public async Task WarmupEssentialSourcesAsync(IProgress<MetadataWarmupProgress>? progress = null, CancellationToken ct = default)
     {
         await RunWithSourceSyncLockAsync(async () =>

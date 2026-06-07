@@ -12,6 +12,7 @@ public interface IMetadataService
     Task<IReadOnlyList<int>> GetPopularAppIdsAsync(CancellationToken ct = default);
     Task<IReadOnlyList<int>> GetNewFixAppIdsAsync(CancellationToken ct = default);
     Task RefreshAsync(bool forceDownload = false, CancellationToken ct = default);
+    Task RefreshDynamicSourcesAsync(IProgress<double>? progress = null, CancellationToken ct = default);
     Task WarmupEssentialSourcesAsync(IProgress<MetadataWarmupProgress>? progress = null, CancellationToken ct = default);
     Task ClearCacheAsync();
 }

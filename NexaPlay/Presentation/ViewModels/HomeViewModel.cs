@@ -33,6 +33,10 @@ public sealed partial class HomeViewModel : ObservableObject
     private int PopularGamesPageSize => _popularColumns * 8;
     private const int PopularFetchConcurrency = 6;
     private readonly SemaphoreSlim _apiEnrichLock = new(1, 1);
+    private Dictionary<int, GameEntry>? _gamesParityCatalog;
+    
+    private static readonly SemaphoreSlim _prefetchGate = new SemaphoreSlim(4, 4);
+    private CancellationTokenSource? _prefetchCts;
 
     public HomeViewModel(
         IBypassGamesDataService fixData,
@@ -67,18 +71,27 @@ public sealed partial class HomeViewModel : ObservableObject
             var newFixAppIds = await _metadata.GetNewFixAppIdsAsync();
             if (newFixAppIds.Count > 0)
             {
+                var bypassLookup = await BuildBypassLookupAsync();
                 var recent = new List<FixEntry>();
                 foreach (var appId in newFixAppIds.Take(12))
                 {
                     var meta = await _metadata.GetMetadataAsync(appId);
+                    bypassLookup.TryGetValue(appId, out var bypassEntry);
                     recent.Add(new FixEntry
                     {
                         AppId = appId,
-                        Title = meta?.Name ?? $"App {appId}",
-                        Publisher = meta?.PublisherDisplay ?? string.Empty,
-                        Category = GameCategory.Other,
-                        PosterUrl = meta?.LibraryHero2xUrl ?? meta?.LibraryCapsuleUrl ?? meta?.RawHeaderImageUrl,
-                        IsPremium = meta?.IsPremium ?? false
+                        Title = bypassEntry?.Title ?? meta?.Name ?? $"App {appId}",
+                        Publisher = bypassEntry?.Publisher ?? meta?.PublisherDisplay ?? string.Empty,
+                        Category = bypassEntry?.Category ?? GameCategory.Other,
+                        PosterUrl = bypassEntry?.PosterUrl ?? meta?.LibraryHero2xUrl ?? meta?.LibraryCapsuleUrl ?? meta?.RawHeaderImageUrl,
+                        IsPremium = bypassEntry?.IsPremium ?? meta?.IsPremium ?? false,
+                        Username = bypassEntry?.Username,
+                        Password = bypassEntry?.Password,
+                        AktivasiOffline = bypassEntry?.AktivasiOffline ?? false,
+                        DapatkanKode = bypassEntry?.DapatkanKode ?? false,
+                        ExeHint = bypassEntry?.ExeHint,
+                        UseShortcut = bypassEntry?.UseShortcut ?? false,
+                        Files = bypassEntry?.Files ?? Array.Empty<FixFile>()
                     });
                 }
                 recent = await EnrichRecentFixesHeroCoverAsync(recent);
@@ -99,6 +112,28 @@ public sealed partial class HomeViewModel : ObservableObject
 
         // Fire and forget loading of popular games (Lazy Load)
         _ = LoadPopularGamesInBackgroundAsync();
+    }
+
+    private async Task<Dictionary<int, FixEntry>> BuildBypassLookupAsync(CancellationToken ct = default)
+    {
+        var lookup = new Dictionary<int, FixEntry>();
+
+        foreach (var entry in await _fixData.GetNewFixesAsync(ct))
+        {
+            lookup[entry.AppId] = entry;
+        }
+
+        foreach (var entry in await _fixData.GetAllFixesAsync(ct))
+        {
+            lookup[entry.AppId] = entry;
+        }
+
+        foreach (var entry in await _fixData.GetSteamGamesAsync(ct))
+        {
+            lookup[entry.AppId] = entry;
+        }
+
+        return lookup;
     }
 
     private async Task LoadPopularGamesInBackgroundAsync()
@@ -130,6 +165,8 @@ public sealed partial class HomeViewModel : ObservableObject
                 _log.Log("Home", "No library_capsule_2x/header cover in current cache. Triggering background metadata refresh for Home.");
                 _ = RefreshPopularCoversInBackgroundAsync();
             }
+
+            _ = PreFetchNextPopularGamesBackgroundAsync();
         }
         catch (Exception ex)
         {
@@ -154,6 +191,39 @@ public sealed partial class HomeViewModel : ObservableObject
 
         await EnsurePopularFilledRowsAsync();
         _ = EnrichPopularCoversFromApiAsync(newGames);
+        _ = PreFetchNextPopularGamesBackgroundAsync();
+    }
+
+    private async Task PreFetchNextPopularGamesBackgroundAsync()
+    {
+        _prefetchCts?.Cancel();
+        _prefetchCts?.Dispose();
+        _prefetchCts = new CancellationTokenSource();
+        var ct = _prefetchCts.Token;
+
+        try
+        {
+            // Pre-fetch 2 pages ahead
+            var targetCount = PopularGamesPageSize * 2;
+            var nextAppIds = _allPopularAppIds.Skip(_currentPopularPage).Take(targetCount).ToList();
+            if (nextAppIds.Count == 0) return;
+
+            _log.Log("Home", $"Pre-fetching next {nextAppIds.Count} popular games in background");
+            
+            var tasks = nextAppIds.Select(async appId =>
+            {
+                await _prefetchGate.WaitAsync(ct);
+                try
+                {
+                    ct.ThrowIfCancellationRequested();
+                    await _storeService.GetDetailAsync(appId, ct);
+                }
+                catch { }
+                finally { _prefetchGate.Release(); }
+            });
+            await Task.WhenAll(tasks);
+        }
+        catch { }
     }
 
     public async Task UpdatePopularLayoutAsync(int columns)
@@ -226,6 +296,7 @@ public sealed partial class HomeViewModel : ObservableObject
     {
         var requestSize = targetCount > 0 ? targetCount : PopularGamesPageSize;
         var finalResults = new List<GameEntry>(requestSize);
+        var catalog = await GetGamesParityCatalogAsync();
 
         // Keep fetching until we fulfill the requested quota of VALID (non-null) items, or we run out of catalog IDs
         while (finalResults.Count < requestSize && _currentPopularPage < _allPopularAppIds.Count)
@@ -249,7 +320,13 @@ public sealed partial class HomeViewModel : ObservableObject
                 await gate.WaitAsync();
                 try
                 {
-                    results[idx] = await _metadata.GetMetadataAsync(appId);
+                    if (catalog.TryGetValue(appId, out var snapshotGame))
+                    {
+                        results[idx] = CloneGameEntry(snapshotGame);
+                        return;
+                    }
+
+                    results[idx] = await GetClonedMetadataAsync(appId);
                 }
                 finally
                 {
@@ -276,10 +353,13 @@ public sealed partial class HomeViewModel : ObservableObject
         try
         {
             await _metadata.RefreshAsync(forceDownload: false);
+            _gamesParityCatalog = null;
+            var catalog = await GetGamesParityCatalogAsync();
             var refreshed = new List<GameEntry>(PopularGamesPageSize);
             foreach (var appId in _allPopularAppIds.Take(PopularGamesPageSize))
             {
-                var metadata = await _metadata.GetMetadataAsync(appId);
+                catalog.TryGetValue(appId, out var metadata);
+                metadata ??= await GetClonedMetadataAsync(appId);
                 if (metadata is not null)
                     refreshed.Add(metadata);
             }
@@ -298,6 +378,50 @@ public sealed partial class HomeViewModel : ObservableObject
         {
             _log.Log("Home", $"Background popular cover refresh failed: {ex.Message}");
         }
+    }
+
+    private async Task<Dictionary<int, GameEntry>> GetGamesParityCatalogAsync(CancellationToken ct = default)
+    {
+        if (_gamesParityCatalog is not null && _gamesParityCatalog.Count > 0)
+        {
+            return _gamesParityCatalog;
+        }
+
+        var snapshot = await _metadata.GetCatalogSnapshotAsync(ct);
+        _gamesParityCatalog = snapshot.ToDictionary(x => x.AppId, CloneGameEntry);
+        return _gamesParityCatalog;
+    }
+
+    private async Task<GameEntry?> GetClonedMetadataAsync(int appId, CancellationToken ct = default)
+    {
+        var metadata = await _metadata.GetMetadataAsync(appId, ct);
+        return metadata is null ? null : CloneGameEntry(metadata);
+    }
+
+    private static GameEntry CloneGameEntry(GameEntry source)
+    {
+        return new GameEntry
+        {
+            AppId = source.AppId,
+            Name = source.Name,
+            Developer = source.Developer,
+            Publisher = source.Publisher,
+            Developers = source.Developers,
+            Publishers = source.Publishers,
+            Genre = source.Genre,
+            ShortDescription = source.ShortDescription,
+            ReleaseDate = source.ReleaseDate,
+            PriceNormalized = source.PriceNormalized,
+            PriceDisplay = source.PriceDisplay,
+            Protection = source.Protection,
+            HeaderImageUrl = source.HeaderImageUrl,
+            IconImageUrl = source.IconImageUrl,
+            LibraryCapsuleUrl = source.LibraryCapsuleUrl,
+            LibraryHero2xUrl = source.LibraryHero2xUrl,
+            BackgroundRawImageUrl = source.BackgroundRawImageUrl,
+            RawMetadataJson = source.RawMetadataJson,
+            RawFieldPathCount = source.RawFieldPathCount
+        };
     }
 
     private async Task EnrichPopularCoversFromApiAsync(IReadOnlyList<GameEntry>? targetGames = null)

@@ -1,57 +1,148 @@
+using System.Management;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Win32;
+using NexaPlay.Core.Constants;
 
 namespace NexaPlay.Infrastructure.Platform;
 
-/// <summary>Generates a stable, unique device ID from hardware characteristics.</summary>
+/// <summary>Generates a stable, unique device ID from hardware characteristics, identical to GameHub's WMI implementation.</summary>
 public static class DeviceIdHelper
 {
+    public static void PrimeCachedDeviceId(string? deviceId)
+    {
+        TryWriteCachedDeviceId(deviceId ?? string.Empty);
+    }
+
     public static string GetDeviceId()
     {
         try
         {
-            var parts = new List<string>();
+            var cached = TryReadCachedDeviceId();
+            if (!string.IsNullOrWhiteSpace(cached))
+            {
+                return cached;
+            }
 
-            // Machine GUID from registry
-            var machineGuid = SafeRegGet(Registry.LocalMachine,
-                @"SOFTWARE\Microsoft\Cryptography", "MachineGuid");
-            if (!string.IsNullOrWhiteSpace(machineGuid)) parts.Add(machineGuid);
+            string cpu = GetCpuId();
+            string mb = GetMotherboardSerial();
+            string uuid = GetSystemUuid();
 
-            // Processor ID
-            var cpuId = SafeRegGet(Registry.LocalMachine,
-                @"HARDWARE\DESCRIPTION\System\CentralProcessor\0", "ProcessorNameString");
-            if (!string.IsNullOrWhiteSpace(cpuId)) parts.Add(cpuId);
+            // Fallback jika ada yang kosong
+            if (string.IsNullOrEmpty(cpu)) cpu = "missing_cpu";
+            if (string.IsNullOrEmpty(mb)) mb = "missing_mb";
+            if (string.IsNullOrEmpty(uuid)) uuid = "missing_uuid";
 
-            // Computer name
-            parts.Add(Environment.MachineName);
-
-            // Username
-            parts.Add(Environment.UserName);
-
-            var raw = string.Join("|", parts);
-            using var sha = SHA256.Create();
-            var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(raw));
-            var hex = Convert.ToHexString(hash)[..24];
-            return $"WIN-{hex[..8]}-{hex[8..16]}-{hex[16..24]}".ToUpperInvariant();
+            string raw = cpu + "|" + mb + "|" + uuid;
+            string deviceId = Sha256(raw);
+            TryWriteCachedDeviceId(deviceId);
+            return deviceId;
         }
         catch
         {
-            // Fallback: machine name hash
-            using var sha = SHA256.Create();
-            var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(Environment.MachineName));
-            var hex = Convert.ToHexString(hash)[..24];
-            return $"WIN-{hex[..8]}-{hex[8..16]}-{hex[16..24]}".ToUpperInvariant();
+            // Worst case fallback
+            string fallback = Sha256(Environment.MachineName + "_" + Environment.UserName);
+            TryWriteCachedDeviceId(fallback);
+            return fallback;
         }
     }
 
-    private static string? SafeRegGet(RegistryKey root, string subKey, string valueName)
+    // === Hardware Collectors ===
+
+    private static string GetCpuId()
     {
         try
         {
-            using var k = root.OpenSubKey(subKey);
-            return k?.GetValue(valueName) as string;
+#pragma warning disable CA1416 // Validate platform compatibility
+            using var searcher = new ManagementObjectSearcher("select ProcessorId from Win32_Processor");
+            foreach (var item in searcher.Get())
+                return item["ProcessorId"]?.ToString()?.Trim() ?? "";
+#pragma warning restore CA1416
         }
-        catch { return null; }
+        catch { }
+        return "";
+    }
+
+    private static string GetMotherboardSerial()
+    {
+        try
+        {
+#pragma warning disable CA1416
+            using var searcher = new ManagementObjectSearcher("select SerialNumber from Win32_BaseBoard");
+            foreach (var item in searcher.Get())
+                return item["SerialNumber"]?.ToString()?.Trim() ?? "";
+#pragma warning restore CA1416
+        }
+        catch { }
+        return "";
+    }
+
+    private static string GetSystemUuid()
+    {
+        try
+        {
+#pragma warning disable CA1416
+            using var searcher = new ManagementObjectSearcher("select UUID from Win32_ComputerSystemProduct");
+            foreach (var item in searcher.Get())
+                return item["UUID"]?.ToString()?.Trim() ?? "";
+#pragma warning restore CA1416
+        }
+        catch { }
+        return "";
+    }
+
+    // === HASH FUNCTION ===
+
+    private static string Sha256(string input)
+    {
+        using var sha = SHA256.Create();
+        byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
+        var sb = new StringBuilder();
+        foreach (var b in bytes)
+            sb.Append(b.ToString("x2"));
+        return sb.ToString();
+    }
+
+    private static string GetCachePath()
+    {
+        var dir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            AppConstants.AppDataFolder);
+        Directory.CreateDirectory(dir);
+        return Path.Combine(dir, "device_id.cache");
+    }
+
+    private static string? TryReadCachedDeviceId()
+    {
+        try
+        {
+            var path = GetCachePath();
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            var cached = File.ReadAllText(path).Trim();
+            return string.IsNullOrWhiteSpace(cached) ? null : cached;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void TryWriteCachedDeviceId(string deviceId)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(deviceId))
+            {
+                return;
+            }
+
+            File.WriteAllText(GetCachePath(), deviceId);
+        }
+        catch
+        {
+        }
     }
 }

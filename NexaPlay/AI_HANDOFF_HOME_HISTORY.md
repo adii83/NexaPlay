@@ -9,6 +9,16 @@ Tujuan: menjaga `AI_HANDOFF_PROMPT.md` tetap fokus ke konteks aktif terbaru (saa
 2. Saat mengerjakan Home lagi, gunakan dokumen ini sebagai sumber detail historis utama.
 3. Untuk update harian lintas fitur, tetap catat di `AI_HANDOFF_PROMPT.md` bagian `## 10. Update Log Ringkas`.
 
+### 2026-06-07 (Fatal WinUI 3 0xC000027B Crash Fixes on License Validation)
+
+- Fokus: Memperbaiki crash (0xC000027B / E_UNEXPECTED) yang selalu terjadi saat mendeteksi lisensi online Banned dan kembali ke LicenseOverlay.
+- Perubahan:
+  - `MainWindow.xaml`: Mengubah `Image.Source` pada logo SVG di `LicenseOverlay` menjadi `<SvgImageSource UriSource="ms-appx:///Assets/logo.svg"/>`. WinUI 3 crash fatal jika SVG diassign string path langsung saat `Visibility` element berubah jadi Visible.
+  - `MainWindow.xaml.cs`: Membungkus kelanjutan `OnFirstActivated` (terutama `NavigateTo`) ke dalam `DispatcherQueue.TryEnqueue`. Karena `ValidateExistingAsync` berjalan asinkron dan WinUI 3 Desktop tidak memiliki SynchronizationContext, eksekusinya pindah ke Background Thread yang memicu RPC_E_WRONG_THREAD jika tidak ditarik kembali ke UI Thread secara manual.
+  - `run_nexaplay.bat`: Memperbaiki bug parsing Batch akibat tanda kurung `()` yang tidak di-escape di dalam blok `if` pada sistem dump crash context.
+- Build: `Build succeeded` (Normal, tidak ada force close lagi).
+- Next: Beralih kembali ke penyempurnaan alur di GamesPage dan perbaikan arsitektur ViewModel.
+
 ### 2026-05-21 (New Fix AppId Mode + ETag Fetch)
 
 - Fokus: Memperbaiki kondisi kosong pada `New Bypass Games` ketika `new_fix_games.json` hanya berisi appid.

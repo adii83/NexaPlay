@@ -54,6 +54,8 @@ public sealed partial class GamesViewModel : ObservableObject
     private readonly Dictionary<int, FixEntry> _cardCache = new();
     private CancellationTokenSource? _searchDebounceCts;
     private CancellationTokenSource? _coverEnrichCts;
+    private CancellationTokenSource? _prefetchCts;
+    private static readonly SemaphoreSlim _prefetchGate = new SemaphoreSlim(4, 4);
     private readonly string _gamesIndexCachePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "NexaPlay",
@@ -381,7 +383,38 @@ public sealed partial class GamesViewModel : ObservableObject
         }
 
         _ = EnrichPageCoverAsync(pageIds, _coverEnrichCts.Token);
+        _ = PreFetchNextPagesBackgroundAsync(_currentPage);
         return results;
+    }
+
+    private async Task PreFetchNextPagesBackgroundAsync(int startPage)
+    {
+        _prefetchCts?.Cancel();
+        _prefetchCts?.Dispose();
+        _prefetchCts = new CancellationTokenSource();
+        var ct = _prefetchCts.Token;
+
+        try
+        {
+            var skip = startPage * PageSize;
+            var targetCount = PageSize * 2;
+            var targetIds = _filteredAppIds.Skip(skip).Take(targetCount).ToList();
+            if (targetIds.Count == 0) return;
+
+            var tasks = targetIds.Select(async appId =>
+            {
+                await _prefetchGate.WaitAsync(ct);
+                try
+                {
+                    ct.ThrowIfCancellationRequested();
+                    await _storeService.GetDetailAsync(appId, ct);
+                }
+                catch { }
+                finally { _prefetchGate.Release(); }
+            });
+            await Task.WhenAll(tasks);
+        }
+        catch { }
     }
 
     private async Task<FixEntry?> GetOrBuildCardFastAsync(int appId)
