@@ -209,13 +209,15 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     [RelayCommand]
     private async Task StartBypassGameAsync()
     {
-        if (BypassEntry is null || Game is null || IsBypassProcessing)
+        var bypassEntry = BypassEntry;
+        var game = Game;
+        if (bypassEntry is null || game is null || IsBypassProcessing)
             return;
 
-        if (!await EnsurePremiumAccessAsync(BypassEntry?.IsPremium ?? Game?.IsPremium ?? false))
+        if (!await EnsurePremiumAccessAsync(bypassEntry.IsPremium || game.IsPremium))
             return;
 
-        if (BypassEntry.IsSteamType)
+        if (bypassEntry.IsSteamType)
         {
             BypassErrorMessage = "Kategori Akun Steam tidak memakai alur bypass 3rd-party. Gunakan panduan pada bagian Akun Steam.";
             OnPropertyChanged(nameof(HasBypassError));
@@ -224,7 +226,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
             return;
         }
 
-        if (BypassEntry.Files.Count == 0)
+        if (bypassEntry.Files.Count == 0)
         {
             BypassErrorMessage = "File bypass belum tersedia untuk game ini. Hubungi Admin untuk pembaruan file bypass.";
             OnPropertyChanged(nameof(HasBypassError));
@@ -270,11 +272,11 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
             }
             catch (Exception avEx)
             {
-                _log.Log("BypassDetail", $"Antivirus check non-fatal appid={Game.AppId} err={avEx.Message}");
+                _log.Log("BypassDetail", $"Antivirus check non-fatal appid={game.AppId} err={avEx.Message}");
             }
 
             ReportProgress(20, "Mencari lokasi instalasi game...");
-            var gamePath = _steam.ResolveGameInstallPath(Game.AppId);
+            var gamePath = _steam.ResolveGameInstallPath(game.AppId);
             if (string.IsNullOrWhiteSpace(gamePath) || !Directory.Exists(gamePath))
             {
                 gamePath = SelectFolderAsync is null
@@ -310,16 +312,16 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
                     : exclusionResult.Error);
             }
 
-            downloadDir = Path.Combine(Path.GetTempPath(), "NexaPlayFix", Game.AppId.ToString(), "download");
-            extractDir = Path.Combine(Path.GetTempPath(), "NexaPlayFix", Game.AppId.ToString(), "extract");
+            downloadDir = Path.Combine(Path.GetTempPath(), "NexaPlayFix", game.AppId.ToString(), "download");
+            extractDir = Path.Combine(Path.GetTempPath(), "NexaPlayFix", game.AppId.ToString(), "extract");
             Directory.CreateDirectory(downloadDir);
             Directory.CreateDirectory(extractDir);
 
             ReportProgress(40, "Mengunduh file bypass...");
             var downloadedFiles = new List<(FixFile meta, string path, string fileName)>();
-            for (var i = 0; i < BypassEntry.Files.Count; i++)
+            for (var i = 0; i < bypassEntry.Files.Count; i++)
             {
-                var file = BypassEntry.Files[i];
+                var file = bypassEntry.Files[i];
                 if (string.IsNullOrWhiteSpace(file.GDriveUrl))
                     throw new InvalidOperationException($"Link download untuk part {file.Part} kosong atau tidak valid.");
 
@@ -333,22 +335,22 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
                         var filePercent = totalBytes > 0
                             ? (int)Math.Clamp((bytesRead * 100.0) / totalBytes, 0, 100)
                             : 50;
-                        var overall = ((i * 100.0) + filePercent) / Math.Max(1, BypassEntry.Files.Count);
+                        var overall = ((i * 100.0) + filePercent) / Math.Max(1, bypassEntry.Files.Count);
                         var pctSmooth = 40 + (int)Math.Round(overall * 0.3);
                         ReportProgress(
                             pctSmooth,
-                            $"Mengunduh file {i + 1}/{BypassEntry.Files.Count}...",
+                            $"Mengunduh file {i + 1}/{bypassEntry.Files.Count}...",
                             $"Progres file: {filePercent}%");
                     });
                 ValidateDownloadedArchiveFile(target, sanitizedName);
 
                 downloadedFiles.Add((file, target, sanitizedName));
-                var pct = 40 + (int)Math.Round(((i + 1) / (double)BypassEntry.Files.Count) * 30);
-                ReportProgress(pct, $"Mengunduh file {i + 1}/{BypassEntry.Files.Count}...", "File selesai diunduh");
+                var pct = 40 + (int)Math.Round(((i + 1) / (double)bypassEntry.Files.Count) * 30);
+                ReportProgress(pct, $"Mengunduh file {i + 1}/{bypassEntry.Files.Count}...", "File selesai diunduh");
             }
 
             ReportProgress(70, "Mengekstrak file...", "Memproses archive...");
-            ExtractDownloadedArchives(downloadedFiles, downloadDir, extractDir, BypassEntry.Password);
+            ExtractDownloadedArchives(downloadedFiles, downloadDir, extractDir, bypassEntry.Password);
 
             ReportProgress(85, "Mengganti file game...", "Menimpa file yang sama seperti GameHub...");
             var allFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -370,24 +372,24 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
             TryDeleteDirectory(downloadDir);
             TryDeleteDirectory(extractDir);
 
-            if (BypassEntry.UseShortcut)
+            if (bypassEntry.UseShortcut)
             {
                 ReportProgress(99, "Membuat shortcut desktop...", "Menyelesaikan tahap akhir...");
-                await TryAutoCreateShortcutAsync(gamePath, Game.Name, BypassEntry.ExeHint);
+                await TryAutoCreateShortcutAsync(gamePath, game.Name, bypassEntry.ExeHint);
             }
 
             var launchOption = BuildLaunchOptionForGame(
                 gamePath,
-                Game.AppId,
-                BypassEntry.UseShortcut,
-                BypassEntry.ExeHint,
-                BypassEntry.LaunchOption);
+                game.AppId,
+                bypassEntry.UseShortcut,
+                bypassEntry.ExeHint,
+                bypassEntry.LaunchOption);
             if (!string.IsNullOrWhiteSpace(launchOption))
             {
                 ReportProgress(99, "Sinkronisasi Steam launch option...", "Menutup Steam, set launch option, lalu restart Steam...");
-                var launchOptionApplied = await _steam.SetLaunchOptionsAndRestartAsync(Game.AppId, launchOption);
+                var launchOptionApplied = await _steam.SetLaunchOptionsAndRestartAsync(game.AppId, launchOption);
                 if (!launchOptionApplied)
-                    _log.Log("BypassDetail", $"SetLaunchOptions gagal appid={Game.AppId}");
+                    _log.Log("BypassDetail", $"SetLaunchOptions gagal appid={game.AppId}");
             }
 
             ReportProgress(100, "Selesai! Proses bypass berhasil.", "Semua tahap selesai");
@@ -401,7 +403,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
                 : ex.Message;
 
             BypassErrorMessage = friendlyError;
-            _log.Log("BypassDetail", $"StartBypassGame failed appid={Game.AppId} err={friendlyError}");
+            _log.Log("BypassDetail", $"StartBypassGame failed appid={game.AppId} err={friendlyError}");
             OnPropertyChanged(nameof(HasBypassError));
             if (ShowDialogAsync is not null)
             {

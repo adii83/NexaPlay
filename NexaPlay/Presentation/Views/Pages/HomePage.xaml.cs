@@ -7,6 +7,9 @@ using Microsoft.UI.Xaml.Media.Animation;
 using System;
 using System.Collections.Generic;
 using NexaPlay.Contracts.Navigation;
+using NexaPlay.Contracts.Services;
+using NexaPlay.Core.Models;
+using NexaPlay.Presentation.Helpers;
 using NexaPlay.Presentation.ViewModels;
 using NexaPlay.Presentation.Views.Pages;
 
@@ -18,6 +21,7 @@ public sealed partial class HomePage : Page
     private DispatcherTimer? _carouselTimer;
     private DispatcherTimer? _popularResizeDebounceTimer;
     private INavigationService? _nav;
+    private readonly ILicenseService _licenseService;
     private int _lastPopularColumns = -1;
 
     public HomePage() 
@@ -25,6 +29,7 @@ public sealed partial class HomePage : Page
         InitializeComponent();
         DataContext = ((App)App.Current).GetRequiredService<HomeViewModel>();
         _nav = ((App)App.Current).GetRequiredService<INavigationService>();
+        _licenseService = ((App)App.Current).GetRequiredService<ILicenseService>();
         SetupCarouselTimer();
         SetupPopularResizeDebounceTimer();
     }
@@ -250,6 +255,72 @@ public sealed partial class HomePage : Page
     {
         if (sender is Button btn && btn.Tag is int appId && _nav is not null)
             _nav.Navigate<GameDetailPage>(appId);
+    }
+
+    private void OnBrowseBypassClicked(object sender, RoutedEventArgs e)
+    {
+        _nav?.Navigate<BypassGamesPage>("all");
+    }
+
+    private void OnBrowseGamesClicked(object sender, RoutedEventArgs e)
+    {
+        _nav?.Navigate<GamesPage>();
+    }
+
+    private async void OnHeroBypassTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: FixEntry entry } && entry.AppId > 0)
+        {
+            if (entry.IsSteamType && entry.IsPremium)
+            {
+                try
+                {
+                    var license = await _licenseService.LoadAsync();
+                    if (!license.IsValid)
+                    {
+                        await LicenseAccessDialogHelper.ShowLicenseInvalidAsync(XamlRoot);
+                        return;
+                    }
+
+                    if (!license.IsPremium)
+                    {
+                        await LicenseAccessDialogHelper.ShowPremiumFeatureAsync(XamlRoot);
+                        return;
+                    }
+                }
+                catch
+                {
+                    await LicenseAccessDialogHelper.ShowVerificationFailedAsync(XamlRoot);
+                    return;
+                }
+            }
+
+            _nav?.Navigate<BypassGameDetailPage>((entry.AppId, entry));
+        }
+    }
+
+    private void HeroBypassButton_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (sender is not Border button)
+            return;
+
+        button.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(48, 255, 255, 255));
+        if (button.Child is TextBlock text)
+        {
+            text.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+        }
+    }
+
+    private void HeroBypassButton_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (sender is not Border button)
+            return;
+
+        button.Background = (Brush)App.Current.Resources["NexaTextPrimaryBrush"];
+        if (button.Child is TextBlock text)
+        {
+            text.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
+        }
     }
 
     private void PopularGameCard_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)

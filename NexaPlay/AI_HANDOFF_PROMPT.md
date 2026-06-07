@@ -547,6 +547,30 @@ Tanggal: 2026-06-08
 - Build: `MSBuild Debug x64 /p:OutDir=Debug-preview` sukses (`0 Error(s)`, `0 Warning(s)`). Build normal sempat tertahan lock `NexaPlay.exe` aktif.
 - Next: build ulang lalu validasi dua skenario utama: card 3rd-party/steam-sharing standard tidak berubah premium saat masuk detail bypass, dan section `New Bypass Games` di Home tidak lagi berbeda label dengan sumber bypass yang sama.
 
+Tanggal: 2026-06-08
+- Fokus: Memperjelas CTA Home untuk navigasi cepat ke Bypass 3rd Party dan Games.
+- Perubahan: CTA header `New Bypass Games` di `HomePage` diubah menjadi `Lihat Bypass` dengan panah dan underline, lalu diarahkan ke `BypassGamesPage` dengan parameter `all` agar masuk ke katalog 3rd Party. CTA header `Popular Games` dipoles dengan pola visual yang sama dan diarahkan ke `GamesPage`.
+- Build: `MSBuild Debug x64 /p:OutDir=Debug-preview` sukses (`0 Error(s)`, `8 Warning(s)` nullability lama di `BypassGameDetailViewModel`).
+- Next: Smoke test klik CTA `Lihat Bypass` dan `Jelajahi Games` langsung dari Home untuk verifikasi arah navigasi dan rasa visual tombol.
+
+Tanggal: 2026-06-08
+- Fokus: Wiring hero `View Bypass` di Home ke detail bypass yang sesuai + cleanup warning nullability.
+- Perubahan: Tombol hero `View Bypass` pada `New Bypass Games` sekarang menerima `FixEntry` aktif dari carousel, hover text berubah putih tanpa warna cyan default, dan klik langsung menavigasi ke `BypassGameDetailPage` dengan payload `(AppId, FixEntry)` agar game bypass yang sesuai tetap terbuka baik kategori Steam maupun 3rd Party. `BypassGameDetailViewModel.StartBypassGameAsync()` juga dirapikan memakai local snapshot `bypassEntry/game` untuk menghapus warning nullability tanpa mengubah guard premium/standard yang sudah ada.
+- Build: `MSBuild Debug x64 /p:OutDir=Debug-preview` sukses (`0 Error(s)`, `0 Warning(s)`).
+- Next: Smoke test dari Home hero untuk dua skenario: item Steam Account membuka detail Akun Steam yang tepat, dan item 3rd Party membuka detail bypass 3rd Party yang tepat sambil mempertahankan gate action premium yang lama.
+
+Tanggal: 2026-06-08
+- Fokus: Final fix hover warna CTA hero `View Bypass` di Home.
+- Perubahan: CTA hero `View Bypass` diganti dari `HyperlinkButton` ke `Border + TextBlock` custom karena visual state bawaan `HyperlinkButton` masih memaksa warna biru saat hover. Hover sekarang benar-benar mengubah teks menjadi putih dan tetap mempertahankan navigasi ke `BypassGameDetailPage` lewat payload `FixEntry` aktif.
+- Build: `MSBuild Debug x64 /p:OutDir=Debug-preview` sukses (`0 Error(s)`, `0 Warning(s)`).
+- Next: Validasi runtime hover CTA hero bahwa teks tidak lagi biru dan klik tetap membuka detail bypass item carousel aktif.
+
+Tanggal: 2026-06-08
+- Fokus: Menutup celah premium `steam-type` dari tombol hero `View Bypass` di Home.
+- Perubahan: `HomePage` sekarang memakai guard lisensi yang sama seperti card `steam-sharing` di `BypassGamesPage` sebelum membuka `BypassGameDetailPage` dari hero `View Bypass`. Item `IsSteamType && IsPremium` kini diblok untuk license Standard/invalid dengan dialog parity yang sama, sementara item non-steam tetap boleh masuk ke detail bypass.
+- Build: `MSBuild Debug x64 /p:OutDir=Debug-preview` sukses (`0 Error(s)`, `0 Warning(s)`).
+- Next: Re-test dua skenario dari hero Home: game premium steam-type harus diblok untuk Standard, sedangkan game premium/non-premium 3rd Party tetap boleh membuka `BypassGameDetailPage`.
+
 ## 10. Update Log Ringkas
 
 ```text

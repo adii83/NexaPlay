@@ -36,7 +36,28 @@
                             <Border Width="6" Height="24" CornerRadius="3" Background="{ThemeResource NexaTextPrimaryBrush}" />
                             <TextBlock Text="New Bypass Games" FontSize="20" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
                         </StackPanel>
-                        <Button Grid.Column="1" Content="Lihat Semua" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="14" FontWeight="Medium" />
+                        <Button Grid.Column="1"
+                                Click="OnBrowseBypassClicked"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                HorizontalAlignment="Right">
+                            <StackPanel Spacing="5">
+                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                    <TextBlock Text="Lihat Bypass"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                                    <FontIcon Glyph="&#xE72A;"
+                                              FontSize="12"
+                                              Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                                </StackPanel>
+                                <Border Height="1"
+                                        Width="108"
+                                        HorizontalAlignment="Right"
+                                        Background="#80FFFFFF" />
+                            </StackPanel>
+                        </Button>
                     </Grid>
 
                     <Grid x:Name="NewBypassHeroContainer"
@@ -117,8 +138,25 @@
                                             </StackPanel>
                                         </StackPanel>
                                         
-                                        <!-- Action Button (Bottom-Right) diubah menjadi HyperlinkButton agar tidak terkena efek Collapsed dari style FlipView -->
-                                        <HyperlinkButton Content="View Bypass" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="32" Height="44" Padding="32,0" Background="{ThemeResource NexaTextPrimaryBrush}" Foreground="#000000" FontWeight="Bold" CornerRadius="8" BorderThickness="0" />
+                                        <!-- Action CTA custom agar hover text bisa dikontrol penuh tanpa visual-state bawaan HyperlinkButton -->
+                                        <Border Tag="{x:Bind}"
+                                                Tapped="OnHeroBypassTapped"
+                                                PointerEntered="HeroBypassButton_PointerEntered"
+                                                PointerExited="HeroBypassButton_PointerExited"
+                                                VerticalAlignment="Bottom"
+                                                HorizontalAlignment="Right"
+                                                Margin="32"
+                                                Height="44"
+                                                Padding="32,0"
+                                                Background="{ThemeResource NexaTextPrimaryBrush}"
+                                                CornerRadius="8">
+                                            <TextBlock x:Name="HeroBypassButtonText"
+                                                       Text="View Bypass"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       Foreground="#000000"
+                                                       FontWeight="Bold" />
+                                        </Border>
                                     </Grid>
                                 </DataTemplate>
                             </FlipView.ItemTemplate>
@@ -140,7 +178,28 @@
                             <Border Width="6" Height="24" CornerRadius="3" Background="{ThemeResource NexaTextPrimaryBrush}" />
                             <TextBlock Text="Popular Games" FontSize="20" FontWeight="Bold" Foreground="{ThemeResource NexaTextPrimaryBrush}" />
                         </StackPanel>
-                        <Button Grid.Column="1" Content="Jelajahi Games" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource NexaTextPrimaryBrush}" FontSize="14" FontWeight="Medium" />
+                        <Button Grid.Column="1"
+                                Click="OnBrowseGamesClicked"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                HorizontalAlignment="Right">
+                            <StackPanel Spacing="5">
+                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                    <TextBlock Text="Jelajahi Games"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                                    <FontIcon Glyph="&#xE72A;"
+                                              FontSize="12"
+                                              Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                                </StackPanel>
+                                <Border Height="1"
+                                        Width="116"
+                                        HorizontalAlignment="Right"
+                                        Background="#80FFFFFF" />
+                            </StackPanel>
+                        </Button>
                     </Grid>
 
                     <GridView x:Name="PopularGamesGrid"
