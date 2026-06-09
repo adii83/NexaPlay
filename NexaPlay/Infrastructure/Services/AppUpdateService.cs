@@ -46,7 +46,7 @@ public sealed class AppUpdateService : IAppUpdateService
     public async Task<AppUpdateCheckResult> GetCachedStatusAsync()
     {
         var state = await ReadStateAsync();
-        if (state is null)
+        if (state is null || !IsStateForCurrentVersion(state))
         {
             return new AppUpdateCheckResult
             {
@@ -62,7 +62,9 @@ public sealed class AppUpdateService : IAppUpdateService
     public async Task<AppUpdateCheckResult> CheckForUpdatesAsync(bool force = false, CancellationToken ct = default)
     {
         var cached = await ReadStateAsync();
+        var hasValidCurrentVersionCache = IsStateForCurrentVersion(cached);
         if (!force
+            && hasValidCurrentVersionCache
             && cached?.LastCheckedAt is DateTimeOffset lastCheckedAt
             && DateTimeOffset.UtcNow - lastCheckedAt < AppConstants.AppUpdateCheckCooldown)
         {
@@ -123,14 +125,14 @@ public sealed class AppUpdateService : IAppUpdateService
             return new AppUpdateCheckResult
             {
                 CurrentVersion = CurrentVersion,
-                LatestVersion = cached?.LatestVersion ?? CurrentVersion,
-                IsUpdateAvailable = cached?.IsUpdateAvailable ?? false,
-                Mandatory = cached?.Mandatory ?? false,
-                InstallerUrl = cached?.InstallerUrl,
-                InstallerSha256 = cached?.InstallerSha256,
-                PublishedAt = cached?.PublishedAt,
-                LastCheckedAt = cached?.LastCheckedAt,
-                ReleaseNotes = cached?.ReleaseNotes is { } cachedNotes ? cachedNotes : Array.Empty<string>(),
+                LatestVersion = hasValidCurrentVersionCache ? cached?.LatestVersion ?? CurrentVersion : CurrentVersion,
+                IsUpdateAvailable = hasValidCurrentVersionCache && (cached?.IsUpdateAvailable ?? false),
+                Mandatory = hasValidCurrentVersionCache && (cached?.Mandatory ?? false),
+                InstallerUrl = hasValidCurrentVersionCache ? cached?.InstallerUrl : null,
+                InstallerSha256 = hasValidCurrentVersionCache ? cached?.InstallerSha256 : null,
+                PublishedAt = hasValidCurrentVersionCache ? cached?.PublishedAt : null,
+                LastCheckedAt = hasValidCurrentVersionCache ? cached?.LastCheckedAt : null,
+                ReleaseNotes = hasValidCurrentVersionCache && cached?.ReleaseNotes is { } cachedNotes ? cachedNotes : Array.Empty<string>(),
                 Message = $"Gagal memeriksa update: {ex.Message}"
             };
         }
@@ -265,7 +267,7 @@ public sealed class AppUpdateService : IAppUpdateService
     {
         return new AppUpdateCheckResult
         {
-            CurrentVersion = string.IsNullOrWhiteSpace(state.CurrentVersion) ? AppConstants.AppVersion : state.CurrentVersion,
+            CurrentVersion = AppConstants.AppVersion,
             LatestVersion = string.IsNullOrWhiteSpace(state.LatestVersion) ? AppConstants.AppVersion : state.LatestVersion,
             IsUpdateAvailable = state.IsUpdateAvailable,
             Mandatory = state.Mandatory,
@@ -293,6 +295,19 @@ public sealed class AppUpdateService : IAppUpdateService
             LastCheckedAt = result.LastCheckedAt,
             ReleaseNotes = result.ReleaseNotes.ToList()
         };
+    }
+
+    private bool IsStateForCurrentVersion(AppUpdateState? state)
+    {
+        if (state is null)
+        {
+            return false;
+        }
+
+        return string.Equals(
+            state.CurrentVersion?.Trim(),
+            CurrentVersion,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task<string> ComputeSha256Async(string path, CancellationToken ct)

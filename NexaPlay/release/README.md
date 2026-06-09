@@ -164,9 +164,9 @@ Setelah asset release sudah ter-upload, baru generate manifest:
 
 ```powershell
 .\release\Generate-UpdateManifest.ps1 `
-  -Version 1.0.1 `
+  -Version 1.0.2 `
   -InstallerPath ".\release\output\NexaPlay-Setup.exe" `
-  -InstallerUrl "https://github.com/adii83/NexaPlay/releases/download/v1.0.1/NexaPlay-Setup.exe"
+  -InstallerUrl "https://github.com/adii83/NexaPlay/releases/download/v1.0.2/NexaPlay-Setup.exe"
 ```
 
 Script ini akan:

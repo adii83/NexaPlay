@@ -7,6 +7,7 @@ using NexaPlay.Core.Models;
 using NexaPlay.Presentation.ViewModels;
 using NexaPlay.Presentation.Views.Pages;
 using System;
+using System.IO;
 
 namespace NexaPlay;
 
@@ -49,12 +50,29 @@ public sealed partial class MainWindow : Window
         int x = displayArea.WorkArea.X + (displayArea.WorkArea.Width - width) / 2;
         int y = displayArea.WorkArea.Y + (displayArea.WorkArea.Height - height) / 2;
         appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, width, height));
+        ApplyWindowIcon(appWindow);
 
         _nav.Initialize(ContentFrame);
         ContentFrame.Navigated += ContentFrame_Navigated;
         this.Activated += OnFirstActivated;
         SetBypassSubmenuActive("all");
         UpdateShellChrome();
+    }
+
+    private void ApplyWindowIcon(Microsoft.UI.Windowing.AppWindow appWindow)
+    {
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Icons", "app.ico");
+            if (File.Exists(iconPath))
+            {
+                appWindow.SetIcon(iconPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _appLog.Log("Window", $"Gagal menerapkan icon window: {ex.Message}");
+        }
     }
 
     private async void OnFirstActivated(object sender, WindowActivatedEventArgs e)

@@ -1282,6 +1282,12 @@ Tanggal: 10 Juni 2026
 - Build: Perlu verifikasi ulang setelah pemasangan icon ke exe dan installer.
 - Next: Publish ulang + compile installer ulang, lalu cek bahwa icon tampil konsisten di exe, shortcut desktop, taskbar, Start Menu, dan wizard Inno Setup.
 
+Tanggal: 10 Juni 2026
+- Fokus: Menghilangkan false-positive dialog update setelah app sudah berhasil update, serta memastikan icon runtime taskbar/window mengikuti `app.ico`.
+- Perubahan: `AppUpdateService` sekarang hanya memakai cache update jika `state.CurrentVersion` cocok dengan `AppConstants.AppVersion`. Cache hasil versi lama tidak lagi dipakai setelah app berpindah versi, sehingga kasus "baru selesai update tapi startup masih bilang versi 1.0.0 -> 1.0.1" tidak terulang. `MainWindow.xaml.cs` juga ditambah `ApplyWindowIcon(appWindow)` yang memanggil `appWindow.SetIcon()` ke `Assets/Icons/app.ico`, supaya icon window aktif, thumbnail taskbar, dan taskbar button tidak lagi jatuh ke icon generik/putih walau installer/shortcut sudah benar.
+- Build: Perlu verifikasi ulang setelah patch cache update dan runtime window icon.
+- Next: Build ulang publish + reinstall, lalu uji dua hal: startup tidak lagi memunculkan dialog update stale setelah pindah versi, dan icon runtime di taskbar/window thumbnail menampilkan NexaPlay icon yang benar.
+
 
 Tanggal: 9 Juni 2026
 - Fokus: Implementasi fondasi update system NexaPlay berbasis `setup.exe` dengan UI hitam-putih yang konsisten.
