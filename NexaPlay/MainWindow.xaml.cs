@@ -8,11 +8,19 @@ using NexaPlay.Presentation.ViewModels;
 using NexaPlay.Presentation.Views.Pages;
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace NexaPlay;
 
 public sealed partial class MainWindow : Window
 {
+    private const uint WM_SETICON = 0x0080;
+    private const int ICON_SMALL = 0;
+    private const int ICON_BIG = 1;
+    private const uint IMAGE_ICON = 1;
+    private const uint LR_LOADFROMFILE = 0x00000010;
+    private const uint LR_DEFAULTSIZE = 0x00000040;
+
     private readonly MainViewModel _vm;
     private readonly INavigationService _nav;
     private readonly ILicenseService _licenseService;
@@ -20,6 +28,7 @@ public sealed partial class MainWindow : Window
     private readonly IAppUpdateService _appUpdateService;
     private readonly IAppLogService _appLog;
     private bool _hasShownStartupUpdatePrompt;
+    private IntPtr _windowIconHandle;
 
     public MainWindow(
         MainViewModel vm,
@@ -50,7 +59,7 @@ public sealed partial class MainWindow : Window
         int x = displayArea.WorkArea.X + (displayArea.WorkArea.Width - width) / 2;
         int y = displayArea.WorkArea.Y + (displayArea.WorkArea.Height - height) / 2;
         appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, width, height));
-        ApplyWindowIcon(appWindow);
+        ApplyWindowIcon(appWindow, hWnd);
 
         _nav.Initialize(ContentFrame);
         ContentFrame.Navigated += ContentFrame_Navigated;
@@ -59,7 +68,7 @@ public sealed partial class MainWindow : Window
         UpdateShellChrome();
     }
 
-    private void ApplyWindowIcon(Microsoft.UI.Windowing.AppWindow appWindow)
+    private void ApplyWindowIcon(Microsoft.UI.Windowing.AppWindow appWindow, IntPtr hWnd)
     {
         try
         {
@@ -67,6 +76,7 @@ public sealed partial class MainWindow : Window
             if (File.Exists(iconPath))
             {
                 appWindow.SetIcon(iconPath);
+                ApplyHwndIcon(hWnd, iconPath);
             }
         }
         catch (Exception ex)
@@ -74,6 +84,37 @@ public sealed partial class MainWindow : Window
             _appLog.Log("Window", $"Gagal menerapkan icon window: {ex.Message}");
         }
     }
+
+    private void ApplyHwndIcon(IntPtr hWnd, string iconPath)
+    {
+        try
+        {
+            _windowIconHandle = LoadImage(IntPtr.Zero, iconPath, IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE);
+            if (_windowIconHandle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            SendMessage(hWnd, WM_SETICON, (IntPtr)ICON_SMALL, _windowIconHandle);
+            SendMessage(hWnd, WM_SETICON, (IntPtr)ICON_BIG, _windowIconHandle);
+        }
+        catch (Exception ex)
+        {
+            _appLog.Log("Window", $"Gagal menerapkan HWND icon: {ex.Message}");
+        }
+    }
+
+    [DllImport("user32.dll", EntryPoint = "LoadImageW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr LoadImage(
+        IntPtr hInst,
+        string lpszName,
+        uint uType,
+        int cxDesired,
+        int cyDesired,
+        uint fuLoad);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     private async void OnFirstActivated(object sender, WindowActivatedEventArgs e)
     {
