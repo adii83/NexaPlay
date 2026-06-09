@@ -3,7 +3,7 @@ namespace NexaPlay.Core.Constants;
 public static class AppConstants
 {
     public const string AppName = "NexaPlay";
-    public const string AppVersion = "1.0.0";
+    public const string AppVersion = "1.0.1";
     public const string AppDataFolder = "NexaPlay";
     public const string AppUpdateManifestUrl = "https://raw.githubusercontent.com/adii83/NexaPlay/main/NexaPlay/release/update-stable.json";
     public const string AppUpdateInstallerArguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART";

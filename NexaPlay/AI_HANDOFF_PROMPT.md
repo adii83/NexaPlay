@@ -1258,6 +1258,18 @@ Tanggal: 10 Juni 2026
 - Build: `dotnet publish -c Release -p:Platform=x64 -r win-x64 --self-contained true` sukses lagi setelah trimming dimatikan, dan warning trim di jalur lisensi/update hilang.
 - Next: Build ulang `setup.exe` dari output publish release yang baru, reinstall, lalu retest aktivasi license. Jika masih gagal, baca `%LOCALAPPDATA%\NexaPlay\nexaplay.log` untuk pesan exception sebenarnya, bukan hanya banner UI `Kesalahan jaringan`.
 
+Tanggal: 10 Juni 2026
+- Fokus: Memastikan asset SVG logo ikut ke output publish/install.
+- Perubahan: `NexaPlay.csproj` sekarang memberi `CopyToOutputDirectory=PreserveNewest` pada `Assets/logo.svg` dan `Assets/logo_text.svg`. Verifikasi publish release menunjukkan kedua file sudah muncul di `bin/Release/net8.0-windows10.0.19041.0/win-x64/publish/Assets/`, sehingga header/overlay yang memakai `ms-appx:///Assets/logo.svg` dan `ms-appx:///Assets/logo_text.svg` tidak lagi kehilangan logo setelah build installer baru.
+- Build: `dotnet publish -c Release -p:Platform=x64 -r win-x64 --self-contained true` sukses, dan SVG terkonfirmasi ada di folder publish.
+- Next: Compile ulang `NexaPlaySetup.iss` dari publish terbaru, reinstall, lalu verifikasi logo NexaPlay tampil di header dan overlay lisensi/startup.
+
+Tanggal: 10 Juni 2026
+- Fokus: Melengkapi dokumentasi release/update agar urutan rilis ke depan tidak membingungkan.
+- Perubahan: `release/README.md` dirombak menjadi panduan operasional penuh untuk rilis awal dan rilis update berikutnya. Dokumen sekarang menjelaskan sinkronisasi versi (`AppConstants`, `.iss`, GitHub tag, manifest), urutan aman `publish -> build installer -> upload release asset -> generate manifest -> commit manifest`, kapan manifest boleh diupdate, cara menahan dialog update sementara, dan troubleshooting umum seperti cache update, error jaringan pasca-install, serta asset SVG yang hilang.
+- Build: Tidak mengubah kode runtime app.
+- Next: Ikuti checklist di `release/README.md` setiap kali merilis versi baru agar manifest tidak mendahului asset release dan user tidak melihat update yang belum siap.
+
 
 Tanggal: 9 Juni 2026
 - Fokus: Implementasi fondasi update system NexaPlay berbasis `setup.exe` dengan UI hitam-putih yang konsisten.

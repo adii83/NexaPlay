@@ -1,27 +1,130 @@
 # NexaPlay Release Packaging
 
-Folder ini berisi file bantu untuk flow update NexaPlay berbasis `setup.exe`.
+Folder ini berisi file bantu untuk flow release dan auto update NexaPlay berbasis `setup.exe`.
 
-## 1. Publish app
+## Ringkasan Alur
 
-Jalankan dari folder project `NexaPlay`:
+App NexaPlay melakukan update check seperti ini:
+
+1. App membaca versi saat ini dari `AppConstants.AppVersion`.
+2. App mengambil manifest update dari:
+   `https://raw.githubusercontent.com/adii83/NexaPlay/main/NexaPlay/release/update-stable.json`
+3. App membandingkan:
+   - versi terpasang di app
+   - field `version` di `update-stable.json`
+4. Jika versi manifest lebih tinggi, dialog update akan muncul.
+5. Jika user setuju, app mengunduh file installer dari `installerUrl` di manifest.
+
+Karena itu, setiap rilis harus menjaga sinkronisasi 4 hal ini:
+
+- versi di `AppConstants.AppVersion`
+- versi di `release/NexaPlaySetup.iss`
+- tag GitHub Release, mis. `v1.0.1`
+- field `version` di `update-stable.json`
+
+## Rule Paling Penting
+
+- Jangan update manifest ke versi baru sebelum asset installer versi itu benar-benar sudah ter-upload ke GitHub Release.
+- Kalau manifest lebih dulu menunjuk ke versi baru, app user akan langsung melihat dialog update meskipun asset release belum siap.
+- Untuk rilis pertama, manifest boleh tetap menunjuk ke versi yang sama dengan app yang sedang dirilis.
+- Untuk mengetes auto update sungguhan, harus ada 2 versi:
+  - versi lama sudah terpasang
+  - versi baru sudah ada di GitHub Release dan manifest sudah diperbarui
+
+## Lokasi File Penting
+
+- Versi app runtime:
+  `NexaPlay/Core/Constants/AppConstants.cs`
+- Versi installer:
+  `NexaPlay/release/NexaPlaySetup.iss`
+- Template manifest:
+  `NexaPlay/release/update-stable.json`
+- Generator manifest:
+  `NexaPlay/release/Generate-UpdateManifest.ps1`
+
+## Urutan Rilis Yang Benar
+
+Setiap kali mau merilis versi baru, ikuti urutan ini:
+
+1. Naikkan versi app.
+2. Naikkan versi installer `.iss`.
+3. Publish `Release`.
+4. Build `setup.exe`.
+5. Upload `setup.exe` ke GitHub Release dengan tag versi yang sama.
+6. Generate manifest final yang menunjuk ke asset release itu.
+7. Commit manifest baru ke `main`.
+8. Setelah manifest masuk `main`, barulah app user akan mulai mendeteksi versi baru.
+
+## Checklist Rilis Pertama
+
+Contoh: Anda ingin rilis publik pertama sebagai `1.0.1`.
+
+### 1. Ubah versi app
+
+Ubah:
+
+```csharp
+public const string AppVersion = "1.0.1";
+```
+
+di:
+
+`NexaPlay/Core/Constants/AppConstants.cs`
+
+### 2. Ubah versi installer
+
+Ubah:
+
+```iss
+#define MyAppVersion "1.0.1"
+```
+
+di:
+
+`NexaPlay/release/NexaPlaySetup.iss`
+
+### 3. Publish app
+
+Jalankan dari folder `NexaPlay`:
 
 ```powershell
 dotnet publish .\NexaPlay.csproj -c Release -p:Platform=x64 -r win-x64 --self-contained true
 ```
 
-Output publish default akan muncul di:
+Output publish default:
 
 ```text
 bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\
 ```
 
-## 2. Build installer dengan Inno Setup
+### 4. Verifikasi output publish
 
-Install `Inno Setup 6`, lalu compile file:
+Cek minimal file penting ini ada:
 
-```text
-release\NexaPlaySetup.iss
+```powershell
+Get-ChildItem ".\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish"
+Get-ChildItem ".\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\Assets"
+Get-ChildItem ".\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\data"
+```
+
+Minimal harus ada:
+
+- `NexaPlay.exe`
+- `Assets\logo.svg`
+- `Assets\logo_text.svg`
+- `Assets\Web\youtube-player.html`
+- `data\api.json`
+
+### 5. Build installer Inno Setup
+
+Compile file:
+
+`release\NexaPlaySetup.iss`
+
+Jika `ISCC.exe` sudah ada:
+
+```powershell
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\release\NexaPlaySetup.iss"
 ```
 
 Output installer default:
@@ -30,37 +133,29 @@ Output installer default:
 release\output\NexaPlay-Setup.exe
 ```
 
-Jika `ISCC.exe` sudah ada di default path, compile bisa lewat:
+### 6. Upload installer ke GitHub Release
 
-```powershell
-& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\release\NexaPlaySetup.iss"
+Buat release/tag:
+
+```text
+v1.0.1
 ```
 
-## 3. Tentukan skenario rilis
+Upload asset:
 
-Ada 2 skenario yang berbeda:
-
-- `Rilis pertama / baseline install`
-  Gunakan versi app yang sekarang, yaitu `1.0.0`. Ini dipakai agar user punya base install awal.
-- `Test auto update`
-  Setelah `1.0.0` sudah terpasang, baru naikkan versi app ke `1.0.1` dan buat release kedua untuk menguji dialog update + download installer + relaunch.
-
-## 4. Generate manifest update final
-
-### Jika Anda sedang membuat rilis pertama `v1.0.0`
-
-Setelah `setup.exe` jadi, jalankan:
-
-```powershell
-.\release\Generate-UpdateManifest.ps1 `
-  -Version 1.0.0 `
-  -InstallerPath ".\release\output\NexaPlay-Setup.exe" `
-  -InstallerUrl "https://github.com/adii83/NexaPlay/releases/download/v1.0.0/NexaPlay-Setup.exe"
+```text
+NexaPlay-Setup.exe
 ```
 
-### Jika Anda sedang membuat rilis test update `v1.0.1`
+Contoh URL asset final:
 
-Setelah `setup.exe` jadi, jalankan:
+```text
+https://github.com/adii83/NexaPlay/releases/download/v1.0.1/NexaPlay-Setup.exe
+```
+
+### 7. Generate manifest final
+
+Setelah asset release sudah ter-upload, baru generate manifest:
 
 ```powershell
 .\release\Generate-UpdateManifest.ps1 `
@@ -72,25 +167,147 @@ Setelah `setup.exe` jadi, jalankan:
 Script ini akan:
 
 - hitung SHA-256 installer
-- generate file `release\update-stable.generated.json`
+- generate file:
+  `release\update-stable.generated.json`
 
-## 5. Upload ke GitHub
+### 8. Commit manifest ke repo
 
-Upload 2 file berikut ke release GitHub:
+Salin isi `update-stable.generated.json` ke:
 
-- `NexaPlay-Setup.exe`
-- commit `release\update-stable.generated.json` sebagai `NexaPlay/release/update-stable.json` ke branch `main` repo ini:
-  `https://raw.githubusercontent.com/adii83/NexaPlay/main/NexaPlay/release/update-stable.json`
+`NexaPlay/release/update-stable.json`
 
-Alur repo final sekarang:
+Lalu commit ke branch `main`.
 
-- Asset installer diambil dari GitHub Releases repo `adii83/NexaPlay`
-- Manifest update dibaca dari file `NexaPlay/release/update-stable.json` di branch `main` repo yang sama
+Manifest yang aktif dibaca app adalah:
 
-## Catatan penting
+```text
+https://raw.githubusercontent.com/adii83/NexaPlay/main/NexaPlay/release/update-stable.json
+```
 
-- `AppConstants.AppVersion` saat ini masih `1.0.0`.
-- Supaya update terdeteksi, field `version` di manifest harus lebih besar dari versi yang terpasang.
-- Untuk baseline pertama, manifest `1.0.0` itu normal. Update baru akan benar-benar terdeteksi saat app `1.0.0` membaca manifest `1.0.1` atau versi yang lebih tinggi.
-- Silent arguments update yang dipakai app saat ini:
+### 9. Efek ke user
+
+Karena ini rilis publik pertama, app yang baru di-install pada versi `1.0.1` tidak akan melihat update selama manifest juga masih `1.0.1`.
+
+## Checklist Rilis Update Berikutnya
+
+Contoh: user sudah punya `1.0.1`, lalu Anda ingin merilis `1.0.2`.
+
+### 1. Naikkan versi app ke `1.0.2`
+
+- `AppConstants.AppVersion` -> `1.0.2`
+- `NexaPlaySetup.iss` -> `1.0.2`
+
+### 2. Publish app
+
+```powershell
+dotnet publish .\NexaPlay.csproj -c Release -p:Platform=x64 -r win-x64 --self-contained true
+```
+
+### 3. Build installer
+
+```powershell
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\release\NexaPlaySetup.iss"
+```
+
+### 4. Upload installer ke GitHub Release `v1.0.2`
+
+Upload asset:
+
+```text
+NexaPlay-Setup.exe
+```
+
+### 5. Generate manifest `1.0.2`
+
+```powershell
+.\release\Generate-UpdateManifest.ps1 `
+  -Version 1.0.2 `
+  -InstallerPath ".\release\output\NexaPlay-Setup.exe" `
+  -InstallerUrl "https://github.com/adii83/NexaPlay/releases/download/v1.0.2/NexaPlay-Setup.exe"
+```
+
+### 6. Commit manifest baru ke `main`
+
+Setelah `update-stable.json` di branch `main` berubah ke `1.0.2`, maka:
+
+- app user yang masih `1.0.1` akan mendeteksi update
+- dialog update akan muncul
+- app akan download installer `1.0.2`
+
+## Kapan Manifest Diupdate?
+
+Jawaban singkatnya:
+
+- **Upload installer ke GitHub Release dulu**
+- **baru update manifest**
+
+Jangan dibalik.
+
+Urutan yang aman:
+
+1. build `setup.exe`
+2. upload `setup.exe` ke GitHub Release
+3. pastikan URL asset benar-benar hidup
+4. generate manifest final
+5. commit `update-stable.json`
+
+## Cara Menahan Dialog Update Sementara
+
+Kalau Anda belum siap menampilkan update ke user:
+
+- jangan naikkan field `version` di `update-stable.json`
+- biarkan sama dengan versi app yang sedang live
+
+Contoh:
+
+- app live = `1.0.1`
+- manifest = `1.0.1`
+
+Maka dialog update tidak akan muncul.
+
+## Troubleshooting
+
+### Dialog update muncul padahal belum siap
+
+Penyebab paling umum:
+
+- `update-stable.json` sudah berisi versi lebih tinggi
+- atau cache lokal update masih menyimpan hasil check lama
+
+File cache lokal:
+
+```text
+%LOCALAPPDATA%\NexaPlay\app_update_state.json
+```
+
+Kalau perlu, hapus file itu lalu restart app.
+
+### Setelah install muncul error jaringan
+
+Pastikan Anda memakai installer yang dibangun dari publish release terbaru.
+
+Jangan hanya compile ulang `.iss` kalau folder publish lama belum diperbarui.
+
+Urutan aman:
+
+1. `dotnet publish`
+2. compile `Inno Setup`
+3. uninstall build lama
+4. install build baru
+
+### Logo SVG tidak ikut
+
+Sekarang `Assets/logo.svg` dan `Assets/logo_text.svg` sudah dipaksa ikut ke output publish.
+
+Kalau logo tetap hilang:
+
+- cek folder publish
+- cek installer dibangun dari publish terbaru
+- reinstall dari installer terbaru
+
+## Catatan Tambahan
+
+- Runtime manifest update dibaca dari repo `adii83/NexaPlay`, bukan repo lain.
+- Silent arguments update saat ini:
   `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`
+- File `release\update-stable.generated.json` hanya artefak bantu, tidak perlu disimpan permanen di repo.
