@@ -351,9 +351,11 @@ while (Get-Process -Id $parentPid -ErrorAction SilentlyContinue) {
 
 if (-not (Test-Path $installerPath)) { exit 1 }
 
-$process = Start-Process -FilePath $installerPath -ArgumentList $installerArgs -Wait -PassThru
-if ($process.ExitCode -eq 0 -and (Test-Path $restartPath)) {
-    Start-Process -FilePath $restartPath
+if ([string]::IsNullOrWhiteSpace($installerArgs)) {
+    Start-Process -FilePath $installerPath
+}
+else {
+    Start-Process -FilePath $installerPath -ArgumentList $installerArgs
 }
 """;
     }

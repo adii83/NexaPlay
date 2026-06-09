@@ -14,6 +14,8 @@ App NexaPlay melakukan update check seperti ini:
    - field `version` di `update-stable.json`
 4. Jika versi manifest lebih tinggi, dialog update akan muncul.
 5. Jika user setuju, app mengunduh file installer dari `installerUrl` di manifest.
+6. Setelah download selesai, app menutup dirinya dan membuka `NexaPlay-Setup.exe` biasa.
+7. User melanjutkan proses install/update dari wizard installer.
 
 Karena itu, setiap rilis harus menjaga sinkronisasi 4 hal ini:
 
@@ -309,5 +311,5 @@ Kalau logo tetap hilang:
 
 - Runtime manifest update dibaca dari repo `adii83/NexaPlay`, bukan repo lain.
 - Silent arguments update saat ini:
-  `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`
+  kosong, karena updater sekarang membuka installer biasa agar user melanjutkan pemasangan manual
 - File `release\update-stable.generated.json` hanya artefak bantu, tidak perlu disimpan permanen di repo.

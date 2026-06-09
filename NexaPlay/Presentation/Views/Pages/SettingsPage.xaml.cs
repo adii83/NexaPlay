@@ -208,7 +208,7 @@ public sealed partial class SettingsPage : Page
 
         content.Children.Add(new TextBlock
         {
-            Text = $"Versi saat ini {_vm.CurrentAppVersion}. NexaPlay akan mengunduh installer, menutup aplikasi, lalu menjalankan setup secara otomatis.",
+            Text = $"Versi saat ini {_vm.CurrentAppVersion}. NexaPlay akan mengunduh installer, menutup aplikasi, lalu membuka setup agar Anda bisa melanjutkan proses install manual.",
             Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 160, 160, 160)),
             TextWrapping = TextWrapping.Wrap
         });

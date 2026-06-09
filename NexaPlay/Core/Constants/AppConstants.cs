@@ -3,10 +3,10 @@ namespace NexaPlay.Core.Constants;
 public static class AppConstants
 {
     public const string AppName = "NexaPlay";
-    public const string AppVersion = "1.0.1";
+    public const string AppVersion = "1.0.2";
     public const string AppDataFolder = "NexaPlay";
     public const string AppUpdateManifestUrl = "https://raw.githubusercontent.com/adii83/NexaPlay/main/NexaPlay/release/update-stable.json";
-    public const string AppUpdateInstallerArguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART";
+    public const string AppUpdateInstallerArguments = "";
 
     // Legacy GitHub data sources
     public const string SteamDataUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/steam_data.json.gz";

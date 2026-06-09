@@ -279,7 +279,7 @@ public sealed partial class MainWindow : Window
 
             content.Children.Add(new TextBlock
             {
-                Text = $"Versi saat ini {result.CurrentVersion}. Jika Anda melanjutkan, NexaPlay akan mengunduh setup, menutup aplikasi, lalu menjalankan installer otomatis.",
+                Text = $"Versi saat ini {result.CurrentVersion}. Jika Anda melanjutkan, NexaPlay akan mengunduh setup, menutup aplikasi, lalu membuka installer agar Anda bisa melanjutkan pemasangan manual.",
                 Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 160, 160, 160)),
                 TextWrapping = TextWrapping.Wrap
             });
@@ -356,7 +356,7 @@ public sealed partial class MainWindow : Window
             {
                 StartupProgressBar.Value = 100;
                 StartupPercentText.Text = "100%";
-                StartupStatusText.Text = "Menjalankan installer update...";
+                StartupStatusText.Text = "Membuka installer update...";
             });
 
             await _appUpdateService.LaunchInstallerAndExitAsync(installerPath);

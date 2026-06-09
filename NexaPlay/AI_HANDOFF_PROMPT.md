@@ -1270,6 +1270,12 @@ Tanggal: 10 Juni 2026
 - Build: Tidak mengubah kode runtime app.
 - Next: Ikuti checklist di `release/README.md` setiap kali merilis versi baru agar manifest tidak mendahului asset release dan user tidak melihat update yang belum siap.
 
+Tanggal: 10 Juni 2026
+- Fokus: Menyesuaikan mekanisme update agar user menjalankan installer sendiri setelah download selesai.
+- Perubahan: Flow updater tidak lagi memakai argumen silent install. `AppUpdateInstallerArguments` dikosongkan, helper PowerShell sekarang hanya menunggu app utama tertutup lalu membuka `NexaPlay-Setup.exe` biasa tanpa auto-install dan tanpa auto-reopen app. Teks dialog startup/settings serta dokumentasi `release/README.md` juga diperbarui agar menjelaskan bahwa setelah download selesai, NexaPlay akan menutup diri lalu membuka installer untuk dilanjutkan manual oleh user.
+- Build: Perlu verifikasi ulang setelah perubahan alur updater.
+- Next: Build ulang, test update dari dialog startup/settings, lalu pastikan setelah download selesai installer Inno Setup terbuka normal dan user bisa melanjutkan wizard install secara manual.
+
 
 Tanggal: 9 Juni 2026
 - Fokus: Implementasi fondasi update system NexaPlay berbasis `setup.exe` dengan UI hitam-putih yang konsisten.
