@@ -1252,6 +1252,12 @@ Tanggal: 10 Juni 2026
 - Build: Tidak mengubah kode runtime app.
 - Next: Commit folder `NexaPlay/release` bersama perubahan update system, lalu lanjut ke proses publish `Release` dan build installer Inno Setup.
 
+Tanggal: 10 Juni 2026
+- Fokus: Mengatasi build installer yang setelah install tampil sebagai `Kesalahan jaringan` dan terkesan kehilangan asset.
+- Perubahan: Audit `dotnet publish Release` menunjukkan folder publish sebenarnya sudah membawa `Assets/` dan `data/api.json`, jadi masalah utama bukan asset statis hilang. Akar yang lebih kuat justru `PublishTrimmed=true` pada `Release`, yang menghasilkan trim warnings tepat di jalur `LicenseService`, `LicenseStore`, dan `AppUpdateService` berbasis `System.Text.Json`. `NexaPlay.csproj` sekarang diubah agar `PublishTrimmed=False` untuk release installer, dengan catatan bahwa jalur JSON runtime app belum trim-safe.
+- Build: `dotnet publish -c Release -p:Platform=x64 -r win-x64 --self-contained true` sukses lagi setelah trimming dimatikan, dan warning trim di jalur lisensi/update hilang.
+- Next: Build ulang `setup.exe` dari output publish release yang baru, reinstall, lalu retest aktivasi license. Jika masih gagal, baca `%LOCALAPPDATA%\NexaPlay\nexaplay.log` untuk pesan exception sebenarnya, bukan hanya banner UI `Kesalahan jaringan`.
+
 
 Tanggal: 9 Juni 2026
 - Fokus: Implementasi fondasi update system NexaPlay berbasis `setup.exe` dengan UI hitam-putih yang konsisten.
