@@ -1288,6 +1288,12 @@ Tanggal: 10 Juni 2026
 - Build: Perlu verifikasi ulang setelah patch cache update dan runtime window icon.
 - Next: Build ulang publish + reinstall, lalu uji dua hal: startup tidak lagi memunculkan dialog update stale setelah pindah versi, dan icon runtime di taskbar/window thumbnail menampilkan NexaPlay icon yang benar.
 
+Tanggal: 10 Juni 2026
+- Fokus: Mengembalikan generator `app.ico` ke mode full-canvas tanpa crop otomatis.
+- Perubahan: `release/Generate-AppIcon.ps1` sekarang default memakai seluruh kanvas `logo.png` apa adanya. Crop hanya aktif jika switch `-EnableCrop` diberikan. `app.ico` juga sudah digenerate ulang dari `Assets/Icons/logo.png` terbaru dalam mode no-crop.
+- Build: Tidak mengubah kode runtime app.
+- Next: Publish ulang + compile installer ulang untuk memastikan exe/shortcut/taskbar membaca `app.ico` hasil terbaru tanpa crop.
+
 
 Tanggal: 9 Juni 2026
 - Fokus: Implementasi fondasi update system NexaPlay berbasis `setup.exe` dengan UI hitam-putih yang konsisten.
