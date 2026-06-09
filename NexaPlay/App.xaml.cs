@@ -53,6 +53,7 @@ public partial class App : Application
         services.AddSingleton<IWindowsDefenderService, WindowsDefenderService>();
         services.AddSingleton<INexaPlayOverrideService, NexaPlayOverrideService>();
         services.AddSingleton<IBypassTutorialVideoService, BypassTutorialVideoService>();
+        services.AddSingleton<IAppUpdateService, AppUpdateService>();
         services.AddSingleton<IMetadataService, MetadataService>();
         services.AddSingleton<IBypassGamesDataService, BypassGamesDataService>();
         services.AddSingleton<IOnlineFixService, OnlineFixService>();

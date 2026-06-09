@@ -9,6 +9,7 @@ namespace NexaPlay.Presentation.ViewModels;
 
 public sealed partial class SettingsViewModel : ObservableObject
 {
+    private readonly IAppUpdateService _appUpdate;
     private readonly ILicenseService _license;
     private readonly ISteamService _steam;
     private readonly IWindowsDefenderService _defender;
@@ -26,6 +27,17 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool IsLoadingGames { get; set; }
     [ObservableProperty] public partial double DownloadProgress { get; set; }
     [ObservableProperty] public partial string DownloadProgressText { get; set; }
+    [ObservableProperty] public partial string CurrentAppVersion { get; set; }
+    [ObservableProperty] public partial string LatestAppVersion { get; set; }
+    [ObservableProperty] public partial string UpdateStatusTitle { get; set; }
+    [ObservableProperty] public partial string UpdateStatusMessage { get; set; }
+    [ObservableProperty] public partial string LastUpdateCheckedText { get; set; }
+    [ObservableProperty] public partial IReadOnlyList<string> UpdateReleaseNotes { get; set; }
+    [ObservableProperty] public partial bool IsUpdateAvailable { get; set; }
+    [ObservableProperty] public partial bool IsCheckingForUpdates { get; set; }
+    [ObservableProperty] public partial bool IsInstallingUpdate { get; set; }
+    [ObservableProperty] public partial double UpdateDownloadProgress { get; set; }
+    [ObservableProperty] public partial string UpdateDownloadProgressText { get; set; }
 
     // Steam
     [ObservableProperty] public partial string SteamPath { get; set; }
@@ -40,11 +52,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] public partial string DeviceId { get; set; }
 
     public SettingsViewModel(
+        IAppUpdateService appUpdate,
         ILicenseService license, ISteamService steam,
         IWindowsDefenderService defender, IMetadataService metadata,
         IBypassGamesDataService fixData, IAppLogService log,
         INexaPlayOverrideService nexaPlayOverride)
     {
+        _appUpdate = appUpdate;
         _license  = license;
         _steam    = steam;
         _defender = defender;
@@ -60,6 +74,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         AntivirusList     = Array.Empty<AntivirusInfo>();
         Exclusions        = Array.Empty<string>();
         DeviceId          = string.Empty;
+        CurrentAppVersion = _appUpdate.CurrentVersion;
+        LatestAppVersion = _appUpdate.CurrentVersion;
+        UpdateStatusTitle = "Belum pernah diperiksa";
+        UpdateStatusMessage = "NexaPlay belum melakukan pengecekan update untuk sesi ini.";
+        LastUpdateCheckedText = "-";
+        UpdateReleaseNotes = Array.Empty<string>();
+        UpdateDownloadProgressText = "0%";
     }
 
     public async Task LoadAsync()
@@ -68,6 +89,102 @@ public sealed partial class SettingsViewModel : ObservableObject
         CurrentLicense     = await _license.LoadAsync();
         SteamPath          = _steam.GetSteamBasePath() ?? "Not detected";
         SteamLibraryCount  = _steam.GetLibraryPaths().Count;
+        await LoadCachedUpdateStatusAsync();
+    }
+
+    private async Task LoadCachedUpdateStatusAsync()
+    {
+        var result = await _appUpdate.GetCachedStatusAsync();
+        ApplyUpdateResult(result);
+    }
+
+    public async Task CheckForUpdatesAsync(bool force = true)
+    {
+        IsCheckingForUpdates = true;
+        UpdateStatusMessage = "Sedang memeriksa manifest update terbaru...";
+
+        try
+        {
+            var result = await _appUpdate.CheckForUpdatesAsync(force);
+            ApplyUpdateResult(result);
+        }
+        finally
+        {
+            IsCheckingForUpdates = false;
+        }
+    }
+
+    public async Task InstallUpdateAsync()
+    {
+        if (!IsUpdateAvailable)
+        {
+            throw new InvalidOperationException("Belum ada update yang bisa dipasang.");
+        }
+
+        var latest = await _appUpdate.CheckForUpdatesAsync(force: true);
+        ApplyUpdateResult(latest);
+
+        if (!latest.IsUpdateAvailable)
+        {
+            return;
+        }
+
+        IsInstallingUpdate = true;
+        UpdateDownloadProgress = 0;
+        UpdateDownloadProgressText = "0%";
+        UpdateStatusMessage = $"Mengunduh installer NexaPlay {latest.LatestVersion}...";
+
+        try
+        {
+            var progress = new Progress<double>(p =>
+            {
+                UpdateDownloadProgress = Math.Clamp(p, 0, 100);
+                UpdateDownloadProgressText = $"{UpdateDownloadProgress:F0}%";
+            });
+
+            var installerPath = await _appUpdate.DownloadInstallerAsync(latest, progress);
+            UpdateStatusMessage = "Installer selesai diunduh. Menyiapkan proses update...";
+            await _appUpdate.LaunchInstallerAndExitAsync(installerPath);
+        }
+        finally
+        {
+            IsInstallingUpdate = false;
+        }
+    }
+
+    private void ApplyUpdateResult(AppUpdateCheckResult result)
+    {
+        CurrentAppVersion = result.CurrentVersion;
+        LatestAppVersion = string.IsNullOrWhiteSpace(result.LatestVersion) ? result.CurrentVersion : result.LatestVersion;
+        IsUpdateAvailable = result.IsUpdateAvailable;
+        UpdateReleaseNotes = result.ReleaseNotes?.Count > 0 ? result.ReleaseNotes : Array.Empty<string>();
+        LastUpdateCheckedText = result.LastCheckedAt?.ToLocalTime().ToString("dd MMM yyyy, HH:mm") ?? "-";
+
+        if (result.IsUpdateAvailable)
+        {
+            UpdateStatusTitle = result.Mandatory ? "Update wajib tersedia" : "Update tersedia";
+            UpdateStatusMessage = string.IsNullOrWhiteSpace(result.Message)
+                ? $"Versi {result.LatestVersion} tersedia untuk dipasang."
+                : result.Message;
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Message) && result.Message.StartsWith("Gagal memeriksa update:", StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateStatusTitle = "Gagal memeriksa update";
+            UpdateStatusMessage = result.Message;
+            return;
+        }
+
+        if (result.LastCheckedAt is not null)
+        {
+            UpdateStatusTitle = "Sudah versi terbaru";
+            UpdateStatusMessage = "Versi NexaPlay Anda sudah paling baru.";
+            return;
+        }
+
+        UpdateStatusTitle = "Belum pernah diperiksa";
+        UpdateStatusMessage = result.Message;
     }
 
     public async Task ActivateLicenseAsync()

@@ -1222,6 +1222,54 @@ Tanggal:
 - Next:
 ```
 
+Tanggal: 9 Juni 2026
+- Fokus: Memulihkan `SettingsPage` yang blank setelah integrasi UI update.
+- Perubahan: `SettingsPage.xaml` memakai `Converter={StaticResource BoolToVis}` untuk blok progres update, tetapi resource itu tidak tersedia saat runtime dan membuat halaman Settings gagal render. Solusinya diubah mengikuti pola page lain di repo: `Visibility` kini memakai `x:Bind local:SettingsPage.BoolToVis(ViewModel.IsInstallingUpdate)` dengan helper statis lokal di code-behind, sehingga `SettingsPage` bisa terbuka normal kembali tanpa bergantung pada resource converter global.
+- Build: `MSBuild Debug x64 /p:OutDir=Debug-settingsfix` sukses (`0 Error(s)`, `0 Warning(s)`).
+- Next: Uji runtime buka `Settings` lalu pastikan section `Application Update` tampil dan tombol manual check/update tetap berfungsi.
+
+Tanggal: 9 Juni 2026
+- Fokus: Menyiapkan aset release awal untuk flow auto update berbasis `setup.exe`.
+- Perubahan: Menambahkan folder `release` berisi `NexaPlaySetup.iss` untuk compile installer Inno Setup, `update-stable.json` sebagai template manifest GitHub, `Generate-UpdateManifest.ps1` untuk hitung SHA-256 + generate manifest final, dan `README.md` berisi urutan publish -> build installer -> generate manifest -> upload GitHub Release.
+- Build: Tidak mengubah kode runtime app; belum perlu build tambahan selain verifikasi batch sebelumnya.
+- Next: Publish `Release`, compile `NexaPlay-Setup.exe` dengan Inno Setup, generate `update-stable.generated.json`, lalu upload installer + manifest ke GitHub.
+
+Tanggal: 9 Juni 2026
+- Fokus: Menyatukan endpoint update agar seluruh flow release memakai repo `adii83/NexaPlay`.
+- Perubahan: `AppConstants.AppUpdateManifestUrl` diubah agar runtime scan update membaca `https://raw.githubusercontent.com/adii83/NexaPlay/main/NexaPlay/release/update-stable.json`. Template `release/update-stable.json` dan panduan `release/README.md` juga diubah agar `installerUrl` mengarah ke asset GitHub Release repo `adii83/NexaPlay`, sementara manifest disimpan langsung di path `NexaPlay/release/update-stable.json` pada branch `main`.
+- Build: Perlu verifikasi ulang setelah perubahan endpoint manifest.
+- Next: Build ulang, lalu lakukan rilis pertama `v1.0.0` ke repo `adii83/NexaPlay` memakai `setup.exe`; sesudah itu siapkan `v1.0.1` untuk test auto update end-to-end.
+
+Tanggal: 9 Juni 2026
+- Fokus: Meluruskan panduan release agar baseline `v1.0.0` dan test update `v1.0.1` tidak tercampur.
+- Perubahan: `release/README.md` sekarang memisahkan dua skenario secara eksplisit: rilis pertama `1.0.0` untuk base install, dan rilis berikutnya `1.0.1` untuk uji auto update. Contoh perintah `Generate-UpdateManifest.ps1` juga dibuat dua versi agar tidak lagi terkesan harus langsung menaikkan versi ke `1.0.1`.
+- Build: Tidak mengubah kode runtime app.
+- Next: Ikuti jalur `v1.0.0` dulu untuk installer pertama; setelah terpasang, baru naikkan versi dan generate manifest `v1.0.1` untuk pengujian update otomatis.
+
+Tanggal: 10 Juni 2026
+- Fokus: Merapikan `.gitignore` agar aset update/release penting tetap bisa masuk repo tanpa ikut membawa artefak lokal.
+- Perubahan: `.gitignore` tidak lagi memblokir seluruh file `*.txt` dan `*.exe`, lalu ditambah pengecualian eksplisit untuk `NexaPlay/release/**` supaya `NexaPlaySetup.iss`, `update-stable.json`, `Generate-UpdateManifest.ps1`, dan `release/README.md` bisa di-commit. Sebaliknya, output installer (`NexaPlay/release/output/`), manifest generated (`update-stable.generated.json`), log lokal, `readgz.exe`, `recovered_edits.md`, dan `scratch_steam_html.txt` sekarang tetap ter-ignore.
+- Build: Tidak mengubah kode runtime app.
+- Next: Commit folder `NexaPlay/release` bersama perubahan update system, lalu lanjut ke proses publish `Release` dan build installer Inno Setup.
+
+
+Tanggal: 9 Juni 2026
+- Fokus: Implementasi fondasi update system NexaPlay berbasis `setup.exe` dengan UI hitam-putih yang konsisten.
+- Perubahan: Menambahkan `IAppUpdateService` + `AppUpdateService` untuk cek manifest update GitHub, cache status update, compare versi, download installer, verifikasi SHA-256, lalu menjalankan helper updater PowerShell untuk silent install dan reopen app. `SettingsViewModel` + `SettingsPage` sekarang memakai data update dinamis dan dialog `Update Tersedia` bergaya dark monokrom. `MainWindow` juga melakukan startup update check setelah warmup; jika ada versi baru, user bisa langsung setuju dan app akan memakai `StartupOverlay` untuk progres download sebelum menyerahkan proses ke helper updater.
+- Build: `MSBuild Debug x64` dengan `OutDir=bin\\x64\\Debug-preview\\` sukses (`0 Error(s)`, `0 Warning(s)`).
+- Next: Siapkan manifest update GitHub yang nyata + artifact `setup.exe` release test/pre-release untuk validasi end-to-end download, silent install, dan reopen app. Jika perlu, ganti helper PowerShell menjadi updater `.exe` dedicated di batch berikutnya.
+
+Tanggal: 9 Juni 2026
+- Fokus: Rapikan timing dialog update startup agar muncul setelah Home selesai tampil.
+- Perubahan: `MainWindow.xaml.cs` sekarang menunggu `StartupOverlay` benar-benar collapse dan `HomePage` sudah visible dulu lewat `WaitForHomeReadyAsync()`, baru setelah itu memunculkan dialog `Update Tersedia`. Hasilnya user melihat halaman Home utuh terlebih dahulu, lalu baru mendapat prompt update otomatis bila manifest mendeteksi versi baru.
+- Build: `MSBuild Debug x64` dengan `OutDir=bin\\x64\\Debug-preview\\` sukses (`0 Error(s)`, `0 Warning(s)`).
+- Next: Validasi runtime dengan manifest update nyata untuk memastikan prompt tidak muncul saat loading masih aktif dan tetap muncul konsisten beberapa ratus milidetik setelah Home selesai terbuka.
+
+Tanggal: 9 Juni 2026
+- Fokus: Rapikan shell startup dan aktivasi lisensi agar tampil full-area tanpa sidebar kiri.
+- Perubahan: `MainWindow.xaml.cs` ditambah `UpdateShellChrome()` yang otomatis memaksa `SplitView` ke mode overlay tanpa pane saat `StartupOverlay`, `LicenseOverlay`, atau `ValidatingLicenseOverlay` aktif; state shell dipulihkan lagi setelah overlay selesai. Jalur immersive detail lama untuk `GameDetailPage` dan `BypassGameDetailPage` tetap dipertahankan.
+- Build: Build normal `Debug x64` gagal copy output karena `NexaPlay.exe` sedang lock oleh proses aktif; build verifikasi dengan `OutDir=bin\\x64\\Debug-preview\\` sukses (`0 Error(s)`, `0 Warning(s)`).
+- Next: Uji runtime visual saat cold startup, validasi lisensi online, dan flow activation key baru untuk memastikan sidebar benar-benar tidak terlihat dan kembali normal setelah overlay ditutup.
 
 ### 2026-05-26
 - Fokus: Fix jumlah kolom card Home Popular & Games — parity GameHub Fix Games (6 kolom di fullscreen).

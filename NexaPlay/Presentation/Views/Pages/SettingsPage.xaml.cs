@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using NexaPlay.Presentation.ViewModels;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 
@@ -11,6 +12,9 @@ public sealed partial class SettingsPage : Page
 {
     private SettingsViewModel? _vm;
     public SettingsViewModel? ViewModel => _vm;
+
+    public static Visibility BoolToVis(bool value) =>
+        value ? Visibility.Visible : Visibility.Collapsed;
 
     public SettingsPage() => InitializeComponent();
 
@@ -156,5 +160,144 @@ public sealed partial class SettingsPage : Page
     {
         if (_vm is null) return;
         await _vm.RefreshFixDataAsync();
+    }
+
+    private async void OnCheckForUpdatesClicked(object sender, RoutedEventArgs e)
+    {
+        if (_vm is null) return;
+        await _vm.CheckForUpdatesAsync(force: true);
+
+        if (_vm.IsUpdateAvailable)
+        {
+            await ShowUpdateAvailableDialogAsync();
+            return;
+        }
+
+        await ShowStyledDialogAsync(
+            "Update Check",
+            _vm.UpdateStatusMessage,
+            closeButtonText: "Tutup");
+    }
+
+    private async void OnInstallUpdateClicked(object sender, RoutedEventArgs e)
+    {
+        if (_vm is null) return;
+        await ShowUpdateAvailableDialogAsync();
+    }
+
+    private async Task ShowUpdateAvailableDialogAsync()
+    {
+        if (_vm is null || !_vm.IsUpdateAvailable)
+        {
+            return;
+        }
+
+        var content = new StackPanel
+        {
+            Spacing = 16
+        };
+
+        content.Children.Add(new TextBlock
+        {
+            Text = $"Versi baru { _vm.LatestAppVersion } tersedia.",
+            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 255, 255)),
+            FontSize = 18,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        content.Children.Add(new TextBlock
+        {
+            Text = $"Versi saat ini {_vm.CurrentAppVersion}. NexaPlay akan mengunduh installer, menutup aplikasi, lalu menjalankan setup secara otomatis.",
+            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 160, 160, 160)),
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        if (_vm.UpdateReleaseNotes.Count > 0)
+        {
+            content.Children.Add(new TextBlock
+            {
+                Text = "Release Notes",
+                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 255, 255)),
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+            });
+
+            foreach (var note in _vm.UpdateReleaseNotes)
+            {
+                content.Children.Add(new TextBlock
+                {
+                    Text = $"• {note}",
+                    Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 160, 160, 160)),
+                    TextWrapping = TextWrapping.Wrap
+                });
+            }
+        }
+
+        var dialog = CreateStyledDialog(
+            "Update Tersedia",
+            content,
+            primaryButtonText: "Update Sekarang",
+            closeButtonText: "Nanti");
+        dialog.DefaultButton = ContentDialogButton.Primary;
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            try
+            {
+                await _vm.InstallUpdateAsync();
+            }
+            catch (Exception ex)
+            {
+                await ShowStyledDialogAsync(
+                    "Update Gagal",
+                    $"NexaPlay tidak bisa memulai proses update.\n\n{ex.Message}",
+                    closeButtonText: "Tutup");
+            }
+        }
+    }
+
+    private async Task ShowStyledDialogAsync(string title, string message, string closeButtonText)
+    {
+        var dialog = CreateStyledDialog(title, new TextBlock
+        {
+            Text = message,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 160, 160, 160))
+        }, closeButtonText: closeButtonText);
+
+        await dialog.ShowAsync();
+    }
+
+    private ContentDialog CreateStyledDialog(
+        string title,
+        object content,
+        string? primaryButtonText = null,
+        string? closeButtonText = null)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = content,
+            PrimaryButtonText = primaryButtonText ?? string.Empty,
+            CloseButtonText = closeButtonText ?? string.Empty,
+            XamlRoot = this.XamlRoot,
+            DefaultButton = ContentDialogButton.Close,
+            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 17, 17, 17))
+        };
+
+        dialog.Resources["ContentDialogBackground"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 17, 17, 17));
+        dialog.Resources["ContentDialogBorderBrush"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 34, 34, 34));
+        dialog.Resources["ContentDialogForeground"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 255, 255));
+        dialog.Resources["AccentButtonBackground"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 255, 255));
+        dialog.Resources["AccentButtonForeground"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0, 0, 0));
+        dialog.Resources["AccentButtonBackgroundPointerOver"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(220, 255, 255, 255));
+        dialog.Resources["AccentButtonForegroundPointerOver"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0, 0, 0));
+        dialog.Resources["AccentButtonBackgroundPressed"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(180, 255, 255, 255));
+        dialog.Resources["AccentButtonForegroundPressed"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0, 0, 0));
+        dialog.Resources["ButtonForeground"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 255, 255));
+        dialog.Resources["ButtonBackground"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+
+        return dialog;
     }
 }

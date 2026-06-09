@@ -86,9 +86,9 @@ Catatan nomenklatur UI Bypass:
 
 | Area | GameHub (lama) | NexaPlay (baru) | Status |
 |---|---|---|---|
-| Check update metadata | `UpdateService` | Belum ada service update parity penuh | Missing |
-| Download installer | `UpdateService` | Missing | Missing |
-| Install/launch updater | `UpdateService` | Missing | Missing |
+| Check update metadata | `UpdateService` | `IAppUpdateService` + manifest GitHub + startup/settings check | Partial |
+| Download installer | `UpdateService` | Download `setup.exe` + verifikasi SHA-256 | Partial |
+| Install/launch updater | `UpdateService` | Helper PowerShell updater untuk silent install + relaunch | Partial |
 
 ## I. Logging & Diagnostics
 

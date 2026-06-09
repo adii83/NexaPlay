@@ -16,19 +16,23 @@ public sealed partial class MainWindow : Window
     private readonly INavigationService _nav;
     private readonly ILicenseService _licenseService;
     private readonly IMetadataService _metadataService;
+    private readonly IAppUpdateService _appUpdateService;
     private readonly IAppLogService _appLog;
+    private bool _hasShownStartupUpdatePrompt;
 
     public MainWindow(
         MainViewModel vm,
         INavigationService nav,
         ILicenseService licenseService,
         IMetadataService metadataService,
+        IAppUpdateService appUpdateService,
         IAppLogService appLog)
     {
         _vm             = vm;
         _nav            = nav;
         _licenseService = licenseService;
         _metadataService = metadataService;
+        _appUpdateService = appUpdateService;
         _appLog = appLog;
         InitializeComponent();
         
@@ -50,6 +54,7 @@ public sealed partial class MainWindow : Window
         ContentFrame.Navigated += ContentFrame_Navigated;
         this.Activated += OnFirstActivated;
         SetBypassSubmenuActive("all");
+        UpdateShellChrome();
     }
 
     private async void OnFirstActivated(object sender, WindowActivatedEventArgs e)
@@ -94,6 +99,8 @@ public sealed partial class MainWindow : Window
                 LogLicenseFlow($"Navigating to Home after startup license flow ({source})");
                 NavigateTo(NavHome);
                 await WarmupMetadataStartupAsync();
+                await WaitForHomeReadyAsync();
+                await PromptForStartupUpdateAsync();
             }
             catch (Exception ex)
             {
@@ -110,6 +117,7 @@ public sealed partial class MainWindow : Window
         dispatcher.TryEnqueue(() =>
         {
             StartupOverlay.Visibility = Visibility.Visible;
+            UpdateShellChrome();
             StartupProgressBar.IsIndeterminate = false;
             StartupProgressBar.Value = 0;
 
@@ -206,10 +214,162 @@ public sealed partial class MainWindow : Window
 
         // Wait slightly for visual completion before collapsing
         await System.Threading.Tasks.Task.Delay(150);
+        var hideOverlayTcs = new TaskCompletionSource();
         dispatcher.TryEnqueue(() =>
         {
             StartupOverlay.Visibility = Visibility.Collapsed;
+            UpdateShellChrome();
+            hideOverlayTcs.TrySetResult();
         });
+        await hideOverlayTcs.Task;
+    }
+
+    private async Task WaitForHomeReadyAsync()
+    {
+        const int maxAttempts = 20;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var isHomeVisible = ContentFrame.CurrentSourcePageType == typeof(HomePage)
+                                && StartupOverlay.Visibility != Visibility.Visible
+                                && LicenseOverlay.Visibility != Visibility.Visible
+                                && ValidatingLicenseOverlay.Visibility != Visibility.Visible
+                                && ContentFrame.XamlRoot is not null;
+
+            if (isHomeVisible)
+            {
+                // Give WinUI a brief chance to paint Home first before showing the dialog.
+                await Task.Delay(300);
+                return;
+            }
+
+            await Task.Delay(100);
+        }
+    }
+
+    private async Task PromptForStartupUpdateAsync()
+    {
+        if (_hasShownStartupUpdatePrompt)
+        {
+            return;
+        }
+
+        _hasShownStartupUpdatePrompt = true;
+
+        try
+        {
+            var result = await _appUpdateService.CheckForUpdatesAsync(force: false);
+            if (!result.IsUpdateAvailable || ContentFrame.XamlRoot is null)
+            {
+                return;
+            }
+
+            var content = new StackPanel
+            {
+                Spacing = 16
+            };
+
+            content.Children.Add(new TextBlock
+            {
+                Text = $"Versi baru {result.LatestVersion} siap dipasang.",
+                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 255, 255)),
+                FontSize = 18,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap
+            });
+
+            content.Children.Add(new TextBlock
+            {
+                Text = $"Versi saat ini {result.CurrentVersion}. Jika Anda melanjutkan, NexaPlay akan mengunduh setup, menutup aplikasi, lalu menjalankan installer otomatis.",
+                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 160, 160, 160)),
+                TextWrapping = TextWrapping.Wrap
+            });
+
+            if (result.ReleaseNotes.Count > 0)
+            {
+                content.Children.Add(new TextBlock
+                {
+                    Text = "Release Notes",
+                    Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 255, 255)),
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+                });
+
+                foreach (var note in result.ReleaseNotes)
+                {
+                    content.Children.Add(new TextBlock
+                    {
+                        Text = $"• {note}",
+                        Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 160, 160, 160)),
+                        TextWrapping = TextWrapping.Wrap
+                    });
+                }
+            }
+
+            var dialog = CreateStyledDialog(
+                "Update Tersedia",
+                content,
+                primaryButtonText: "Update Sekarang",
+                closeButtonText: "Nanti");
+            dialog.DefaultButton = ContentDialogButton.Primary;
+
+            var dialogResult = await dialog.ShowAsync();
+            if (dialogResult != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            await DownloadAndInstallUpdateAsync(result);
+        }
+        catch (Exception ex)
+        {
+            _appLog.Log("Update", $"Startup update prompt gagal: {ex.Message}");
+        }
+    }
+
+    private async Task DownloadAndInstallUpdateAsync(AppUpdateCheckResult result)
+    {
+        StartupOverlay.Visibility = Visibility.Visible;
+        UpdateShellChrome();
+        StartupTitleText.Text = "Menyiapkan Update";
+        StartupStatusText.Text = $"Mengunduh NexaPlay {result.LatestVersion}...";
+        StartupPercentText.Text = "0%";
+        StartupTitleText.Visibility = Visibility.Visible;
+        StartupStatusText.Visibility = Visibility.Visible;
+        StartupPercentText.Visibility = Visibility.Visible;
+        StartupProgressBar.IsIndeterminate = false;
+        StartupProgressBar.Value = 0;
+
+        try
+        {
+            var progress = new Progress<double>(value =>
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    StartupProgressBar.Value = Math.Clamp(value, 0, 100);
+                    StartupPercentText.Text = $"{StartupProgressBar.Value:F0}%";
+                    StartupStatusText.Text = $"Mengunduh NexaPlay {result.LatestVersion}...";
+                });
+            });
+
+            var installerPath = await _appUpdateService.DownloadInstallerAsync(result, progress);
+
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                StartupProgressBar.Value = 100;
+                StartupPercentText.Text = "100%";
+                StartupStatusText.Text = "Menjalankan installer update...";
+            });
+
+            await _appUpdateService.LaunchInstallerAndExitAsync(installerPath);
+        }
+        catch (Exception ex)
+        {
+            StartupOverlay.Visibility = Visibility.Collapsed;
+            UpdateShellChrome();
+            await ShowStyledDialogAsync(
+                "Update Gagal",
+                $"NexaPlay gagal memulai update.\n\n{ex.Message}",
+                closeButtonText: "Tutup");
+        }
     }
 
     private async System.Threading.Tasks.Task ValidateLicenseAsync()
@@ -229,6 +389,7 @@ public sealed partial class MainWindow : Window
             // License valid offline, show validating overlay
             LogLicenseFlow("Offline license valid, showing validating overlay");
             ValidatingLicenseOverlay.Visibility = Visibility.Visible;
+            UpdateShellChrome();
             ValidationProgressRing.Visibility = Visibility.Visible;
             ValidationStatusText.Visibility = Visibility.Visible;
             ValidationErrorPanel.Visibility = Visibility.Collapsed;
@@ -247,6 +408,7 @@ public sealed partial class MainWindow : Window
                         // Valid online, proceed to home
                         LogLicenseFlow("License valid online, collapsing validating overlay");
                         ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
+                        UpdateShellChrome();
                         tcs.SetResult();
                         return;
                     }
@@ -263,6 +425,7 @@ public sealed partial class MainWindow : Window
                         // License was banned/reset/deleted from server, ask for new key
                         LogLicenseFlow($"License status {result.Status}, collapsing validating overlay and showing activation overlay");
                         ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
+                        UpdateShellChrome();
                         await ShowLicenseActivation();
                         tcs.SetResult();
                         return;
@@ -284,6 +447,7 @@ public sealed partial class MainWindow : Window
                     
                     LogLicenseFlow("Validation error panel completed by user action");
                     ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
+                    UpdateShellChrome();
                     tcs.SetResult();
                 }
                 catch (Exception ex)
@@ -293,6 +457,7 @@ public sealed partial class MainWindow : Window
                     ValidationErrorMessage.Text = $"Internal UI Error: {ex.Message}";
                     ValidationErrorPanel.Visibility = Visibility.Visible;
                     ValidatingLicenseOverlay.Visibility = Visibility.Visible;
+                    UpdateShellChrome();
                     
                     // Keep the app alive, wait for user input
                     _licenseTcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
@@ -317,6 +482,7 @@ public sealed partial class MainWindow : Window
         {
             LogLicenseFlow("ShowLicenseActivationFallbackAsync entered");
             ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
+            UpdateShellChrome();
             ValidationProgressRing.Visibility = Visibility.Visible;
             ValidationStatusText.Visibility = Visibility.Visible;
             ValidationErrorPanel.Visibility = Visibility.Collapsed;
@@ -332,6 +498,7 @@ public sealed partial class MainWindow : Window
     {
         LogLicenseFlow("Validation retry clicked");
         ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
+        UpdateShellChrome();
         _licenseTcs?.TrySetResult(true);
         await ValidateLicenseAsync();
     }
@@ -340,6 +507,7 @@ public sealed partial class MainWindow : Window
     {
         LogLicenseFlow("Validation enter-new-key clicked");
         ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
+        UpdateShellChrome();
         _licenseTcs?.TrySetResult(true);
         _ = ShowLicenseActivation();
     }
@@ -395,14 +563,33 @@ public sealed partial class MainWindow : Window
 
     private void ContentFrame_Navigated(object sender, Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
     {
-        bool immersiveDetail = e.SourcePageType == typeof(GameDetailPage)
-                               || e.SourcePageType == typeof(BypassGameDetailPage);
-        SetShellDetailMode(immersiveDetail);
+        UpdateShellChrome(e.SourcePageType);
     }
 
-    private void SetShellDetailMode(bool enabled)
+    private void UpdateShellChrome(Type? currentPageType = null)
     {
-        if (enabled)
+        currentPageType ??= ContentFrame?.CurrentSourcePageType;
+
+        bool overlayActive = StartupOverlay.Visibility == Visibility.Visible
+                             || LicenseOverlay.Visibility == Visibility.Visible
+                             || ValidatingLicenseOverlay.Visibility == Visibility.Visible;
+        bool immersiveDetail = currentPageType == typeof(GameDetailPage)
+                               || currentPageType == typeof(BypassGameDetailPage);
+
+        if (overlayActive)
+        {
+            WindowTopRow.Height = new GridLength(40);
+            ContentTopBarRow.Height = new GridLength(0);
+            SidebarShell.Visibility = Visibility.Collapsed;
+            PageTopBar.Visibility = Visibility.Collapsed;
+            RootSplitView.DisplayMode = SplitViewDisplayMode.Overlay;
+            RootSplitView.CompactPaneLength = 0;
+            RootSplitView.OpenPaneLength = 0;
+            RootSplitView.IsPaneOpen = false;
+            return;
+        }
+
+        if (immersiveDetail)
         {
             WindowTopRow.Height = new GridLength(0);
             ContentTopBarRow.Height = new GridLength(0);
@@ -535,11 +722,56 @@ public sealed partial class MainWindow : Window
     {
         LogLicenseFlow("ShowLicenseActivation: opening activation overlay");
         LicenseOverlay.Visibility = Visibility.Visible;
+        UpdateShellChrome();
         // Wait for license completion
         _licenseTcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
         await _licenseTcs.Task;
         LogLicenseFlow("ShowLicenseActivation: activation overlay completed");
         LicenseOverlay.Visibility = Visibility.Collapsed;
+        UpdateShellChrome();
+    }
+
+    private async Task ShowStyledDialogAsync(string title, string message, string closeButtonText)
+    {
+        var dialog = CreateStyledDialog(title, new TextBlock
+        {
+            Text = message,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 160, 160, 160))
+        }, closeButtonText: closeButtonText);
+
+        await dialog.ShowAsync();
+    }
+
+    private ContentDialog CreateStyledDialog(
+        string title,
+        object content,
+        string? primaryButtonText = null,
+        string? closeButtonText = null)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = content,
+            PrimaryButtonText = primaryButtonText ?? string.Empty,
+            CloseButtonText = closeButtonText ?? string.Empty,
+            XamlRoot = ContentFrame.XamlRoot,
+            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 17, 17, 17))
+        };
+
+        dialog.Resources["ContentDialogBackground"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 17, 17, 17));
+        dialog.Resources["ContentDialogBorderBrush"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 34, 34, 34));
+        dialog.Resources["ContentDialogForeground"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 255, 255));
+        dialog.Resources["AccentButtonBackground"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 255, 255));
+        dialog.Resources["AccentButtonForeground"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0, 0, 0));
+        dialog.Resources["AccentButtonBackgroundPointerOver"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(220, 255, 255, 255));
+        dialog.Resources["AccentButtonForegroundPointerOver"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0, 0, 0));
+        dialog.Resources["AccentButtonBackgroundPressed"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(180, 255, 255, 255));
+        dialog.Resources["AccentButtonForegroundPressed"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0, 0, 0));
+        dialog.Resources["ButtonForeground"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 255, 255));
+        dialog.Resources["ButtonBackground"] = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+
+        return dialog;
     }
 
     private async void OnActivateClicked(object sender, RoutedEventArgs e)

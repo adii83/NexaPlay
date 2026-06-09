@@ -5,6 +5,8 @@ public static class AppConstants
     public const string AppName = "NexaPlay";
     public const string AppVersion = "1.0.0";
     public const string AppDataFolder = "NexaPlay";
+    public const string AppUpdateManifestUrl = "https://raw.githubusercontent.com/adii83/NexaPlay/main/NexaPlay/release/update-stable.json";
+    public const string AppUpdateInstallerArguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART";
 
     // Legacy GitHub data sources
     public const string SteamDataUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/steam_data.json.gz";
@@ -34,6 +36,7 @@ public static class AppConstants
     public static readonly TimeSpan LicenseOnlineTimeout = TimeSpan.FromSeconds(10);
     public static readonly TimeSpan HttpDefaultTimeout   = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan HttpHeadTimeout      = TimeSpan.FromSeconds(15);
+    public static readonly TimeSpan AppUpdateCheckCooldown = TimeSpan.FromHours(6);
 
     // File/folder names
     public const string LicenseFileName        = "license.dat";
@@ -43,10 +46,12 @@ public static class AppConstants
     public const string SteamGamesCacheFileName   = "steam_games.json";
     public const string AppliedStateFileName   = "applied_state.json";
     public const string LogFileName            = "nexaplay.log";
+    public const string AppUpdateStateFileName = "app_update_state.json";
     public const string FixLogPrefix           = "nexaplay-fix-log-";
     public const string OverrideDataCacheFileName = "override_data.json";
     public const string UserOverrideDataCacheFileName = "user_override_data.json";
     public const string NexaPlayOverrideCacheFileName = "nexaplay_override.json";
     public const string YoutubeTutorialCacheFileName = "youtube_tutorial.json";
     public const string YoutubeTutorialEtagFileName = "youtube_tutorial.etag";
+    public const string AppUpdateDownloadsFolderName = "updates";
 }

@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:NexaPlay.Presentation.Views.Pages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     Background="#080808">
@@ -97,9 +98,9 @@
                     <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,24">
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <FontIcon Glyph="&#xE73E;" FontSize="16" Foreground="#FFFFFF" />
-                            <TextBlock Text="Up to date" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                            <TextBlock Text="{Binding UpdateStatusTitle, Mode=OneWay}" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" />
                         </StackPanel>
-                        <TextBlock Text="Sudah menggunakan versi terbaru. Terakhir dicek pada 27 May 2026, 02:23." Foreground="#A0A0A0" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding UpdateStatusMessage, Mode=OneWay}" Foreground="#A0A0A0" TextWrapping="Wrap"/>
                     </StackPanel>
 
                     <Grid Grid.Row="1" Margin="0,0,0,24">
@@ -113,53 +114,73 @@
 
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="Current Version" Foreground="#A0A0A0" FontSize="12" Margin="0,0,0,4"/>
-                            <TextBlock Text="v2.0.1.0" Foreground="#FFFFFF" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding CurrentAppVersion, Mode=OneWay}" Foreground="#FFFFFF" FontWeight="SemiBold"/>
                         </StackPanel>
                         
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="Latest Version" Foreground="#A0A0A0" FontSize="12" Margin="0,0,0,4"/>
-                            <TextBlock Text="v2.0.1" Foreground="#FFFFFF" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding LatestAppVersion, Mode=OneWay}" Foreground="#FFFFFF" FontWeight="SemiBold"/>
                         </StackPanel>
                         
                         <StackPanel Grid.Column="4">
                             <TextBlock Text="Last Checked" Foreground="#A0A0A0" FontSize="12" Margin="0,0,0,4"/>
-                            <TextBlock Text="27 May 2026, 02:23" Foreground="#FFFFFF" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding LastUpdateCheckedText, Mode=OneWay}" Foreground="#FFFFFF" FontWeight="SemiBold"/>
                         </StackPanel>
                     </Grid>
 
                     <StackPanel Grid.Row="2" Spacing="16">
                         <TextBlock Text="Release Notes" Foreground="#FFFFFF" FontWeight="SemiBold"/>
-                        <StackPanel Spacing="8">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="&#x2022;" Foreground="#A0A0A0"/>
-                                <TextBlock Text="Perbaikan: Alur Steam Account pada Fix Games lebih stabil" Foreground="#A0A0A0" TextWrapping="Wrap"/>
+                        <ItemsControl ItemsSource="{Binding UpdateReleaseNotes, Mode=OneWay}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                                        <TextBlock Text="&#x2022;" Foreground="#A0A0A0"/>
+                                        <TextBlock Text="{Binding}" Foreground="#A0A0A0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Border Background="#0DFFFFFF"
+                                BorderBrush="#1FFFFFFF"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="14,12"
+                                Visibility="{x:Bind local:SettingsPage.BoolToVis(ViewModel.IsInstallingUpdate), Mode=OneWay}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Sedang menyiapkan update..." Foreground="#FFFFFF" FontWeight="SemiBold"/>
+                                <ProgressBar Minimum="0"
+                                             Maximum="100"
+                                             Value="{Binding UpdateDownloadProgress, Mode=OneWay}"
+                                             Height="4"
+                                             Foreground="#FFFFFF"
+                                             Background="#2A2A2A"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding UpdateStatusMessage, Mode=OneWay}" Foreground="#A0A0A0" TextWrapping="Wrap"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding UpdateDownloadProgressText, Mode=OneWay}" Foreground="#FFFFFF" FontWeight="SemiBold" Margin="12,0,0,0"/>
+                                </Grid>
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="&#x2022;" Foreground="#A0A0A0"/>
-                                <TextBlock Text="Penambahan: Kategori Steam Sharing dipisah dari Steam Account" Foreground="#A0A0A0" TextWrapping="Wrap"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="&#x2022;" Foreground="#A0A0A0"/>
-                                <TextBlock Text="Perbaikan: Badge dan detail game disesuaikan per kategori" Foreground="#A0A0A0" TextWrapping="Wrap"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="&#x2022;" Foreground="#A0A0A0"/>
-                                <TextBlock Text="Perbaikan: Notifikasi update dan cek update lebih konsisten" Foreground="#A0A0A0" TextWrapping="Wrap"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="&#x2022;" Foreground="#A0A0A0"/>
-                                <TextBlock Text="Peningkatan: Stabilitas desktop bridge dan WebView" Foreground="#A0A0A0" TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </StackPanel>
+                        </Border>
 
                         <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,16,0,0">
-                            <Button Background="#FFFFFF" BorderThickness="0" Foreground="#000000" CornerRadius="4" Padding="16,10">
+                            <Button Background="#FFFFFF" BorderThickness="0" Foreground="#000000" CornerRadius="4" Padding="16,10" Click="OnCheckForUpdatesClicked">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon Glyph="&#xE721;" FontSize="14" Foreground="#000000" />
                                     <TextBlock Text="Check for Updates" FontWeight="SemiBold" />
                                 </StackPanel>
                             </Button>
-                            <Button Background="#111111" BorderBrush="#333333" BorderThickness="1" Foreground="#FFFFFF" CornerRadius="4" Padding="16,10">
+                            <Button Background="#111111"
+                                    BorderBrush="#333333"
+                                    BorderThickness="1"
+                                    Foreground="#FFFFFF"
+                                    CornerRadius="4"
+                                    Padding="16,10"
+                                    Click="OnInstallUpdateClicked"
+                                    IsEnabled="{Binding IsUpdateAvailable, Mode=OneWay}">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon Glyph="&#xE896;" FontSize="14" Foreground="#FFFFFF" />
                                     <TextBlock Text="Install Update" />
