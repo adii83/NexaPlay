@@ -43,6 +43,8 @@ Karena itu, setiap rilis harus menjaga sinkronisasi 4 hal ini:
   `NexaPlay/release/update-stable.json`
 - Generator manifest:
   `NexaPlay/release/Generate-UpdateManifest.ps1`
+- Generator icon app:
+  `NexaPlay/release/Generate-AppIcon.ps1`
 
 ## Urutan Rilis Yang Benar
 
@@ -112,6 +114,7 @@ Get-ChildItem ".\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\data"
 Minimal harus ada:
 
 - `NexaPlay.exe`
+- `Assets\Icons\app.ico`
 - `Assets\logo.svg`
 - `Assets\logo_text.svg`
 - `Assets\Web\youtube-player.html`
@@ -306,6 +309,28 @@ Kalau logo tetap hilang:
 - cek folder publish
 - cek installer dibangun dari publish terbaru
 - reinstall dari installer terbaru
+
+### Icon desktop/taskbar tidak berubah
+
+Sekarang icon exe, shortcut desktop, Start Menu, dan wizard installer memakai:
+
+```text
+Assets\Icons\app.ico
+```
+
+Kalau source icon PNG berubah, urutan refresh yang aman:
+
+1. ganti `Assets\Icons\logo.png`
+2. jalankan:
+
+```powershell
+.\release\Generate-AppIcon.ps1
+```
+
+3. publish ulang app
+4. compile ulang `NexaPlaySetup.iss`
+5. uninstall build lama
+6. install ulang build baru
 
 ## Catatan Tambahan
 

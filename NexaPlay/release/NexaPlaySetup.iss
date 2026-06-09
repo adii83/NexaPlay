@@ -1,8 +1,9 @@
 #define MyAppName "NexaPlay"
-#define MyAppVersion "1.0.2"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "NexaPlay"
 #define MyAppExeName "NexaPlay.exe"
 #define MyAppSourceDir "..\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish"
+#define MyAppIconFile "..\Assets\Icons\app.ico"
 #define MyOutputDir "output"
 #define MyOutputBaseFilename "NexaPlay-Setup"
 
@@ -23,6 +24,7 @@ SolidCompression=yes
 WizardStyle=modern
 OutputDir={#MyOutputDir}
 OutputBaseFilename={#MyOutputBaseFilename}
+SetupIconFile={#MyAppIconFile}
 SetupLogging=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 CloseApplications=yes
@@ -39,8 +41,8 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 Source: "{#MyAppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent

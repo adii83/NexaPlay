@@ -1276,6 +1276,12 @@ Tanggal: 10 Juni 2026
 - Build: Perlu verifikasi ulang setelah perubahan alur updater.
 - Next: Build ulang, test update dari dialog startup/settings, lalu pastikan setelah download selesai installer Inno Setup terbuka normal dan user bisa melanjutkan wizard install secara manual.
 
+Tanggal: 10 Juni 2026
+- Fokus: Memasang icon `.ico` NexaPlay ke exe, shortcut desktop, Start Menu, taskbar, dan wizard installer.
+- Perubahan: Dibuat `Assets/Icons/app.ico` multi-resolution dari `Assets/Icons/logo.png` melalui `release/Generate-AppIcon.ps1`. `NexaPlay.csproj` sekarang memakai `ApplicationIcon=Assets/Icons/app.ico` dan meng-copy file itu ke output publish. `release/NexaPlaySetup.iss` juga memakai `SetupIconFile` yang sama, serta shortcut installer dipaksa memakai `{app}\app.ico`. `release/README.md` ditambah panduan refresh icon setelah source PNG diubah.
+- Build: Perlu verifikasi ulang setelah pemasangan icon ke exe dan installer.
+- Next: Publish ulang + compile installer ulang, lalu cek bahwa icon tampil konsisten di exe, shortcut desktop, taskbar, Start Menu, dan wizard Inno Setup.
+
 
 Tanggal: 9 Juni 2026
 - Fokus: Implementasi fondasi update system NexaPlay berbasis `setup.exe` dengan UI hitam-putih yang konsisten.

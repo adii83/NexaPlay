@@ -1,8 +1,8 @@
 {
-    "version":  "1.0.0",
-    "installerUrl":  "https://github.com/adii83/NexaPlay/releases/download/v1.0.0/NexaPlay-Setup.exe",
-    "installerSha256":  "D6501FCD0D251C0543452106B7CAFE7C49609F3505CEA5246D5C0146DB922751",
-    "publishedAt":  "2026-06-10T01:27:51+07:00",
+    "version":  "1.0.1",
+    "installerUrl":  "https://github.com/adii83/NexaPlay/releases/download/v1.0.1/NexaPlay-Setup.exe",
+    "installerSha256":  "DC94D0DA0CAF2570AAF6033E0318D10B3BB0902E867C6E02FAE86513F370A691",
+    "publishedAt":  "2026-06-10T03:35:14+07:00",
     "mandatory":  false,
     "releaseNotes":  [
                          "Perbaikan dan penyempurnaan NexaPlay."
