@@ -46,26 +46,40 @@
                         </StackPanel>
                     </Button>
 
-                    <TextBox Grid.Column="1"
-                             PlaceholderText="Search Games"
-                             Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Height="42"
-                             Background="#0D0D0D"
-                             BorderBrush="#22FFFFFF"
-                             BorderThickness="1"
-                             CornerRadius="8"
-                             FontSize="14"
-                             Padding="14,8,14,4"
-                             VerticalContentAlignment="Center"
-                             PlaceholderForeground="#B8C6D8"
-                             Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+                    <StackPanel Grid.Column="1"
+                                Spacing="6">
+                        <TextBox PlaceholderText="Search Games"
+                                 Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Height="42"
+                                 Background="#0D0D0D"
+                                 BorderBrush="#22FFFFFF"
+                                 BorderThickness="1"
+                                 CornerRadius="8"
+                                 FontSize="14"
+                                 Padding="14,8,14,4"
+                                 VerticalContentAlignment="Center"
+                                 PlaceholderForeground="#B8C6D8"
+                                 Foreground="{ThemeResource NexaTextPrimaryBrush}" />
+
+                        <Border Background="#161616"
+                                BorderBrush="#24FFFFFF"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="10,6"
+                                Visibility="{x:Bind local:GamesPage.BoolToVis(ViewModel.IsSearchHintVisible), Mode=OneWay}">
+                            <TextBlock Text="{x:Bind ViewModel.SearchHintText, Mode=OneWay}"
+                                       FontSize="12"
+                                       Foreground="#E8B4B4" />
+                        </Border>
+                    </StackPanel>
 
                     <Button Grid.Column="2"
                             Command="{x:Bind ViewModel.SearchNowCommand}"
                             Height="38"
                             MinWidth="56"
                             MaxWidth="56"
-                            Padding="0">
+                            Padding="0"
+                            VerticalAlignment="Top">
                         <FontIcon Glyph="&#xE721;"
                                   FontFamily="Segoe Fluent Icons"
                                   Foreground="White"
@@ -383,6 +397,19 @@
                     </Border>
                 </GridView.Footer>
             </GridView>
+
+            <Grid Grid.Row="0"
+                  Margin="20,14,20,10"
+                  Background="#A6000000"
+                  Visibility="{x:Bind local:GamesPage.BoolToVis(ViewModel.IsLoading), Mode=OneWay}"
+                  IsHitTestVisible="{x:Bind ViewModel.IsLoading, Mode=OneWay}">
+                <ProgressRing IsActive="True"
+                              Width="46"
+                              Height="46"
+                              Foreground="White"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center" />
+            </Grid>
         </Grid>
     </Grid>
 </Page>

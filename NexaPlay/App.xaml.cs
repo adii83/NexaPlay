@@ -55,6 +55,8 @@ public partial class App : Application
         services.AddSingleton<IBypassTutorialVideoService, BypassTutorialVideoService>();
         services.AddSingleton<IAppUpdateService, AppUpdateService>();
         services.AddSingleton<IMetadataService, MetadataService>();
+        services.AddSingleton<IGameCoverIndexService, GameCoverIndexService>();
+        services.AddSingleton<ICoverImageCacheService, CoverImageCacheService>();
         services.AddSingleton<IBypassGamesDataService, BypassGamesDataService>();
         services.AddSingleton<IOnlineFixService, OnlineFixService>();
         services.AddSingleton<IAddGameService, AddGameService>();
@@ -66,8 +68,8 @@ public partial class App : Application
 
         // ── ViewModels ──────────────────────────────────────────────
         services.AddSingleton<MainViewModel>();
-        services.AddTransient<HomeViewModel>();
-        services.AddTransient<GamesViewModel>();
+        services.AddSingleton<HomeViewModel>();
+        services.AddSingleton<GamesViewModel>();
         services.AddTransient<LibraryViewModel>();
         services.AddTransient<BypassGamesViewModel>();
         services.AddTransient<SettingsViewModel>();

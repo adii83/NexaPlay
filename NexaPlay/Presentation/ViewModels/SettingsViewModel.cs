@@ -1,7 +1,10 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml;
 using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Enums;
 using NexaPlay.Core.Models;
+using System.Diagnostics;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,6 +17,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ISteamService _steam;
     private readonly IWindowsDefenderService _defender;
     private readonly IMetadataService _metadata;
+    private readonly IGameCoverIndexService _gameCoverIndex;
+    private readonly ICoverImageCacheService _coverImageCache;
     private readonly IBypassGamesDataService _fixData;
     private readonly IAppLogService _log;
     private readonly INexaPlayOverrideService _nexaPlayOverride;
@@ -55,6 +60,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         IAppUpdateService appUpdate,
         ILicenseService license, ISteamService steam,
         IWindowsDefenderService defender, IMetadataService metadata,
+        IGameCoverIndexService gameCoverIndex,
+        ICoverImageCacheService coverImageCache,
         IBypassGamesDataService fixData, IAppLogService log,
         INexaPlayOverrideService nexaPlayOverride)
     {
@@ -63,6 +70,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _steam    = steam;
         _defender = defender;
         _metadata = metadata;
+        _gameCoverIndex = gameCoverIndex;
+        _coverImageCache = coverImageCache;
         _fixData  = fixData;
         _log      = log;
         _nexaPlayOverride = nexaPlayOverride;
@@ -233,6 +242,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         try 
         {
             await _metadata.ClearCacheAsync();
+            await _gameCoverIndex.ClearCacheAsync();
+            await _coverImageCache.ClearCacheAsync();
             _log.Log("Settings", "Metadata cache cleared");
             return (true, "Cache aplikasi berhasil dihapus. Ruang penyimpanan telah dikosongkan.");
         }
@@ -301,28 +312,57 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            var appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), Core.Constants.AppConstants.AppDataFolder);
-            
-            var catalogDir = Path.Combine(appDataPath, "runtime_catalog_sources");
-            if (Directory.Exists(catalogDir)) { try { Directory.Delete(catalogDir, true); } catch {} }
+            var appDataPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                Core.Constants.AppConstants.AppDataFolder);
+            var exePath = Environment.ProcessPath;
 
-            var filesToDel = new[] { 
-                Core.Constants.AppConstants.LicenseFileName, 
-                Core.Constants.AppConstants.AppliedStateFileName, 
-                Core.Constants.AppConstants.SteamDataCacheFileName 
-            };
-            
-            foreach (var f in filesToDel)
+            if (string.IsNullOrWhiteSpace(exePath) || !File.Exists(exePath))
             {
-                var fp = Path.Combine(appDataPath, f);
-                if (File.Exists(fp)) { try { File.Delete(fp); } catch {} }
+                throw new InvalidOperationException("Lokasi executable NexaPlay tidak ditemukan untuk restart.");
             }
 
-            _log.Log("Settings", "All local data cleared. Restarting...");
-        }
-        catch {}
+            var cleanupScriptPath = Path.Combine(
+                Path.GetTempPath(),
+                $"nexaplay-clear-data-{Guid.NewGuid():N}.cmd");
 
-        Microsoft.Windows.AppLifecycle.AppInstance.Restart("");
+            var cleanupScript = new StringBuilder()
+                .AppendLine("@echo off")
+                .AppendLine("setlocal enableextensions")
+                .AppendLine($"set \"TARGET={appDataPath}\"")
+                .AppendLine($"set \"EXE={exePath}\"")
+                .AppendLine("timeout /t 2 /nobreak >nul")
+                .AppendLine(":retry_delete")
+                .AppendLine("if exist \"%TARGET%\" (")
+                .AppendLine("  rmdir /s /q \"%TARGET%\" >nul 2>nul")
+                .AppendLine("  if exist \"%TARGET%\" (")
+                .AppendLine("    timeout /t 1 /nobreak >nul")
+                .AppendLine("    goto retry_delete")
+                .AppendLine("  )")
+                .AppendLine(")")
+                .AppendLine("start \"\" \"%EXE%\"")
+                .AppendLine("del \"%~f0\"")
+                .ToString();
+
+            await File.WriteAllTextAsync(cleanupScriptPath, cleanupScript);
+
+            _log.Log("Settings", $"Factory reset dijadwalkan. target={appDataPath}");
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = cleanupScriptPath,
+                UseShellExecute = true,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            });
+        }
+        catch (Exception ex)
+        {
+            _log.Log("Settings", $"Clear data failed: {ex.Message}");
+            throw;
+        }
+
+        Application.Current.Exit();
     }
 
     public async Task RefreshFixDataAsync()

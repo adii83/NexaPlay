@@ -13,9 +13,11 @@ namespace NexaPlay.Presentation.ViewModels;
 public sealed partial class GamesViewModel : ObservableObject
 {
     private readonly IMetadataService _metadata;
-    private readonly ISteamStoreService _storeService;
+    private readonly IGameCoverIndexService _gameCoverIndex;
+    private readonly ICoverImageCacheService _coverImageCache;
     private readonly INexaPlayOverrideService _nexaPlayOverride;
     private const int RowsPerPage = 10;
+    private const int MinimumSearchLength = 3;
 
     [ObservableProperty] public partial string SearchQuery { get; set; }
     [ObservableProperty] public partial bool IsLoading { get; set; }
@@ -44,6 +46,9 @@ public sealed partial class GamesViewModel : ObservableObject
     public bool ShowPage3 => TotalPages >= 3;
     [ObservableProperty] public partial IReadOnlyList<string> GenreMaster { get; set; }
     [ObservableProperty] public partial IReadOnlyList<string> SelectedGenres { get; set; }
+    [ObservableProperty] public partial bool IsSearchHintVisible { get; set; }
+    [ObservableProperty] public partial string SearchHintText { get; set; }
+    public bool CanExecuteSearch => string.IsNullOrWhiteSpace(SearchQuery) || SearchQuery.Trim().Length >= MinimumSearchLength;
 
     private IReadOnlyList<GameFilterIndex> _allFilterIndex = Array.Empty<GameFilterIndex>();
     private List<int> _filteredAppIds = new();
@@ -53,9 +58,11 @@ public sealed partial class GamesViewModel : ObservableObject
     private int PageSize => _gridColumns * RowsPerPage;
     private readonly Dictionary<int, FixEntry> _cardCache = new();
     private CancellationTokenSource? _searchDebounceCts;
-    private CancellationTokenSource? _coverEnrichCts;
+    private CancellationTokenSource? _applyCts;
     private CancellationTokenSource? _prefetchCts;
     private static readonly SemaphoreSlim _prefetchGate = new SemaphoreSlim(4, 4);
+    private readonly SemaphoreSlim _loadGate = new(1, 1);
+    private Task? _loadTask;
     private readonly string _gamesIndexCachePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "NexaPlay",
@@ -66,11 +73,13 @@ public sealed partial class GamesViewModel : ObservableObject
 
     public GamesViewModel(
         IMetadataService metadata,
-        ISteamStoreService storeService,
+        IGameCoverIndexService gameCoverIndex,
+        ICoverImageCacheService coverImageCache,
         INexaPlayOverrideService nexaPlayOverride)
     {
         _metadata = metadata;
-        _storeService = storeService;
+        _gameCoverIndex = gameCoverIndex;
+        _coverImageCache = coverImageCache;
         _nexaPlayOverride = nexaPlayOverride;
 
         // Default values for partial properties
@@ -79,6 +88,7 @@ public sealed partial class GamesViewModel : ObservableObject
         CurrentPage = 1;
         SelectedGenres = Array.Empty<string>();
         SearchQuery = string.Empty;
+        SearchHintText = string.Empty;
         GenreMaster = new[]
         {
             "Indie","Action","Casual","Adventure","RPG","Strategy","Sports","Racing",
@@ -90,6 +100,41 @@ public sealed partial class GamesViewModel : ObservableObject
     }
 
     public async Task LoadAsync()
+    {
+        Task pending;
+        await _loadGate.WaitAsync();
+        try
+        {
+            _loadTask ??= LoadCoreAsync();
+            pending = _loadTask;
+        }
+        finally
+        {
+            _loadGate.Release();
+        }
+
+        try
+        {
+            await pending;
+        }
+        finally
+        {
+            await _loadGate.WaitAsync();
+            try
+            {
+                if (ReferenceEquals(_loadTask, pending))
+                {
+                    _loadTask = null;
+                }
+            }
+            finally
+            {
+                _loadGate.Release();
+            }
+        }
+    }
+
+    private async Task LoadCoreAsync()
     {
         IsLoading = true;
         try
@@ -141,103 +186,80 @@ public sealed partial class GamesViewModel : ObservableObject
 
     private async Task ApplyFiltersAndPaginationAsync(bool resetPage = true)
     {
+        _applyCts?.Cancel();
+        _applyCts?.Dispose();
+        _applyCts = new CancellationTokenSource();
+        var ct = _applyCts.Token;
+        var requestPage = resetPage ? 1 : _currentPage;
+        IsLoading = true;
+
         if (SelectedGenres is null)
         {
             SelectedGenres = Array.Empty<string>();
         }
 
-        IEnumerable<GameFilterIndex> query = _allFilterIndex;
-
-        if (!string.IsNullOrWhiteSpace(SearchQuery))
+        try
         {
-            var q = SearchQuery.Trim();
-            if (int.TryParse(q, out var searchAppId))
+            await Task.Yield();
+            ct.ThrowIfCancellationRequested();
+
+            _filteredAppIds = await BuildFilteredAppIdsAsync(ct);
+            ct.ThrowIfCancellationRequested();
+            TotalCount = _filteredAppIds.Count;
+            _currentPage = requestPage;
+
+            var totalPages = Math.Max(1, (int)Math.Ceiling(_filteredAppIds.Count / (double)PageSize));
+            TotalPages = totalPages;
+            OnPropertyChanged(nameof(TotalPagesLabel));
+            if (_currentPage > totalPages)
             {
-                query = query.Where(x => x.AppId == searchAppId);
+                _currentPage = totalPages;
             }
-            else
+
+            var skip = (_currentPage - 1) * PageSize;
+            var pageIds = _filteredAppIds.Skip(skip).Take(PageSize).ToList();
+            var targetPageItems = await BuildPageItemsAsync(pageIds, ct);
+            ct.ThrowIfCancellationRequested();
+            SyncGamesPageItems(targetPageItems);
+
+            CurrentPageLabel = $"Halaman {_currentPage}";
+            CurrentPage = _currentPage;
+            CanGoPrevious = _currentPage > 1;
+            CanGoNext = _currentPage < totalPages;
+            OnPropertyChanged(nameof(ShowPager));
+            OnPropertyChanged(nameof(PageSlot1));
+            OnPropertyChanged(nameof(PageSlot2));
+            OnPropertyChanged(nameof(PageSlot3));
+            OnPropertyChanged(nameof(ShowPage1));
+            OnPropertyChanged(nameof(ShowPage2));
+            OnPropertyChanged(nameof(ShowPage3));
+            OnPropertyChanged(nameof(IsPage1Selected));
+            OnPropertyChanged(nameof(IsPage2Selected));
+            OnPropertyChanged(nameof(IsPage3Selected));
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (_applyCts?.Token == ct)
             {
-                var lowered = q.NormalizeForSearch();
-                query = query.Where(x => x.NameLower.Contains(lowered, StringComparison.Ordinal));
+                IsLoading = false;
             }
         }
-
-        if (FilterPremium && !FilterStandard)
-        {
-            query = query.Where(x => x.IsPremium);
-        }
-        else if (FilterStandard && !FilterPremium)
-        {
-            query = query.Where(x => !x.IsPremium);
-        }
-
-        if (FilterDenuvo && !FilterNonDenuvo)
-        {
-            query = query.Where(x => x.HasDenuvo);
-        }
-        else if (FilterNonDenuvo && !FilterDenuvo)
-        {
-            query = query.Where(x => !x.HasDenuvo);
-        }
-
-        if (SelectedGenres.Count > 0)
-        {
-            var selected = SelectedGenres
-                .Select(s => s.Trim().ToLowerInvariant())
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .ToHashSet(StringComparer.Ordinal);
-
-            query = query.Where(x => x.GenreTokens.Overlaps(selected));
-        }
-
-        if (string.IsNullOrWhiteSpace(SearchQuery))
-        {
-            query = query.Where(x => x.PriceNormalized >= 100000);
-        }
-
-        var daysSinceEpoch = (DateTime.UtcNow - DateTime.UnixEpoch).TotalDays;
-        int seed = (int)(daysSinceEpoch / 2);
-        var random = new Random(seed);
-
-        _filteredAppIds = query.OrderBy(x => random.Next()).Select(x => x.AppId).ToList();
-        TotalCount = _filteredAppIds.Count;
-
-        if (resetPage)
-        {
-            _currentPage = 1;
-        }
-
-        var totalPages = Math.Max(1, (int)Math.Ceiling(_filteredAppIds.Count / (double)PageSize));
-        TotalPages = totalPages;
-        OnPropertyChanged(nameof(TotalPagesLabel));
-        if (_currentPage > totalPages)
-        {
-            _currentPage = totalPages;
-        }
-
-        var skip = (_currentPage - 1) * PageSize;
-        var pageIds = _filteredAppIds.Skip(skip).Take(PageSize).ToList();
-        var targetPageItems = await BuildPageItemsAsync(pageIds);
-        SyncGamesPageItems(targetPageItems);
-
-        CurrentPageLabel = $"Halaman {_currentPage}";
-        CurrentPage = _currentPage;
-        CanGoPrevious = _currentPage > 1;
-        CanGoNext = _currentPage < totalPages;
-        OnPropertyChanged(nameof(ShowPager));
-        OnPropertyChanged(nameof(PageSlot1));
-        OnPropertyChanged(nameof(PageSlot2));
-        OnPropertyChanged(nameof(PageSlot3));
-        OnPropertyChanged(nameof(ShowPage1));
-        OnPropertyChanged(nameof(ShowPage2));
-        OnPropertyChanged(nameof(ShowPage3));
-        OnPropertyChanged(nameof(IsPage1Selected));
-        OnPropertyChanged(nameof(IsPage2Selected));
-        OnPropertyChanged(nameof(IsPage3Selected));
     }
 
     [RelayCommand]
-    private Task SearchNow() => ApplyFiltersAndPaginationAsync();
+    private Task SearchNow()
+    {
+        UpdateSearchHintState(SearchQuery);
+        if (!CanExecuteSearch)
+        {
+            return Task.CompletedTask;
+        }
+
+        return ApplyFiltersAndPaginationAsync();
+    }
 
     [RelayCommand]
     private void NextPage()
@@ -311,7 +333,12 @@ public sealed partial class GamesViewModel : ObservableObject
         }
     }
 
-    partial void OnSearchQueryChanged(string value) => DebounceSearch();
+    partial void OnSearchQueryChanged(string value)
+    {
+        UpdateSearchHintState(value);
+        OnPropertyChanged(nameof(CanExecuteSearch));
+        DebounceSearch();
+    }
     partial void OnFilterStandardChanged(bool value) 
     {
         if (_isUpdatingFilters) return;
@@ -366,25 +393,32 @@ public sealed partial class GamesViewModel : ObservableObject
         }
     }
 
-    private async Task<IReadOnlyList<FixEntry>> BuildPageItemsAsync(IReadOnlyList<int> pageIds)
+    private async Task<IReadOnlyList<FixEntry>> BuildPageItemsAsync(IReadOnlyList<int> pageIds, CancellationToken ct)
     {
-        _coverEnrichCts?.Cancel();
-        _coverEnrichCts?.Dispose();
-        _coverEnrichCts = new CancellationTokenSource();
-
-        var results = new List<FixEntry>(pageIds.Count);
-        foreach (var appId in pageIds)
+        var results = new FixEntry?[pageIds.Count];
+        using var gate = new SemaphoreSlim(4, 4);
+        var tasks = pageIds.Select(async (appId, idx) =>
         {
-            var card = await GetOrBuildCardFastAsync(appId);
-            if (card is not null)
+            await gate.WaitAsync(ct);
+            try
             {
-                results.Add(card);
+                ct.ThrowIfCancellationRequested();
+                results[idx] = await GetOrBuildListingCardAsync(appId, ct);
             }
-        }
+            catch
+            {
+                results[idx] = await GetOrBuildCardFastAsync(appId, ct);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        });
 
-        _ = EnrichPageCoverAsync(pageIds, _coverEnrichCts.Token);
+        await Task.WhenAll(tasks);
+
         _ = PreFetchNextPagesBackgroundAsync(_currentPage);
-        return results;
+        return results.Where(x => x is not null).Select(x => x!).ToList();
     }
 
     private async Task PreFetchNextPagesBackgroundAsync(int startPage)
@@ -407,7 +441,7 @@ public sealed partial class GamesViewModel : ObservableObject
                 try
                 {
                     ct.ThrowIfCancellationRequested();
-                    await _storeService.GetDetailAsync(appId, ct);
+                    await GetOrBuildListingCardAsync(appId, ct);
                 }
                 catch { }
                 finally { _prefetchGate.Release(); }
@@ -417,14 +451,14 @@ public sealed partial class GamesViewModel : ObservableObject
         catch { }
     }
 
-    private async Task<FixEntry?> GetOrBuildCardFastAsync(int appId)
+    private async Task<FixEntry?> GetOrBuildCardFastAsync(int appId, CancellationToken ct = default)
     {
         if (_cardCache.TryGetValue(appId, out var cached))
         {
             return cached;
         }
 
-        var metadata = await _metadata.GetMetadataAsync(appId);
+        var metadata = await _metadata.GetMetadataAsync(appId, ct);
         if (metadata is null)
         {
             return null;
@@ -456,88 +490,135 @@ public sealed partial class GamesViewModel : ObservableObject
         return card;
     }
 
-    private async Task EnrichPageCoverAsync(IReadOnlyList<int> pageIds, CancellationToken ct)
+    private async Task<FixEntry?> GetOrBuildListingCardAsync(int appId, CancellationToken ct)
     {
-        using var gate = new SemaphoreSlim(4, 4);
-        var tasks = pageIds.Select(async appId =>
+        var card = await GetOrBuildCardFastAsync(appId, ct);
+        if (card is null)
         {
-            await gate.WaitAsync(ct);
-            try
-            {
-                ct.ThrowIfCancellationRequested();
-
-                var card = await GetOrBuildCardFastAsync(appId);
-                if (card is null)
-                {
-                    return;
-                }
-
-                var metadata = await _metadata.GetMetadataAsync(appId);
-                if (metadata is null)
-                {
-                    return;
-                }
-
-                var overrideCover = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId, ct))?.LibraryCapsule;
-                var detail = await _storeService.GetDetailAsync(appId, ct);
-                var detailApiCover = detail?.LibraryCapsuleUrl;
-
-                var selectedCover = FirstNonEmpty(
-                    overrideCover,
-                    detailApiCover,
-                    detail?.SgdbGridUrl,
-                    metadata.PopularCoverImageUrl,
-                    metadata.HeaderImageUrl,
-                    metadata.RawHeaderImageUrl,
-                    null);
-
-                if (string.IsNullOrWhiteSpace(selectedCover))
-                {
-                    selectedCover = "NO CONTENT";
-                }
-
-                if (string.Equals(card.PosterUrl, selectedCover, StringComparison.OrdinalIgnoreCase))
-                {
-                    return;
-                }
-
-                var updatedCard = new FixEntry
-                {
-                    AppId = card.AppId,
-                    Title = card.Title,
-                    Publisher = card.Publisher,
-                    PosterUrl = selectedCover,
-                    IsPremium = card.IsPremium,
-                    HasDenuvo = card.HasDenuvo,
-                    Category = card.Category
-                };
-                _cardCache[appId] = updatedCard;
-
-                var index = Games.IndexOf(card);
-                if (index >= 0)
-                {
-                    Games[index] = updatedCard;
-                }
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            catch
-            {
-            }
-            finally
-            {
-                gate.Release();
-            }
-        });
-
-        try
-        {
-            await Task.WhenAll(tasks);
+            return null;
         }
-        catch (OperationCanceledException)
+
+        var metadata = await _metadata.GetMetadataAsync(appId, ct);
+        if (metadata is null)
         {
+            return card;
         }
+
+        var overrideCover = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId, ct))?.LibraryCapsule;
+        var indexedCover = await _gameCoverIndex.GetLibraryCapsuleAsync(appId, ct);
+        var selectedCover = FirstNonEmpty(
+            overrideCover,
+            indexedCover,
+            metadata.PopularCoverImageUrl,
+            metadata.HeaderImageUrl,
+            metadata.RawHeaderImageUrl,
+            null);
+
+        if (string.IsNullOrWhiteSpace(selectedCover))
+        {
+            selectedCover = "NO CONTENT";
+        }
+        else
+        {
+            selectedCover = await _coverImageCache.GetCachedOrFetchAsync(appId, selectedCover, ct) ?? selectedCover;
+        }
+
+        if (string.Equals(card.PosterUrl, selectedCover, StringComparison.OrdinalIgnoreCase))
+        {
+            return card;
+        }
+
+        var updatedCard = new FixEntry
+        {
+            AppId = card.AppId,
+            Title = card.Title,
+            Publisher = card.Publisher,
+            PosterUrl = selectedCover,
+            IsPremium = card.IsPremium,
+            HasDenuvo = card.HasDenuvo,
+            Category = card.Category
+        };
+
+        _cardCache[appId] = updatedCard;
+        return updatedCard;
+    }
+
+    private async Task<List<int>> BuildFilteredAppIdsAsync(CancellationToken ct)
+    {
+        var localSearchQuery = SearchQuery?.Trim() ?? string.Empty;
+        var localFilterStandard = FilterStandard;
+        var localFilterPremium = FilterPremium;
+        var localFilterDenuvo = FilterDenuvo;
+        var localFilterNonDenuvo = FilterNonDenuvo;
+        var localSelectedGenres = SelectedGenres
+            .Select(s => s.Trim().ToLowerInvariant())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToHashSet(StringComparer.Ordinal);
+
+        return await Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            IEnumerable<GameFilterIndex> query = _allFilterIndex;
+
+            if (!string.IsNullOrWhiteSpace(localSearchQuery) && localSearchQuery.Length >= MinimumSearchLength)
+            {
+                if (int.TryParse(localSearchQuery, out var searchAppId))
+                {
+                    query = query.Where(x => x.AppId == searchAppId);
+                }
+                else
+                {
+                    var lowered = localSearchQuery.NormalizeForSearch();
+                    query = query.Where(x => x.NameLower.Contains(lowered, StringComparison.Ordinal));
+                }
+            }
+
+            if (localFilterPremium && !localFilterStandard)
+            {
+                query = query.Where(x => x.IsPremium);
+            }
+            else if (localFilterStandard && !localFilterPremium)
+            {
+                query = query.Where(x => !x.IsPremium);
+            }
+
+            if (localFilterDenuvo && !localFilterNonDenuvo)
+            {
+                query = query.Where(x => x.HasDenuvo);
+            }
+            else if (localFilterNonDenuvo && !localFilterDenuvo)
+            {
+                query = query.Where(x => !x.HasDenuvo);
+            }
+
+            if (localSelectedGenres.Count > 0)
+            {
+                query = query.Where(x => x.GenreTokens.Overlaps(localSelectedGenres));
+            }
+
+            if (string.IsNullOrWhiteSpace(localSearchQuery))
+            {
+                query = query.Where(x => x.PriceNormalized >= 100000);
+            }
+
+            var daysSinceEpoch = (DateTime.UtcNow - DateTime.UnixEpoch).TotalDays;
+            var seed = (int)(daysSinceEpoch / 2);
+            var random = new Random(seed);
+
+            ct.ThrowIfCancellationRequested();
+            return query.OrderBy(x => random.Next()).Select(x => x.AppId).ToList();
+        }, ct);
+    }
+
+    private void UpdateSearchHintState(string? value)
+    {
+        var trimmed = value?.Trim() ?? string.Empty;
+        var shouldShowHint = trimmed.Length > 0 && trimmed.Length < MinimumSearchLength;
+
+        IsSearchHintVisible = shouldShowHint;
+        SearchHintText = shouldShowHint
+            ? $"Masukkan minimal {MinimumSearchLength} karakter."
+            : string.Empty;
     }
 
     private static GameCategory ParseCategory(string? genre)
@@ -602,6 +683,12 @@ public sealed partial class GamesViewModel : ObservableObject
         {
             await Task.Delay(220, cts.Token);
             if (cts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            UpdateSearchHintState(SearchQuery);
+            if (!string.IsNullOrWhiteSpace(SearchQuery) && !CanExecuteSearch)
             {
                 return;
             }

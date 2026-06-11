@@ -3,7 +3,7 @@ namespace NexaPlay.Core.Constants;
 public static class AppConstants
 {
     public const string AppName = "NexaPlay";
-    public const string AppVersion = "1.0.2";
+    public const string AppVersion = "1.0.3";
     public const string AppDataFolder = "NexaPlay";
     public const string AppUpdateManifestUrl = "https://raw.githubusercontent.com/adii83/NexaPlay/main/NexaPlay/release/update-stable.json";
     public const string AppUpdateInstallerArguments = "";
@@ -19,6 +19,8 @@ public static class AppConstants
 
     // NexaPlay-specific override (separate repo)
     public const string NexaPlayOverrideUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/nexaplay_override.json";
+    public const string LibraryCapsuleIndexUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/library_capsule.json";
+    public const string LibraryCapsuleIndexGzipUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/library_capsule.json.gz";
     public const string YoutubeTutorialUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/youtube.json";
 
     // Online fix base URL
@@ -51,6 +53,8 @@ public static class AppConstants
     public const string OverrideDataCacheFileName = "override_data.json";
     public const string UserOverrideDataCacheFileName = "user_override_data.json";
     public const string NexaPlayOverrideCacheFileName = "nexaplay_override.json";
+    public const string LibraryCapsuleIndexCacheFileName = "library_capsule.json";
+    public const string LibraryCapsuleIndexGzipCacheFileName = "library_capsule.json.gz";
     public const string YoutubeTutorialCacheFileName = "youtube_tutorial.json";
     public const string YoutubeTutorialEtagFileName = "youtube_tutorial.etag";
     public const string AppUpdateDownloadsFolderName = "updates";

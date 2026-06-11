@@ -9,6 +9,7 @@ using NexaPlay.Contracts.Navigation;
 using NexaPlay.Presentation.ViewModels;
 using System.ComponentModel;
 using System.Collections.Generic;
+using System.IO;
 
 namespace NexaPlay.Presentation.Views.Pages;
 
@@ -281,9 +282,28 @@ public sealed partial class GamesPage : Page
     public static ImageSource? ToImageSource(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return null;
-        if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri)) return null;
-        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) return null;
+        if (!TryBuildImageUri(raw, out var uri)) return null;
         try { return new BitmapImage(uri); } catch { return null; }
+    }
+
+    private static bool TryBuildImageUri(string raw, out Uri uri)
+    {
+        if (Uri.TryCreate(raw, UriKind.Absolute, out uri!) &&
+            (uri.Scheme == Uri.UriSchemeHttp ||
+             uri.Scheme == Uri.UriSchemeHttps ||
+             uri.Scheme == Uri.UriSchemeFile ||
+             uri.Scheme == "ms-appx"))
+        {
+            return true;
+        }
+
+        if (Path.IsPathRooted(raw))
+        {
+            uri = new Uri(raw, UriKind.Absolute);
+            return true;
+        }
+
+        return false;
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -298,6 +318,7 @@ public sealed partial class GamesPage : Page
         {
             if (_suppressPageTransitionAnimation)
                 return;
+            ScrollGamesToTop();
             AnimatePageTransition();
         }
 
@@ -378,6 +399,15 @@ public sealed partial class GamesPage : Page
         storyboard.Children.Add(slide);
 
         storyboard.Begin();
+    }
+
+    private void ScrollGamesToTop()
+    {
+        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, () =>
+        {
+            var scrollViewer = FindDescendant<ScrollViewer>(GamesGrid);
+            scrollViewer?.ChangeView(null, 0, null, true);
+        });
     }
 
     private static T? FindDescendant<T>(DependencyObject? root) where T : DependencyObject

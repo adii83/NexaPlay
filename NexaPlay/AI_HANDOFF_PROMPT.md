@@ -571,6 +571,60 @@ Tanggal: 2026-06-08
 - Build: `MSBuild Debug x64 /p:OutDir=Debug-preview` sukses (`0 Error(s)`, `0 Warning(s)`).
 - Next: Re-test dua skenario dari hero Home: game premium steam-type harus diblok untuk Standard, sedangkan game premium/non-premium 3rd Party tetap boleh membuka `BypassGameDetailPage`.
 
+Tanggal: 2026-06-10
+- Fokus: Menjadikan `Clear Data` di Settings sebagai reset pabrik sungguhan sampai akar cache.
+- Perubahan: `SettingsViewModel.ClearAllDataAndRestartAsync()` tidak lagi hanya menghapus sebagian file (`runtime_catalog_sources`, `license.dat`, `applied_state.json`, `github_raw_full.json`). Sekarang app membuat skrip cleanup sementara yang menunggu proses NexaPlay benar-benar keluar, lalu menghapus seluruh folder `%LOCALAPPDATA%\\NexaPlay` termasuk cache metadata/detail, log, state update, device cache, override cache, tutorial cache, dan folder download update, kemudian menjalankan NexaPlay kembali dari executable yang sama.
+- Build: `MSBuild Debug x64` perlu diverifikasi setelah patch ini.
+- Next: Uji runtime tombol `Clear Data` dari Settings untuk memastikan setelah restart semua state lokal benar-benar kosong dan aplikasi kembali seperti first run.
+
+Tanggal: 2026-06-11
+- Fokus: Mengalihkan endpoint metadata detail dari URL public `r2.dev` ke custom domain sendiri agar stabil untuk user.
+- Perubahan: `SteamStoreService.cs` sekarang memakai base URL `https://meta.nexaplaymetadata.online/Metadata` untuk semua request detail `/{appId}.json`, menggantikan endpoint public bucket lama `pub-...r2.dev` yang sebelumnya terindikasi terkena redirect/filter jaringan.
+- Build: `MSBuild Debug x64` perlu diverifikasi setelah patch ini.
+- Next: Validasi runtime `GameDetail` / enrichment cover dengan beberapa appid sample dan pastikan request detail baru tidak lagi jatuh ke redirect `internet-positif.info`.
+
+Tanggal: 2026-06-11
+- Fokus: Mengembalikan prefetch cover card per halaman di `Home` dan `Games`, plus reset scroll ke atas saat ganti pagination `Games`.
+- Perubahan: `HomeViewModel` sekarang menyiapkan cover card batch yang sedang tampil sebelum dirender, lalu memprefetch hanya batch `Load More` berikutnya ke cache card populer; tidak lagi sekadar memanaskan `GetDetailAsync()` tanpa menyiapkan card hasilnya. `GamesViewModel` sekarang membangun card page aktif dengan cover yang sudah dipersiapkan, lalu memprefetch hanya page berikutnya ke `_cardCache` agar transisi `page 1 -> 2 -> 3` lebih siap. `GamesPage.xaml.cs` juga sekarang memaksa `ScrollViewer` kembali ke atas setiap `CurrentPageLabel` berubah, supaya setelah klik pagination user kembali ke top list dan tidak mudah spam tombol `Next` dari posisi bawah.
+- Build: `MSBuild Debug x64` perlu diverifikasi setelah patch ini.
+- Next: Uji runtime `Home` (`Load More`) dan `Games` (`1 -> 2 -> 3`) untuk memastikan cover page berikutnya sudah siap lebih cepat dan pagination `Games` selalu balik ke atas.
+
+Tanggal: 2026-06-11
+- Fokus: Startup overlay kini menunggu preload card awal Home dan Games, plus prefetch Games diperpanjang agar halaman berikutnya lebih siap.
+- Perubahan: `HomeViewModel` dan `GamesViewModel` dijadikan singleton + load-guard agar preload startup memakai instance yang sama dengan page. `MainWindow` sekarang memanggil preload Home dan Games saat `StartupOverlay` masih aktif. Prefetch Games dinaikkan menjadi 2 halaman ke depan tetap khusus cover card.
+- Build: Debug x64 lulus setelah perubahan startup/preload.
+- Next: Uji runtime apakah Home pertama, Games page 1, dan transisi ke page 2-3 sudah terasa siap tanpa fetch telat.
+
+Tanggal: 2026-06-11
+- Fokus: Penyempurnaan copywriting pada startup overlay agar tampil lebih profesional.
+- Perubahan: Teks judul dan status pada proses inisialisasi startup diperhalus, termasuk tahap koneksi data, pemuatan basis data, persiapan beranda, dan katalog game.
+- Build: Debug x64 lulus setelah penyesuaian teks.
+- Next: Review kembali seluruh teks status lain di aplikasi bila ingin diseragamkan ke tone profesional yang sama.
+
+Tanggal: 2026-06-11
+- Fokus: Respons search dan filter pada Games page dibuat lebih cepat terasa, dengan validasi minimal karakter dan loading state yang lebih jelas.
+- Perubahan: Search Games kini baru aktif mulai 3 karakter dan menampilkan hint kecil di bawah kolom input saat belum memenuhi batas. Proses search/filter sekarang langsung memunculkan loading overlay, perhitungan filter dipindahkan ke background task, dan rendering hasil listing dipercepat dengan cover card saja tanpa fetch detail store tambahan.
+- Build: Menunggu verifikasi ulang jika executable tidak sedang terkunci oleh app yang masih berjalan.
+- Next: Uji runtime pada search pendek, pencarian normal, kombinasi filter, dan perpindahan halaman setelah hasil filter terpasang.
+
+Tanggal: 2026-06-11
+- Fokus: Integrasi cover enrichment ringan untuk surface `Home` dan `Games` memakai index `library_capsule.json.gz`.
+- Perubahan: Menambahkan `IGameCoverIndexService` + `GameCoverIndexService` untuk download/cache/parse index cover ringan dari repo override; prioritas cover list sekarang `nexaplay_override.json` -> `library_capsule.json.gz` -> fallback metadata/header lama; `HomeViewModel` dan `GamesViewModel` diperbarui agar listing card tidak lagi bergantung ke fetch detail besar per AppID hanya untuk cover.
+- Build: Pending setelah patch batch ini.
+- Next: Build verifikasi lalu uji runtime `Home` dan `Games` untuk memastikan cover dari index baru tampil konsisten tanpa regresi fallback.
+
+Tanggal: 2026-06-11
+- Fokus: Memasukkan `library_capsule.json.gz` ke warmup startup resmi dan sinkronisasi pembersihan cache dari Settings.
+- Perubahan: `MainWindow` sekarang memanaskan cover index `library_capsule.json.gz` saat `StartupOverlay` masih aktif, sehingga cover list `Home` dan `Games` sudah siap lebih awal tanpa fetch per-AppID; `SettingsViewModel.ClearMetadataCacheAsync()` juga ikut menghapus cache `GameCoverIndexService` agar reset data dari Settings membersihkan sumber cover ringan ini.
+- Build: Pending setelah patch batch ini.
+- Next: Build verifikasi lalu uji runtime first-run dan warm-run untuk memastikan startup tetap halus, cover list tampil lebih konsisten, dan tombol clear cache benar-benar membersihkan index cover.
+
+Tanggal: 2026-06-11
+- Fokus: Menjadikan preload cover benar-benar siap tampil dengan cache file gambar lokal, bukan hanya cache URL.
+- Perubahan: Menambahkan `ICoverImageCacheService` + `CoverImageCacheService` untuk mengunduh file cover nyata ke cache disk lokal; `HomeViewModel` dan `GamesViewModel` kini menyimpan hasil cover card ke path file lokal saat preload/warmup berjalan; helper image di `HomePage` dan `GamesPage` diperluas agar menerima URI `file://` / path lokal sehingga card bisa tampil dari cache lokal ketika startup selesai.
+- Build: Pending setelah patch batch ini.
+- Next: Build verifikasi lalu uji runtime first-run agar memastikan page awal benar-benar muncul dengan cover yang sudah siap tampil, serta prefetch batch berikutnya tetap jalan tanpa membuat startup terlalu berat.
+
 ## 10. Update Log Ringkas
 
 ```text

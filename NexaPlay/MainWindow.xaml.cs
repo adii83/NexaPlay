@@ -25,8 +25,11 @@ public sealed partial class MainWindow : Window
     private readonly INavigationService _nav;
     private readonly ILicenseService _licenseService;
     private readonly IMetadataService _metadataService;
+    private readonly IGameCoverIndexService _gameCoverIndexService;
     private readonly IAppUpdateService _appUpdateService;
     private readonly IAppLogService _appLog;
+    private readonly HomeViewModel _homeViewModel;
+    private readonly GamesViewModel _gamesViewModel;
     private bool _hasShownStartupUpdatePrompt;
     private IntPtr _windowIconHandle;
 
@@ -35,15 +38,21 @@ public sealed partial class MainWindow : Window
         INavigationService nav,
         ILicenseService licenseService,
         IMetadataService metadataService,
+        IGameCoverIndexService gameCoverIndexService,
         IAppUpdateService appUpdateService,
-        IAppLogService appLog)
+        IAppLogService appLog,
+        HomeViewModel homeViewModel,
+        GamesViewModel gamesViewModel)
     {
         _vm             = vm;
         _nav            = nav;
         _licenseService = licenseService;
         _metadataService = metadataService;
+        _gameCoverIndexService = gameCoverIndexService;
         _appUpdateService = appUpdateService;
         _appLog = appLog;
+        _homeViewModel = homeViewModel;
+        _gamesViewModel = gamesViewModel;
         InitializeComponent();
         
         ExtendsContentIntoTitleBar = true;
@@ -188,8 +197,8 @@ public sealed partial class MainWindow : Window
             }
             else
             {
-                StartupTitleText.Text = "Menyiapkan NexaPlay";
-                StartupStatusText.Text = "Menghubungkan ke server...";
+                StartupTitleText.Text = "Inisialisasi NexaPlay";
+                StartupStatusText.Text = "Menghubungkan ke layanan data...";
                 StartupPercentText.Text = "0%";
 
                 StartupTitleText.Visibility = Visibility.Visible;
@@ -204,8 +213,9 @@ public sealed partial class MainWindow : Window
 
         if (isWarm)
         {
-            // Run the actual metadata warmup in background
+            // Run startup sources in background while the overlay animates.
             var warmupTask = _metadataService.WarmupEssentialSourcesAsync(null);
+            var coverWarmupTask = _gameCoverIndexService.WarmupAsync();
 
             // Animate progress bar smoothly from 0 to 100 over 1200ms
             const int steps = 40;
@@ -218,6 +228,7 @@ public sealed partial class MainWindow : Window
             }
 
             await warmupTask;
+            await coverWarmupTask;
         }
         else
         {
@@ -233,11 +244,11 @@ public sealed partial class MainWindow : Window
                 {
                     string friendlyMessage = p.FileName switch
                     {
-                        "steam_data.json" or "steam_data.json.gz" => "Menyiapkan database game...",
-                        "override_data.json" => "Mengunduh konfigurasi...",
-                        "fix_games.json" or "new_fix_games.json" => "Menyiapkan bypass games...",
-                        "steam_games.json" => "Memverifikasi database Denuvo...",
-                        _ => "Sedang menyiapkan NexaPlay..."
+                        "steam_data.json" or "steam_data.json.gz" => "Memuat basis data game...",
+                        "override_data.json" => "Memuat konfigurasi aplikasi...",
+                        "fix_games.json" or "new_fix_games.json" => "Memuat data bypass games...",
+                        "steam_games.json" => "Memverifikasi data Denuvo...",
+                        _ => "Menyelesaikan proses inisialisasi..."
                     };
                     StartupStatusText.Text = $"{friendlyMessage} ({p.CompletedFiles}/{p.TotalFiles})";
                     StartupPercentText.Text = $"{overall:F0}%";
@@ -250,7 +261,14 @@ public sealed partial class MainWindow : Window
                 await _metadataService.WarmupEssentialSourcesAsync(progress);
                 dispatcher.TryEnqueue(() =>
                 {
-                    StartupStatusText.Text = "NexaPlay siap!";
+                    StartupStatusText.Text = "Menyiapkan cover katalog game...";
+                    StartupPercentText.Text = "92%";
+                    StartupProgressBar.Value = 92;
+                });
+                await _gameCoverIndexService.WarmupAsync();
+                dispatcher.TryEnqueue(() =>
+                {
+                    StartupStatusText.Text = "Inisialisasi selesai.";
                     StartupPercentText.Text = "100%";
                     StartupProgressBar.Value = 100;
                 });
@@ -263,6 +281,8 @@ public sealed partial class MainWindow : Window
                 });
             }
         }
+
+        await PreloadStartupCardsAsync(isWarm);
 
         stopwatch.Stop();
         var remaining = minDuration - stopwatch.Elapsed;
@@ -281,6 +301,34 @@ public sealed partial class MainWindow : Window
             hideOverlayTcs.TrySetResult();
         });
         await hideOverlayTcs.Task;
+    }
+
+    private async Task PreloadStartupCardsAsync(bool isWarm)
+    {
+        var dispatcher = DispatcherQueue;
+
+        void UpdateStartupState(double progressValue, string statusText)
+        {
+            dispatcher.TryEnqueue(() =>
+            {
+                StartupTitleText.Text = "Mempersiapkan Halaman Utama";
+                StartupStatusText.Text = statusText;
+                StartupPercentText.Text = $"{progressValue:F0}%";
+                StartupTitleText.Visibility = Visibility.Visible;
+                StartupStatusText.Visibility = Visibility.Visible;
+                StartupPercentText.Visibility = Visibility.Visible;
+                StartupProgressBar.IsIndeterminate = false;
+                StartupProgressBar.Value = progressValue;
+            });
+        }
+
+        UpdateStartupState(isWarm ? 76 : 88, "Mempersiapkan konten beranda...");
+        await _homeViewModel.LoadAsync();
+
+        UpdateStartupState(isWarm ? 88 : 94, "Mempersiapkan katalog game...");
+        await _gamesViewModel.LoadAsync();
+
+        UpdateStartupState(100, "Halaman utama siap digunakan.");
     }
 
     private async Task WaitForHomeReadyAsync()

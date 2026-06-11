@@ -12,7 +12,7 @@ namespace NexaPlay.Infrastructure.Services;
 public sealed partial class SteamStoreService : ISteamStoreService
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromDays(7);
-    private const string R2MetadataBaseUrl = "https://pub-55fa915463364c478d6a0ae407970294.r2.dev/Metadata";
+    private const string R2MetadataBaseUrl = "https://meta.nexaplaymetadata.online/Metadata";
 
     private readonly IAppLogService _log;
     private readonly INexaPlayOverrideService _nexaPlayOverride;
