@@ -3,6 +3,8 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using NexaPlay.Contracts.Navigation;
 using NexaPlay.Contracts.Services;
+using NexaPlay.Core.Constants;
+using NexaPlay.Core.Enums;
 using NexaPlay.Core.Models;
 using NexaPlay.Presentation.ViewModels;
 using NexaPlay.Presentation.Views.Pages;
@@ -20,6 +22,7 @@ public sealed partial class MainWindow : Window
     private const uint IMAGE_ICON = 1;
     private const uint LR_LOADFROMFILE = 0x00000010;
     private const uint LR_DEFAULTSIZE = 0x00000040;
+    private const string DiscordInviteUrl = "https://discord.gg/PfVAusA62";
 
     private readonly MainViewModel _vm;
     private readonly INavigationService _nav;
@@ -32,6 +35,10 @@ public sealed partial class MainWindow : Window
     private readonly GamesViewModel _gamesViewModel;
     private bool _hasShownStartupUpdatePrompt;
     private IntPtr _windowIconHandle;
+    private readonly Storyboard _startupLoadingLogoStoryboard;
+    private readonly Storyboard _validationLoadingLogoStoryboard;
+    private bool _isStartupLogoSpinning;
+    private bool _isValidationLogoSpinning;
 
     public MainWindow(
         MainViewModel vm,
@@ -54,7 +61,11 @@ public sealed partial class MainWindow : Window
         _homeViewModel = homeViewModel;
         _gamesViewModel = gamesViewModel;
         InitializeComponent();
-        
+        VersionText.Text = $"v{AppConstants.AppVersion}";
+        UpdateLicenseBadge(LicensePlan.Standard);
+        _startupLoadingLogoStoryboard = CreateLoadingLogoStoryboard(StartupLoadingLogoRotation);
+        _validationLoadingLogoStoryboard = CreateLoadingLogoStoryboard(ValidationLoadingLogoRotation);
+
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         
@@ -485,6 +496,7 @@ public sealed partial class MainWindow : Window
         {
             LogLicenseFlow("ValidateLicenseAsync entered");
             var license = await _licenseService.LoadAsync();
+            UpdateLicenseBadge(license.Plan);
             LogLicenseFlow($"ValidateLicenseAsync: offline status={license.Status}, isValid={license.IsValid}, hasKey={!string.IsNullOrWhiteSpace(license.Key)}");
             if (!license.IsValid)
             {
@@ -496,10 +508,10 @@ public sealed partial class MainWindow : Window
             // License valid offline, show validating overlay
             LogLicenseFlow("Offline license valid, showing validating overlay");
             ValidatingLicenseOverlay.Visibility = Visibility.Visible;
-            UpdateShellChrome();
             ValidationProgressRing.Visibility = Visibility.Visible;
             ValidationStatusText.Visibility = Visibility.Visible;
             ValidationErrorPanel.Visibility = Visibility.Collapsed;
+            UpdateShellChrome();
 
             var result = await _licenseService.ValidateExistingAsync();
             LogLicenseFlow($"ValidateExistingAsync completed: status={result.Status}, isValid={result.IsValid}, message={result.Message ?? "(null)"}");
@@ -513,6 +525,7 @@ public sealed partial class MainWindow : Window
                     if (result.IsValid)
                     {
                         // Valid online, proceed to home
+                        UpdateLicenseBadge(result.Plan);
                         LogLicenseFlow("License valid online, collapsing validating overlay");
                         ValidatingLicenseOverlay.Visibility = Visibility.Collapsed;
                         UpdateShellChrome();
@@ -524,6 +537,7 @@ public sealed partial class MainWindow : Window
                     ValidationProgressRing.Visibility = Visibility.Collapsed;
                     ValidationStatusText.Visibility = Visibility.Collapsed;
                     ValidationErrorPanel.Visibility = Visibility.Visible;
+                    UpdateShellChrome();
 
                     if (result.Status == NexaPlay.Core.Enums.LicenseStatus.Banned ||
                         result.Status == NexaPlay.Core.Enums.LicenseStatus.Reset ||
@@ -641,6 +655,43 @@ public sealed partial class MainWindow : Window
         AnimateNavWidth(68);
     }
 
+    private static Storyboard CreateLoadingLogoStoryboard(Microsoft.UI.Xaml.Media.RotateTransform rotation)
+    {
+        var animation = new DoubleAnimation
+        {
+            From = 0,
+            To = 360,
+            Duration = TimeSpan.FromMilliseconds(1600),
+            RepeatBehavior = RepeatBehavior.Forever,
+            EnableDependentAnimation = true
+        };
+        Storyboard.SetTarget(animation, rotation);
+        Storyboard.SetTargetProperty(animation, nameof(Microsoft.UI.Xaml.Media.RotateTransform.Angle));
+
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(animation);
+        return storyboard;
+    }
+
+    private static void SetLoadingLogoAnimation(Storyboard storyboard, bool shouldRun, ref bool isRunning)
+    {
+        if (shouldRun == isRunning)
+        {
+            return;
+        }
+
+        if (shouldRun)
+        {
+            storyboard.Begin();
+        }
+        else
+        {
+            storyboard.Stop();
+        }
+
+        isRunning = shouldRun;
+    }
+
     private void AnimateNavWidth(double toWidth)
     {
         var storyboard = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
@@ -649,10 +700,10 @@ public sealed partial class MainWindow : Window
             To = toWidth,
             Duration = new TimeSpan(0, 0, 0, 0, 200),
             EnableDependentAnimation = true,
-            EasingFunction = new Microsoft.UI.Xaml.Media.Animation.ExponentialEase 
-            { 
-                EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut, 
-                Exponent = 4 
+            EasingFunction = new Microsoft.UI.Xaml.Media.Animation.ExponentialEase
+            {
+                EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut,
+                Exponent = 4
             }
         };
 
@@ -661,6 +712,99 @@ public sealed partial class MainWindow : Window
 
         storyboard.Children.Add(animation);
         storyboard.Begin();
+    }
+
+    private async void OnJoinDiscordClicked(object sender, RoutedEventArgs e)
+    {
+        var content = new StackPanel { Spacing = 12 };
+        content.Children.Add(new TextBlock
+        {
+            Text = "NexaPlay akan membuka server Discord melalui browser atau aplikasi default Anda. Link berikut tetap dapat disalin bila redirect tidak berhasil.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 160, 160, 160))
+        });
+        content.Children.Add(new TextBox
+        {
+            Text = DiscordInviteUrl,
+            IsReadOnly = true,
+            IsSpellCheckEnabled = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        });
+
+        var dialog = CreateStyledDialog(
+            "Join Discord",
+            content,
+            primaryButtonText: "Buka Discord",
+            closeButtonText: "Tutup");
+        dialog.SecondaryButtonText = "Salin Link";
+        dialog.DefaultButton = ContentDialogButton.Primary;
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Secondary)
+        {
+            var data = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            data.SetText(DiscordInviteUrl);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
+            return;
+        }
+
+        if (result != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        try
+        {
+            if (await Windows.System.Launcher.LaunchUriAsync(new Uri(DiscordInviteUrl)))
+            {
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            _appLog.Log("Discord", $"Gagal membuka invite Discord: {ex.GetType().Name}");
+        }
+
+        var fallbackContent = new StackPanel { Spacing = 12 };
+        fallbackContent.Children.Add(new TextBlock
+        {
+            Text = "Browser atau aplikasi Discord tidak dapat dibuka. Salin link berikut secara manual.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 160, 160, 160))
+        });
+        fallbackContent.Children.Add(new TextBox
+        {
+            Text = DiscordInviteUrl,
+            IsReadOnly = true,
+            IsSpellCheckEnabled = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        });
+
+        var fallbackDialog = CreateStyledDialog(
+            "Discord Tidak Terbuka",
+            fallbackContent,
+            closeButtonText: "Tutup");
+        fallbackDialog.SecondaryButtonText = "Salin Link";
+        if (await fallbackDialog.ShowAsync() == ContentDialogResult.Secondary)
+        {
+            var data = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            data.SetText(DiscordInviteUrl);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
+        }
+    }
+
+    private void UpdateLicenseBadge(LicensePlan plan)
+    {
+        var isPremium = plan == LicensePlan.Premium;
+        LicenseBadgeText.Text = isPremium ? "PREMIUM" : "STANDARD";
+        LicenseBadge.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            isPremium
+                ? Windows.UI.Color.FromArgb(0x18, 0x22, 0xC5, 0x5E)
+                : Windows.UI.Color.FromArgb(0x18, 0xA0, 0xA0, 0xA0));
+        LicenseBadgeText.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            isPremium
+                ? Windows.UI.Color.FromArgb(0xFF, 0x22, 0xC5, 0x5E)
+                : Windows.UI.Color.FromArgb(0xFF, 0xC8, 0xC8, 0xC8));
     }
 
     private void OnNavChecked(object sender, RoutedEventArgs e)
@@ -676,6 +820,16 @@ public sealed partial class MainWindow : Window
     private void UpdateShellChrome(Type? currentPageType = null)
     {
         currentPageType ??= ContentFrame?.CurrentSourcePageType;
+
+        SetLoadingLogoAnimation(
+            _startupLoadingLogoStoryboard,
+            StartupOverlay.Visibility == Visibility.Visible,
+            ref _isStartupLogoSpinning);
+        SetLoadingLogoAnimation(
+            _validationLoadingLogoStoryboard,
+            ValidatingLicenseOverlay.Visibility == Visibility.Visible
+                && ValidationProgressRing.Visibility == Visibility.Visible,
+            ref _isValidationLogoSpinning);
 
         bool overlayActive = StartupOverlay.Visibility == Visibility.Visible
                              || LicenseOverlay.Visibility == Visibility.Visible
@@ -902,6 +1056,7 @@ public sealed partial class MainWindow : Window
 
             if (result.IsValid)
             {
+                UpdateLicenseBadge(result.Plan);
                 ShowLicenseStatus(true, "&#xE73E;", $"Aktivasi berhasil! Paket: {result.Plan}", "#22C55E", "#1822C55E");
                 await System.Threading.Tasks.Task.Delay(1000);
                 _licenseTcs?.TrySetResult(true);

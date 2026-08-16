@@ -33,6 +33,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     private readonly INavigationService _nav;
     private readonly IWindowsDefenderService _defender;
     private readonly ISteamService _steam;
+    private readonly IAccountReportService _accountReportService;
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromMinutes(3) };
 
     [ObservableProperty] public partial GameEntry? Game { get; set; }
@@ -67,6 +68,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
     public string SteamPassword => BypassEntry?.Password ?? string.Empty;
 
     [ObservableProperty] public partial bool IsLoadingKode { get; set; }
+    [ObservableProperty] public partial bool IsReportingAccount { get; set; }
     [ObservableProperty] public partial string SteamGuardCode { get; set; } = string.Empty;
     [ObservableProperty] public partial bool IsBypassProcessing { get; set; }
     [ObservableProperty] public partial int BypassProgressPercent { get; set; }
@@ -96,7 +98,8 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         IAppLogService log,
         INavigationService nav,
         IWindowsDefenderService defender,
-        ISteamService steam)
+        ISteamService steam,
+        IAccountReportService accountReportService)
     {
         _metadata = metadata;
         _storeService = storeService;
@@ -108,6 +111,7 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         _nav = nav;
         _defender = defender;
         _steam = steam;
+        _accountReportService = accountReportService;
 
         HeroBackgroundUrl = string.Empty;
         GameIconUrl = string.Empty;
@@ -446,13 +450,32 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanReportAccount))]
     private async Task ReportAccountAsync()
     {
-        // Navigasi ke tautan pelaporan / WhatsApp admin
-        var uri = new Uri("https://wa.me/6281234567890?text=Lapor%20akun%20bermasalah%20di%20Game:%20" + Uri.EscapeDataString(BypassEntry?.Title ?? "Unknown"));
-        await Windows.System.Launcher.LaunchUriAsync(uri);
+        if (BypassEntry is null)
+        {
+            if (ShowDialogAsync is not null)
+                await ShowDialogAsync("Laporkan Akun", "Data akun Steam tidak ditemukan. Coba buka ulang halaman ini.");
+            return;
+        }
+
+        IsReportingAccount = true;
+        ReportAccountCommand.NotifyCanExecuteChanged();
+        try
+        {
+            var result = await _accountReportService.ReportAsync(BypassEntry);
+            if (ShowDialogAsync is not null)
+                await ShowDialogAsync(result.Title, result.Message);
+        }
+        finally
+        {
+            IsReportingAccount = false;
+            ReportAccountCommand.NotifyCanExecuteChanged();
+        }
     }
+
+    private bool CanReportAccount() => !IsReportingAccount;
 
     [RelayCommand]
     private async Task GetSteamGuardCodeAsync()

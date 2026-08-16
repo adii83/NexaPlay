@@ -49,6 +49,7 @@ public static class AppConstants
     public const string AppliedStateFileName   = "applied_state.json";
     public const string LogFileName            = "nexaplay.log";
     public const string AppUpdateStateFileName = "app_update_state.json";
+    public const string AccountReportLimitFileName = "account_report_limits.json";
     public const string FixLogPrefix           = "nexaplay-fix-log-";
     public const string OverrideDataCacheFileName = "override_data.json";
     public const string UserOverrideDataCacheFileName = "user_override_data.json";

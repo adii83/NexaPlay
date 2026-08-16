@@ -222,6 +222,38 @@
                                        Style="{StaticResource NavLabelStyle}"/>
                         </RadioButton>
 
+                        <!-- Discord -->
+                        <Button Click="OnJoinDiscordClicked"
+                                Height="44"
+                                Margin="8,2"
+                                Padding="0"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                CornerRadius="8"
+                                ToolTipService.ToolTip="Join Discord">
+                            <Grid Margin="14,0,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="24"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Viewbox Grid.Column="0"
+                                         Width="18"
+                                         Height="18"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center">
+                                    <Path Fill="{ThemeResource NexaTextSecondaryBrush}"
+                                          Data="M19.54,5.34A16.3,16.3 0 0 0 15.44,4l-.5,1a15.3,15.3 0 0 0-5.88,0l-.5-1a16.3,16.3 0 0 0-4.1,1.34C1.86,9.18 1.16,12.9 1.5,16.56A16.6,16.6 0 0 0 6.52,19l1.23-1.68a10.7,10.7 0 0 1-1.94-.93l.47-.36a11.7,11.7 0 0 0 11.44,0l.47,.36a10.7,10.7 0 0 1-1.94,.93L17.48,19a16.6,16.6 0 0 0 5.02-2.44c.4-4.24-.68-7.92-2.96-11.22ZM8.68,14.5c-1.12,0-2.04-1.03-2.04-2.3s.9-2.3 2.04-2.3c1.15,0 2.06,1.04 2.04,2.3c0,1.27-.9,2.3-2.04,2.3Zm6.64,0c-1.12,0-2.04-1.03-2.04-2.3s.9-2.3 2.04-2.3c1.15,0 2.06,1.04 2.04,2.3c0,1.27-.89,2.3-2.04,2.3Z"/>
+                                </Viewbox>
+                                <TextBlock Grid.Column="1"
+                                           Margin="14,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Text="Join Discord"
+                                           Style="{StaticResource NavLabelStyle}"/>
+                            </Grid>
+                        </Button>
+
                     </StackPanel>
                 </ScrollViewer>
 
@@ -241,18 +273,18 @@
                                        FontSize="12"
                                        FontWeight="Medium"
                                        Foreground="{ThemeResource NexaTextSecondaryBrush}"/>
-                            <TextBlock Text="v1.0.0 • Windows"
+                            <TextBlock x:Name="VersionText"
                                        FontSize="10"
                                        Foreground="{ThemeResource NexaTextMutedBrush}"/>
                         </StackPanel>
                         <!-- License Badge -->
-                        <Border Grid.Column="1" CornerRadius="6"
-                                Padding="8,4"
-                                Background="#1822C55E">
-                            <TextBlock Text="PRO"
+                        <Border x:Name="LicenseBadge"
+                                Grid.Column="1"
+                                CornerRadius="6"
+                                Padding="8,4">
+                            <TextBlock x:Name="LicenseBadgeText"
                                        FontSize="10"
                                        FontWeight="Bold"
-                                       Foreground="#22C55E"
                                        CharacterSpacing="80"/>
                         </Border>
                     </Grid>
@@ -362,7 +394,15 @@
                         VerticalAlignment="Center">
                     <StackPanel Spacing="0">
                         <!-- NexaPlay Premium Logo -->
-                        <Image Width="48" Height="48" HorizontalAlignment="Center" Margin="0,0,0,24">
+                        <Image x:Name="StartupLoadingLogo"
+                               Width="48"
+                               Height="48"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,24"
+                               RenderTransformOrigin="0.5,0.5">
+                            <Image.RenderTransform>
+                                <RotateTransform x:Name="StartupLoadingLogoRotation" />
+                            </Image.RenderTransform>
                             <Image.Source>
                                 <SvgImageSource RasterizePixelHeight="96" RasterizePixelWidth="96" UriSource="ms-appx:///Assets/logo.svg"/>
                             </Image.Source>
@@ -497,13 +537,19 @@
         <Grid x:Name="ValidatingLicenseOverlay" Grid.Row="1" Visibility="Collapsed" Canvas.ZIndex="150" Background="#111111">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="24">
                 <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Center">
-                    <Image Width="64" Height="64">
+                    <Image x:Name="ValidationLoadingLogo"
+                           Width="64"
+                           Height="64"
+                           RenderTransformOrigin="0.5,0.5">
+                        <Image.RenderTransform>
+                            <RotateTransform x:Name="ValidationLoadingLogoRotation" />
+                        </Image.RenderTransform>
                         <Image.Source>
                             <SvgImageSource UriSource="ms-appx:///Assets/logo.svg"/>
                         </Image.Source>
                     </Image>
                 </StackPanel>
-                
+
                 <TextBlock Text="Memvalidasi Lisensi..." FontSize="24" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" />
                 
                 <StackPanel Spacing="16" HorizontalAlignment="Center" MaxWidth="400">

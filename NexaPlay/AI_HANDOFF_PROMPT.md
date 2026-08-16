@@ -625,6 +625,24 @@ Tanggal: 2026-06-11
 - Build: Pending setelah patch batch ini.
 - Next: Build verifikasi lalu uji runtime first-run agar memastikan page awal benar-benar muncul dengan cover yang sudah siap tampil, serta prefetch batch berikutnya tetap jalan tanpa membuat startup terlalu berat.
 
+Tanggal: 2026-08-16
+- Fokus: Inisialisasi panduan operasional Claude Code untuk root repository.
+- Perubahan: Menambahkan `CLAUDE.md` di root dengan urutan onboarding wajib, command build/run/release yang terverifikasi, status aktual test/lint, serta ringkasan arsitektur DI, startup, navigation contract, metadata/cache, dan flow game/bypass. Tidak ada kode aplikasi atau behavior parity yang diubah.
+- Build: Baseline MSBuild `Debug x64` sukses (`exit 0`; restore up-to-date).
+- Next: Gunakan `CLAUDE.md` sebagai entry point sesi berikutnya; tetap lakukan smoke test runtime saat batch menyentuh UI atau behavior.
+
+Tanggal: 2026-08-16
+- Fokus: Port flow `Laporkan Akun` Steam dari WhatsApp ke Telegram mengikuti behavior GameHub.
+- Perubahan: Menambahkan service native Telegram untuk kategori Steam Account dan Steam Sharing, format pesan legacy, limit dua laporan sukses per AppID per tanggal UTC yang dipersistenkan di `%LOCALAPPDATA%\NexaPlay`, dialog hasil native, serta loading/disable state pada tombol. Counter hanya bertambah setelah Telegram mengembalikan `ok=true`; log dan dialog kegagalan tidak memuat kredensial akun maupun detail request.
+- Build: MSBuild `Debug x64` ke output terpisah `Debug-telegram` sukses; source-contract 12/12 lulus; startup smoke test bertahan hidup selama 8 detik tanpa memicu request Telegram.
+- Next: Uji manual tombol laporan pada akun staging/izin admin bila ingin memvalidasi pengiriman end-to-end, lalu rotasi token bot legacy yang pernah tersimpan di source GameHub.
+
+Tanggal: 2026-08-16
+- Fokus: Menambahkan akses Discord dan menyinkronkan informasi versi/lisensi pada footer sidebar.
+- Perubahan: Sidebar kini memiliki tombol `Join Discord` dengan ikon Discord; dialog menyediakan redirect melalui default URI handler dan link read-only yang dapat disalin, termasuk fallback copy saat redirect gagal. Footer mengambil versi dari `AppConstants.AppVersion`, menghapus label Windows, dan menampilkan badge `STANDARD`/`PREMIUM` dari paket lisensi yang dimuat, divalidasi, atau baru diaktivasi.
+- Build: Source-contract 8/8 dan fallback check lulus; MSBuild `Debug x64` ke `Debug-shell` sukses; startup smoke test bertahan hidup selama 8 detik tanpa memanggil redirect Discord.
+- Next: Uji manual `Buka Discord` dan `Salin Link`, lalu konfirmasi badge pada masing-masing license Standard dan Premium.
+
 ## 10. Update Log Ringkas
 
 ```text

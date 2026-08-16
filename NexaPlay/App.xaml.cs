@@ -49,6 +49,7 @@ public partial class App : Application
         // ── Infrastructure: Singletons ──────────────────────────────
         services.AddSingleton<IAppLogService, AppLogService>();
         services.AddSingleton<AppliedStateStore>();
+        services.AddSingleton<AccountReportLimitStore>();
         services.AddSingleton<ISteamService, SteamPlatformService>();
         services.AddSingleton<IWindowsDefenderService, WindowsDefenderService>();
         services.AddSingleton<INexaPlayOverrideService, NexaPlayOverrideService>();
@@ -62,6 +63,7 @@ public partial class App : Application
         services.AddSingleton<IAddGameService, AddGameService>();
         services.AddSingleton<ILicenseService, LicenseService>();
         services.AddSingleton<ISteamStoreService, SteamStoreService>();
+        services.AddSingleton<IAccountReportService, TelegramAccountReportService>();
 
         // ── Navigation ──────────────────────────────────────────────
         services.AddSingleton<INavigationService, NavigationService>();
