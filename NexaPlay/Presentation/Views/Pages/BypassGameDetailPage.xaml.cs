@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.Web.WebView2.Core;
 using NexaPlay.Contracts.Navigation;
+using NexaPlay.Contracts.Services;
 using NexaPlay.Presentation.Helpers;
 using NexaPlay.Presentation.ViewModels;
 using System;
@@ -20,6 +21,7 @@ public sealed partial class BypassGameDetailPage : Page
 {
     public BypassGameDetailViewModel ViewModel { get; }
     private readonly INavigationService _nav;
+    private readonly IAppLogService _log;
     private Storyboard? _shimmerStoryboard;
     private Storyboard? _heroShimmerStoryboard;
     private Storyboard? _topIconShimmerStoryboard;
@@ -30,6 +32,7 @@ public sealed partial class BypassGameDetailPage : Page
     {
         ViewModel = ((App)App.Current).GetRequiredService<BypassGameDetailViewModel>();
         _nav = ((App)App.Current).GetRequiredService<INavigationService>();
+        _log = ((App)App.Current).GetRequiredService<IAppLogService>();
         InitializeComponent();
         DataContext = ViewModel;
         ViewModel.ConfirmAsync = ShowConfirmAsync;
@@ -414,7 +417,8 @@ public sealed partial class BypassGameDetailPage : Page
         {
             if (!_tutorialWebViewInitialized)
             {
-                await TutorialOverlayWebView.EnsureCoreWebView2Async();
+                var environment = await WebView2EnvironmentHelper.GetAsync();
+                await TutorialOverlayWebView.EnsureCoreWebView2Async(environment);
                 ConfigureTutorialWebView(TutorialOverlayWebView.CoreWebView2);
                 _tutorialWebViewInitialized = true;
             }
@@ -428,8 +432,9 @@ public sealed partial class BypassGameDetailPage : Page
             var playerUrl = $"https://appassets.example/youtube-player.html?videoId={Uri.EscapeDataString(videoId)}&autoplay=1";
             TutorialOverlayWebView.Source = new Uri(playerUrl);
         }
-        catch
+        catch (Exception ex)
         {
+            _log.Log("BypassDetailWebView", $"Initialization failed: {ex.GetType().Name}");
             // Keep UX safe: if embed fails, user still can use watch URL from metadata.
         }
     }

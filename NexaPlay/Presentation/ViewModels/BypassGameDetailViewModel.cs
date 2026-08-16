@@ -13,6 +13,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Net;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -23,6 +24,9 @@ namespace NexaPlay.Presentation.ViewModels;
 
 public sealed partial class BypassGameDetailViewModel : ObservableObject
 {
+    private const string AdministratorRequiredMessage =
+        "Tutup NexaPlay, lalu klik kanan ikon NexaPlay dan pilih “Jalankan sebagai administrator”. Setelah aplikasi terbuka kembali, ulangi proses bypass.";
+
     private readonly IMetadataService _metadata;
     private readonly ISteamStoreService _storeService;
     private readonly IBypassGamesDataService _bypassGamesData;
@@ -291,7 +295,12 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
                     throw new InvalidOperationException("Folder game belum dipilih atau tidak valid. Pilih folder instalasi game yang benar lalu coba lagi.");
             }
 
-            ReportProgress(30, "Menambahkan ke exclusion list...");
+            if (!IsRunningAsAdministrator())
+            {
+                throw new InvalidOperationException(AdministratorRequiredMessage);
+            }
+
+            ReportProgress(30, "Menambahkan ke pengecualian Windows Defender...");
             var exclusionResult = await _defender.EnsurePathExcludedAsync(gamePath);
             if (exclusionResult.DefenderMissing)
             {
@@ -306,14 +315,11 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
             {
                 if (exclusionResult.NeedsAdmin)
                 {
-                    throw new InvalidOperationException(
-                        "Aplikasi perlu dijalankan sebagai Administrator untuk menambahkan folder game ke exclusion Windows Defender.\n\n" +
-                        "Tutup aplikasi, jalankan kembali sebagai Administrator, lalu ulangi proses bypass.");
+                    throw new InvalidOperationException(AdministratorRequiredMessage);
                 }
 
-                throw new InvalidOperationException(string.IsNullOrWhiteSpace(exclusionResult.Error)
-                    ? "Gagal menambahkan folder game ke exclusion Windows Defender."
-                    : exclusionResult.Error);
+                throw new InvalidOperationException(
+                    "Gagal menambahkan folder game ke pengecualian Windows Defender. Silakan coba lagi.");
             }
 
             downloadDir = Path.Combine(Path.GetTempPath(), "NexaPlayFix", game.AppId.ToString(), "download");
@@ -388,17 +394,30 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
                 bypassEntry.UseShortcut,
                 bypassEntry.ExeHint,
                 bypassEntry.LaunchOption);
-            if (!string.IsNullOrWhiteSpace(launchOption))
-            {
-                ReportProgress(99, "Sinkronisasi Steam launch option...", "Menutup Steam, set launch option, lalu restart Steam...");
-                var launchOptionApplied = await _steam.SetLaunchOptionsAndRestartAsync(game.AppId, launchOption);
-                if (!launchOptionApplied)
-                    _log.Log("BypassDetail", $"SetLaunchOptions gagal appid={game.AppId}");
-            }
+            ReportProgress(
+                99,
+                "Mengamankan konfigurasi Steam...",
+                string.IsNullOrWhiteSpace(launchOption)
+                    ? "Menyelesaikan konfigurasi Steam..."
+                    : "Set launch option dan menyelesaikan konfigurasi Steam...");
+            var steamResult = await _steam.FinalizeBypassAsync(game.AppId, launchOption);
 
             ReportProgress(100, "Selesai! Proses bypass berhasil.", "Semua tahap selesai");
             if (ShowDialogAsync is not null)
-                await ShowDialogAsync("Bypass Berhasil", "Semua proses bypass selesai. Game siap dijalankan.");
+            {
+                if (!string.IsNullOrWhiteSpace(steamResult.Warning))
+                {
+                    await ShowDialogAsync(
+                        "Bypass Berhasil dengan Peringatan",
+                        $"Proses bypass berhasil, tetapi ada langkah Steam yang belum selesai. {steamResult.Warning}");
+                }
+                else
+                {
+                    await ShowDialogAsync(
+                        "Bypass Berhasil",
+                        "Semua proses bypass berhasil diselesaikan. Game siap dijalankan.");
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -413,8 +432,8 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
             {
                 var errorTitle = friendlyError.Contains("dibatalkan", StringComparison.OrdinalIgnoreCase)
                     ? "Proses Dibatalkan"
-                    : friendlyError.Contains("Administrator", StringComparison.OrdinalIgnoreCase)
-                        ? "Butuh Hak Administrator"
+                    : string.Equals(friendlyError, AdministratorRequiredMessage, StringComparison.Ordinal)
+                        ? "Perlu Izin Administrator"
                         : "Bypass Gagal";
                 await ShowDialogAsync(errorTitle, friendlyError);
             }
@@ -579,6 +598,12 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
                 await ShowDialogAsync("Verifikasi Gagal", "Verifikasi license gagal. Pastikan aplikasi berjalan dengan benar.");
             return false;
         }
+    }
+
+    private static bool IsRunningAsAdministrator()
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+        return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
     }
 
     private void ReportProgress(int percent, string message, string? detail = null)

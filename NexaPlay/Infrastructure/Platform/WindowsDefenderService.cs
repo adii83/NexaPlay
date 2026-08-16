@@ -152,15 +152,14 @@ public sealed class WindowsDefenderService : IWindowsDefenderService
                 return result;
             }
 
-            result.Error = string.IsNullOrWhiteSpace(merged)
-                ? "Gagal menambahkan exclusion Windows Defender."
-                : merged;
+            _log.Log("Defender", $"EnsurePathExcluded gagal type=PowerShell exit={proc.ExitCode}");
+            result.Error = "Gagal menambahkan folder game ke pengecualian Windows Defender.";
             return result;
         }
         catch (Exception ex)
         {
-            _log.Log("Defender", $"EnsurePathExcluded error: {ex.Message}");
-            result.Error = ex.Message;
+            _log.Log("Defender", $"EnsurePathExcluded error type={ex.GetType().Name}");
+            result.Error = "Gagal menambahkan folder game ke pengecualian Windows Defender.";
             return result;
         }
     }

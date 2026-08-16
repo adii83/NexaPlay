@@ -50,6 +50,7 @@ public partial class App : Application
         services.AddSingleton<IAppLogService, AppLogService>();
         services.AddSingleton<AppliedStateStore>();
         services.AddSingleton<AccountReportLimitStore>();
+        services.AddSingleton<ManagedManifestStore>();
         services.AddSingleton<ISteamService, SteamPlatformService>();
         services.AddSingleton<IWindowsDefenderService, WindowsDefenderService>();
         services.AddSingleton<INexaPlayOverrideService, NexaPlayOverrideService>();

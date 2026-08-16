@@ -50,14 +50,19 @@ Karena itu, setiap rilis harus menjaga sinkronisasi 4 hal ini:
 
 Setiap kali mau merilis versi baru, ikuti urutan ini:
 
-1. Naikkan versi app.
-2. Naikkan versi installer `.iss`.
-3. Publish `Release`.
-4. Build `setup.exe`.
-5. Upload `setup.exe` ke GitHub Release dengan tag versi yang sama.
-6. Generate manifest final yang menunjuk ke asset release itu.
-7. Commit manifest baru ke `main`.
-8. Setelah manifest masuk `main`, barulah app user akan mulai mendeteksi versi baru.
+1. Samakan versi app dan installer.
+2. Publish aplikasi dalam konfigurasi `Release`.
+3. Verifikasi file wajib di folder publish.
+4. Sign file hasil publish dengan `sign-build.ps1`.
+5. Compile `NexaPlaySetup.iss` memakai Inno Setup.
+6. Sign `NexaPlay-Setup.exe` dengan `sign-installer.ps1`.
+7. Verifikasi signature aplikasi dan installer.
+8. Upload installer final yang sudah ditandatangani ke GitHub Release.
+9. Generate manifest dan SHA-256 dari installer final tersebut.
+10. Commit manifest baru ke `main`.
+11. Setelah manifest masuk `main`, barulah app user akan mulai mendeteksi versi baru.
+
+Signing harus dilakukan pada posisi tersebut. Menandatangani file mengubah isi binary, sehingga SHA-256 manifest yang dihitung sebelum `sign-installer.ps1` tidak lagi valid.
 
 ## Checklist Rilis Pertama
 
@@ -87,11 +92,12 @@ di:
 
 `NexaPlay/release/NexaPlaySetup.iss`
 
-### 3. Publish app
+### 3. Clean dan publish app
 
-Jalankan dari folder `NexaPlay`:
+Jalankan dari folder `NexaPlay`. Clean `bin` dan `obj` memastikan apphost dibentuk ulang dengan icon terbaru:
 
 ```powershell
+Remove-Item ".\bin", ".\obj" -Recurse -Force
 dotnet publish .\NexaPlay.csproj -c Release -p:Platform=x64 -r win-x64 --self-contained true
 ```
 
@@ -120,7 +126,38 @@ Minimal harus ada:
 - `Assets\Web\youtube-player.html`
 - `data\api.json`
 
-### 5. Build installer Inno Setup
+Verifikasi juga icon yang benar-benar tertanam di `NexaPlay.exe`, karena taskbar memakai embedded icon tersebut, bukan icon shortcut:
+
+```powershell
+Add-Type -AssemblyName System.Drawing
+$publishDir = ".\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish"
+$embeddedIcon = [System.Drawing.Icon]::ExtractAssociatedIcon((Resolve-Path "$publishDir\NexaPlay.exe"))
+$embeddedIcon.ToBitmap().Save((Join-Path $env:TEMP "NexaPlay-embedded-icon.png"))
+Invoke-Item (Join-Path $env:TEMP "NexaPlay-embedded-icon.png")
+```
+
+Pastikan preview menampilkan logo terbaru. Jika masih logo lama, jangan lanjut signing; clean `bin`/`obj` lalu publish ulang.
+
+### 5. Sign hasil publish
+
+Jalankan setelah publish dan verifikasi file, tetapi sebelum compile Inno Setup:
+
+```powershell
+& ".\release\sign-build.ps1"
+```
+
+Script ini menandatangani file hasil publish dan memverifikasi `NexaPlay.exe`. Script tidak menjalankan publish ulang. Jika publish dijalankan lagi setelah tahap ini, ulangi signing karena file hasil publish telah diganti.
+
+Prasyarat signing:
+
+- Windows SDK dengan `signtool.exe` x64;
+- `release\nexaplay.pfx` tersedia secara lokal;
+- sertifikat masih valid untuk code signing;
+- koneksi ke timestamp server tersedia.
+
+`nexaplay.pfx` dan password-nya tidak boleh di-commit ke repository.
+
+### 6. Build installer Inno Setup
 
 Compile file:
 
@@ -138,7 +175,33 @@ Output installer default:
 release\output\NexaPlay-Setup.exe
 ```
 
-### 6. Upload installer ke GitHub Release
+### 7. Sign installer final
+
+Jalankan hanya setelah `NexaPlay-Setup.exe` selesai dibuat:
+
+```powershell
+& ".\release\sign-installer.ps1"
+```
+
+Jangan compile ulang Inno Setup setelah tahap ini. Compile ulang akan mengganti installer yang sudah ditandatangani dan signing harus diulang.
+
+### 8. Verifikasi signature
+
+Kedua script signing sudah menjalankan `signtool verify`. Pemeriksaan tambahan dapat dilakukan dengan:
+
+```powershell
+Get-AuthenticodeSignature `
+  ".\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\NexaPlay.exe" |
+  Format-List Status, StatusMessage, SignerCertificate
+
+Get-AuthenticodeSignature `
+  ".\release\output\NexaPlay-Setup.exe" |
+  Format-List Status, StatusMessage, SignerCertificate
+```
+
+Pastikan status signature valid sebelum upload.
+
+### 9. Upload installer ke GitHub Release
 
 Buat release/tag:
 
@@ -158,9 +221,9 @@ Contoh URL asset final:
 https://github.com/adii83/NexaPlay/releases/download/v1.0.1/NexaPlay-Setup.exe
 ```
 
-### 7. Generate manifest final
+### 10. Generate manifest final
 
-Setelah asset release sudah ter-upload, baru generate manifest:
+Setelah installer final yang sudah ditandatangani di-upload, baru generate manifest:
 
 ```powershell
 .\release\Generate-UpdateManifest.ps1 `
@@ -175,7 +238,7 @@ Script ini akan:
 - generate file:
   `release\update-stable.generated.json`
 
-### 8. Commit manifest ke repo
+### 11. Commit manifest ke repo
 
 Salin isi `update-stable.generated.json` ke:
 
@@ -189,7 +252,7 @@ Manifest yang aktif dibaca app adalah:
 https://raw.githubusercontent.com/adii83/NexaPlay/main/NexaPlay/release/update-stable.json
 ```
 
-### 9. Efek ke user
+### 12. Efek ke user
 
 Karena ini rilis publik pertama, app yang baru di-install pada versi `1.0.1` tidak akan melihat update selama manifest juga masih `1.0.1`.
 
@@ -202,27 +265,46 @@ Contoh: user sudah punya `1.0.1`, lalu Anda ingin merilis `1.0.2`.
 - `AppConstants.AppVersion` -> `1.0.2`
 - `NexaPlaySetup.iss` -> `1.0.2`
 
-### 2. Publish app
+### 2. Publish dan verifikasi app
 
 ```powershell
 dotnet publish .\NexaPlay.csproj -c Release -p:Platform=x64 -r win-x64 --self-contained true
 ```
 
-### 3. Build installer
+Verifikasi file wajib di folder publish seperti pada checklist rilis pertama.
+
+### 3. Sign hasil publish
+
+```powershell
+& ".\release\sign-build.ps1"
+```
+
+### 4. Build installer
 
 ```powershell
 & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\release\NexaPlaySetup.iss"
 ```
 
-### 4. Upload installer ke GitHub Release `v1.0.2`
+### 5. Sign dan verifikasi installer
 
-Upload asset:
+```powershell
+& ".\release\sign-installer.ps1"
+
+Get-AuthenticodeSignature ".\release\output\NexaPlay-Setup.exe" |
+  Format-List Status, StatusMessage, SignerCertificate
+```
+
+### 6. Upload installer ke GitHub Release `v1.0.2`
+
+Upload asset final yang sudah ditandatangani:
 
 ```text
 NexaPlay-Setup.exe
 ```
 
-### 5. Generate manifest `1.0.2`
+### 7. Generate manifest `1.0.2`
+
+Hitung manifest hanya dari installer final yang sudah ditandatangani:
 
 ```powershell
 .\release\Generate-UpdateManifest.ps1 `
@@ -231,7 +313,7 @@ NexaPlay-Setup.exe
   -InstallerUrl "https://github.com/adii83/NexaPlay/releases/download/v1.0.2/NexaPlay-Setup.exe"
 ```
 
-### 6. Commit manifest baru ke `main`
+### 8. Commit manifest baru ke `main`
 
 Setelah `update-stable.json` di branch `main` berubah ke `1.0.2`, maka:
 
@@ -250,11 +332,14 @@ Jangan dibalik.
 
 Urutan yang aman:
 
-1. build `setup.exe`
-2. upload `setup.exe` ke GitHub Release
-3. pastikan URL asset benar-benar hidup
-4. generate manifest final
-5. commit `update-stable.json`
+1. publish app
+2. sign hasil publish
+3. build `setup.exe`
+4. sign dan verifikasi `setup.exe`
+5. upload `setup.exe` final ke GitHub Release
+6. pastikan URL asset benar-benar hidup
+7. generate manifest final dari installer yang sudah ditandatangani
+8. commit `update-stable.json`
 
 ## Cara Menahan Dialog Update Sementara
 
@@ -269,6 +354,17 @@ Contoh:
 - manifest = `1.0.1`
 
 Maka dialog update tidak akan muncul.
+
+## Sertifikat Self-Signed dan Unknown Publisher
+
+File `nexaplay.cer` yang berasal dari sertifikat self-signed hanya dipercaya pada komputer yang memasang sertifikat tersebut ke certificate store yang sesuai. Dampaknya:
+
+- komputer yang sudah memercayai sertifikat dapat menampilkan publisher dari signature;
+- komputer lain yang belum memasangnya masih dapat menampilkan `Unknown Publisher` atau peringatan certificate chain;
+- Microsoft SmartScreen tetap dapat menampilkan `Windows protected your PC` karena reputasi file/certificate terpisah dari validitas signature;
+- distribusi publik tanpa instalasi `.cer` manual memerlukan sertifikat code-signing dari CA tepercaya.
+
+Jangan membuat installer yang otomatis memasang sertifikat self-signed ke `Trusted Root Certification Authorities`. Perubahan trust root harus dilakukan secara sadar oleh pemilik komputer atau administrator. Jangan commit `nexaplay.pfx`, file private key, atau password certificate.
 
 ## Troubleshooting
 

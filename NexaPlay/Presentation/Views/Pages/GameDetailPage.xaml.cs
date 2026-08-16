@@ -14,6 +14,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media;
+using NexaPlay.Contracts.Services;
 using NexaPlay.Presentation.Helpers;
 using NexaPlay.Presentation.ViewModels;
 using NexaPlay.Core.Models;
@@ -56,10 +57,12 @@ public sealed partial class GameDetailPage : Page
     private readonly Dictionary<FrameworkElement, Storyboard> _metadataShimmerStoryboards = new();
 
     public GameDetailViewModel ViewModel { get; }
+    private readonly IAppLogService _log;
 
     public GameDetailPage()
     {
         ViewModel = ((App)App.Current).GetRequiredService<GameDetailViewModel>();
+        _log = ((App)App.Current).GetRequiredService<IAppLogService>();
         InitializeComponent();
         ViewModel.ShowLicenseGateDialogAsync = ShowLicenseGateDialogAsync;
     }
@@ -77,9 +80,13 @@ public sealed partial class GameDetailPage : Page
         
         try
         {
-            await AboutGameWebView.EnsureCoreWebView2Async();
+            var environment = await WebView2EnvironmentHelper.GetAsync();
+            await AboutGameWebView.EnsureCoreWebView2Async(environment);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            _log.Log("GameDetailWebView", $"Initialization failed: {ex.GetType().Name}");
+        }
 
         if (!IsSessionActive(session))
             return;

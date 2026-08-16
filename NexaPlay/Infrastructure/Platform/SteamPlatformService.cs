@@ -1,5 +1,6 @@
 using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Models;
+using NexaPlay.Infrastructure.Persistence;
 using Microsoft.Win32;
 using System.Diagnostics;
 using System.Text;
@@ -11,8 +12,13 @@ namespace NexaPlay.Infrastructure.Platform;
 public sealed class SteamPlatformService : ISteamService
 {
     private readonly IAppLogService _log;
+    private readonly ManagedManifestStore _managedManifests;
 
-    public SteamPlatformService(IAppLogService log) => _log = log;
+    public SteamPlatformService(IAppLogService log, ManagedManifestStore managedManifests)
+    {
+        _log = log;
+        _managedManifests = managedManifests;
+    }
 
     public string? GetSteamBasePath()
     {
@@ -156,53 +162,194 @@ public sealed class SteamPlatformService : ISteamService
         catch (Exception ex) { _log.Log("Steam", $"Restart error: {ex.Message}"); }
     }
 
-    public async Task<bool> SetLaunchOptionsAndRestartAsync(int appId, string launchOptions)
+    public async Task<SteamFinalizeResult> FinalizeBypassAsync(int appId, string? launchOptions)
     {
-        if (appId <= 0 || string.IsNullOrWhiteSpace(launchOptions))
-            return false;
+        if (appId <= 0)
+            return new(false, false, "AppID game tidak valid.");
 
         var steamBase = GetSteamBasePath();
         if (string.IsNullOrWhiteSpace(steamBase))
-        {
-            _log.Log("Steam", "SetLaunchOptions gagal: base path Steam tidak ditemukan.");
-            return false;
-        }
+            return new(false, false, "Lokasi Steam tidak ditemukan.");
 
-        var localconfig = FindUserLocalconfig(Path.Combine(steamBase, "userdata"));
-        if (string.IsNullOrWhiteSpace(localconfig) || !File.Exists(localconfig))
-        {
-            _log.Log("Steam", "SetLaunchOptions gagal: localconfig.vdf tidak ditemukan.");
-            return false;
-        }
+        var manifest = FindAppManifest(appId);
+        var warnings = new List<string>();
+        var manifestLocked = false;
+        var launchOptionApplied = false;
+        var steamStarted = false;
 
         try
         {
             KillSteamProcesses();
             await Task.Delay(3000);
 
+            launchOptionApplied = TryApplyLaunchOption(steamBase, appId, launchOptions, warnings);
+            if (manifest is not null)
+                await _managedManifests.RecordAsync(appId);
+            StartSteamProcess(steamBase);
+            steamStarted = true;
+            await WaitForSteamStartupAsync();
+            manifestLocked = TryLockManifest(manifest, appId, warnings);
+        }
+        catch (Exception ex)
+        {
+            warnings.Add("Konfigurasi akhir Steam tidak dapat diselesaikan sepenuhnya.");
+            _log.Log("Steam", $"Finalize bypass error appid={appId} type={ex.GetType().Name}");
+        }
+        finally
+        {
+            if (!steamStarted)
+            {
+                try
+                {
+                    StartSteamProcess(steamBase);
+                }
+                catch (Exception ex)
+                {
+                    warnings.Add("Steam tidak dapat dijalankan kembali secara otomatis.");
+                    _log.Log("Steam", $"Restart after finalize failed type={ex.GetType().Name}");
+                }
+            }
+        }
+
+        return new(manifestLocked, launchOptionApplied, warnings.Count == 0 ? null : string.Join(" ", warnings));
+    }
+
+    public async Task RestoreManagedManifestReadOnlyAsync(CancellationToken ct = default)
+    {
+        var appIds = await _managedManifests.GetAllAsync(ct);
+        _log.Log("Steam", $"Restore manifest loaded managed_appids={appIds.Count}");
+
+        const int maxRecoveryAttempts = 4;
+        for (var attempt = 1; attempt <= maxRecoveryAttempts; attempt++)
+        {
+            foreach (var appId in appIds)
+            {
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    var manifest = FindAppManifest(appId);
+                    if (manifest is null)
+                    {
+                        _log.Log("Steam", $"Restore manifest skipped appid={appId} reason=not-found attempt={attempt}");
+                        continue;
+                    }
+
+                    var locked = File.GetAttributes(manifest).HasFlag(FileAttributes.ReadOnly);
+                    if (!locked)
+                    {
+                        locked = TryLockManifest(manifest, appId, []);
+                        _log.Log("Steam", $"Restore manifest restored appid={appId} readonly={locked} attempt={attempt}");
+                    }
+                    else
+                    {
+                        _log.Log("Steam", $"Restore manifest already-readonly appid={appId} attempt={attempt}");
+                    }
+
+                    if (attempt == maxRecoveryAttempts)
+                    {
+                        locked = File.GetAttributes(manifest).HasFlag(FileAttributes.ReadOnly);
+                        _log.Log("Steam", $"Restore manifest verified appid={appId} readonly={locked} attempt={attempt}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _log.Log("Steam", $"Restore manifest error appid={appId} type={ex.GetType().Name} attempt={attempt}");
+                }
+            }
+
+            if (attempt < maxRecoveryAttempts)
+                await Task.Delay(TimeSpan.FromSeconds(30), ct);
+        }
+    }
+
+    private static async Task WaitForSteamStartupAsync()
+    {
+        const int maxAttempts = 20;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            if (Process.GetProcessesByName("steam").Length > 0)
+            {
+                await Task.Delay(5000);
+                return;
+            }
+
+            await Task.Delay(500);
+        }
+    }
+
+    private bool TryApplyLaunchOption(string steamBase, int appId, string? launchOptions, List<string> warnings)
+    {
+        if (string.IsNullOrWhiteSpace(launchOptions))
+            return false;
+
+        try
+        {
+            var localconfig = FindUserLocalconfig(Path.Combine(steamBase, "userdata"));
+            if (string.IsNullOrWhiteSpace(localconfig) || !File.Exists(localconfig))
+            {
+                warnings.Add("Steam launch option tidak dapat disimpan karena localconfig.vdf tidak ditemukan.");
+                return false;
+            }
+
             var backupPath = $"{localconfig}.backup_{DateTime.Now:yyyyMMdd_HHmmss}";
             File.Copy(localconfig, backupPath, overwrite: true);
-            _log.Log("Steam", $"Backup localconfig dibuat: {backupPath}");
 
             var lines = File.ReadAllLines(localconfig).ToList();
-            var updated = UpsertLaunchOptions(lines, appId.ToString(), launchOptions);
-            if (!updated)
+            if (!UpsertLaunchOptions(lines, appId.ToString(), launchOptions))
             {
-                _log.Log("Steam", "SetLaunchOptions gagal: block apps tidak ditemukan di localconfig.vdf.");
+                warnings.Add("Steam launch option tidak dapat disimpan karena block apps tidak ditemukan.");
                 return false;
             }
 
             File.WriteAllLines(localconfig, lines, Encoding.UTF8);
             _log.Log("Steam", $"LaunchOptions berhasil di-set untuk appid={appId}");
-
-            StartSteamProcess(steamBase);
             return true;
         }
         catch (Exception ex)
         {
-            _log.Log("Steam", $"SetLaunchOptions error: {ex.Message}");
+            warnings.Add("Steam launch option tidak dapat disimpan.");
+            _log.Log("Steam", $"SetLaunchOptions error appid={appId} type={ex.GetType().Name}");
             return false;
         }
+    }
+
+    private bool TryLockManifest(string? manifest, int appId, List<string> warnings)
+    {
+        if (string.IsNullOrWhiteSpace(manifest))
+        {
+            warnings.Add($"appmanifest_{appId}.acf tidak ditemukan di Steam Library.");
+            return false;
+        }
+
+        try
+        {
+            var attributes = File.GetAttributes(manifest);
+            File.SetAttributes(manifest, attributes | FileAttributes.ReadOnly);
+            var locked = File.GetAttributes(manifest).HasFlag(FileAttributes.ReadOnly);
+            if (!locked)
+                warnings.Add("App manifest ditemukan tetapi atribut ReadOnly tidak dapat diverifikasi.");
+            else
+                _log.Log("Steam", $"App manifest berhasil dibuat ReadOnly appid={appId}");
+            return locked;
+        }
+        catch (Exception ex)
+        {
+            warnings.Add("App manifest ditemukan tetapi gagal dibuat ReadOnly.");
+            _log.Log("Steam", $"Lock manifest error appid={appId} type={ex.GetType().Name}");
+            return false;
+        }
+    }
+
+    private string? FindAppManifest(int appId)
+    {
+        foreach (var library in GetLibraryPaths())
+        {
+            var manifest = Path.Combine(library, "steamapps", $"appmanifest_{appId}.acf");
+            if (File.Exists(manifest))
+                return manifest;
+        }
+
+        return null;
     }
 
     // --- Helpers ---

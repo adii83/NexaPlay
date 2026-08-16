@@ -643,6 +643,36 @@ Tanggal: 2026-08-16
 - Build: Source-contract 8/8 dan fallback check lulus; MSBuild `Debug x64` ke `Debug-shell` sukses; startup smoke test bertahan hidup selama 8 detik tanpa memanggil redirect Discord.
 - Next: Uji manual `Buka Discord` dan `Salin Link`, lalu konfirmasi badge pada masing-masing license Standard dan Premium.
 
+Tanggal: 2026-08-16
+- Fokus: Memperbaiki regresi WebView2 dan taskbar icon yang hanya muncul pada installed Release serta mengamankan target signing.
+- Perubahan: Kedua detail page kini memakai shared WebView2 environment di `%LOCALAPPDATA%\NexaPlay\WebView2` dan mencatat tipe kegagalan tanpa data sensitif; `sign-build.ps1` hanya menandatangani `NexaPlay.exe`/`NexaPlay.dll`; panduan release mewajibkan clean `bin`/`obj` dan pemeriksaan embedded icon sebelum signing.
+- Build: Source-contract 10/10 lulus, MSBuild `Debug x64` lulus, clean self-contained Release publish lulus, dan hash render embedded icon `NexaPlay.exe` identik dengan `Assets\Icons\app.ico`. Signing dan Inno Setup tidak dijalankan.
+- Next: Smoke test installed build baru pada Game Detail dan tutorial Bypass, lalu lanjut signing/installer hanya setelah hasil runtime tervalidasi.
+
+Tanggal: 2026-08-16
+- Fokus: Mengunci update Steam setelah seluruh flow bypass 3rd-party selesai.
+- Perubahan: Finalizer Steam kini selalu dipanggil untuk kategori non-Steam termasuk Aktivasi Offline; program menemukan exact `appmanifest_<AppID>.acf` melalui semua path di `libraryfolders.vdf`, menutup Steam sekali, memasang launch option bila tersedia, mempertahankan atribut file lain saat menambahkan `ReadOnly`, memverifikasi hasil, lalu mencoba menjalankan Steam kembali dari `finally`. Kegagalan manifest/launch option tidak membatalkan file bypass yang sudah terpasang dan ditampilkan sebagai peringatan.
+- Build: Source-contract 9/9, fault-isolation check, dan warning-flow check lulus; MSBuild `Debug x64` ke `Debug-manifest-lock` sukses. Steam asli dan manifest pengguna tidak disentuh saat verifikasi.
+- Next: Uji manual satu game tanpa launch option dan satu game dengan `UseShortcut+ExeHint`, lalu cek Properties `appmanifest_<AppID>.acf` dan pastikan Steam kembali berjalan.
+
+Tanggal: 2026-08-16
+- Fokus: Melokalkan peringatan saat flow bypass dijalankan tanpa hak Administrator.
+- Perubahan: Sebelum menambah folder game ke pengecualian Windows Defender, ViewModel memeriksa elevasi proses dan menghentikan flow dengan judul `Perlu Izin Administrator` serta instruksi Indonesia yang ringkas. Raw output PowerShell/Windows tidak lagi diteruskan ke dialog; kegagalan teknis memakai pesan Indonesia generik dan log hanya menyimpan tipe/exit code.
+- Build: Source-contract 5/5 lulus; MSBuild `Debug x64` ke `Debug-admin-warning` sukses.
+- Next: Jalankan NexaPlay tanpa Administrator dan tekan Mulai Bypass untuk memverifikasi dialog, lalu ulangi sebagai Administrator untuk memastikan flow exclusion tetap berjalan.
+
+Tanggal: 2026-08-16
+- Fokus: Mempertahankan ReadOnly app manifest setelah Steam atau Windows dijalankan ulang.
+- Perubahan: Root cause runtime menunjukkan Steam melepas ReadOnly saat startup. Finalizer kini merekam AppID terkelola di `%LOCALAPPDATA%\NexaPlay\managed_appmanifests.json`, menjalankan Steam, menunggu startup secara terbatas, lalu memasang/verifikasi ReadOnly. Saat NexaPlay dibuka, seluruh AppID terkelola diperiksa dan ReadOnly yang hilang dipulihkan tanpa restart Steam; missing/access failure non-fatal dan hanya dicatat aman di log.
+- Build: Source-contract 9/9 dan recovery-registration check lulus; MSBuild `Debug x64` ke `Debug-manifest-recovery` sukses. Tidak ada Steam/manifest tambahan yang diubah oleh verifikasi build.
+- Next: Jalankan bypass ulang satu kali untuk mendaftarkan AppID, lalu uji restart Steam/Windows dan buka NexaPlay kembali untuk memastikan ReadOnly dipulihkan otomatis.
+
+Tanggal: 2026-08-16
+- Fokus: Menstabilkan pemulihan ReadOnly yang masih hilang setelah NexaPlay dibuka ulang.
+- Perubahan: Bukti runtime menunjukkan AppID `1225560` sudah tersimpan tetapi pemulihan startup satu kali tidak menjamin keadaan akhir karena Steam masih dapat mengganti manifest. Recovery kini berjalan non-blocking, memeriksa dan memulihkan ulang secara terbatas sebanyak 4 kali selama 90 detik, serta mencatat loaded/found/already-restored/final verification secara aman. Pesan sukses bypass kini hanya menyatakan proses berhasil dan game siap dijalankan tanpa klaim penguncian update.
+- Build: Source-contract 6/6 lulus; MSBuild `Debug x64` ke `Debug-manifest-stability` sukses. Build tidak menjalankan Steam atau mengubah manifest pengguna.
+- Next: Jalankan build terbaru sebagai Administrator, biarkan NexaPlay terbuka minimal 90 detik, lalu pastikan `appmanifest_1225560.acf` beratribut ReadOnly dan cek log `Restore manifest verified appid=1225560 readonly=True`.
+
 ## 10. Update Log Ringkas
 
 ```text

@@ -30,6 +30,7 @@ public sealed partial class MainWindow : Window
     private readonly IMetadataService _metadataService;
     private readonly IGameCoverIndexService _gameCoverIndexService;
     private readonly IAppUpdateService _appUpdateService;
+    private readonly ISteamService _steamService;
     private readonly IAppLogService _appLog;
     private readonly HomeViewModel _homeViewModel;
     private readonly GamesViewModel _gamesViewModel;
@@ -47,6 +48,7 @@ public sealed partial class MainWindow : Window
         IMetadataService metadataService,
         IGameCoverIndexService gameCoverIndexService,
         IAppUpdateService appUpdateService,
+        ISteamService steamService,
         IAppLogService appLog,
         HomeViewModel homeViewModel,
         GamesViewModel gamesViewModel)
@@ -57,6 +59,7 @@ public sealed partial class MainWindow : Window
         _metadataService = metadataService;
         _gameCoverIndexService = gameCoverIndexService;
         _appUpdateService = appUpdateService;
+        _steamService = steamService;
         _appLog = appLog;
         _homeViewModel = homeViewModel;
         _gamesViewModel = gamesViewModel;
@@ -177,6 +180,7 @@ public sealed partial class MainWindow : Window
             {
                 LogLicenseFlow($"Navigating to Home after startup license flow ({source})");
                 NavigateTo(NavHome);
+                _ = RestoreManagedManifestsAsync();
                 await WarmupMetadataStartupAsync();
                 await WaitForHomeReadyAsync();
                 await PromptForStartupUpdateAsync();
@@ -186,6 +190,18 @@ public sealed partial class MainWindow : Window
                 LogLicenseFlow($"Startup navigation/warmup exception from {source}: {ex}");
             }
         });
+    }
+
+    private async System.Threading.Tasks.Task RestoreManagedManifestsAsync()
+    {
+        try
+        {
+            await _steamService.RestoreManagedManifestReadOnlyAsync();
+        }
+        catch (Exception ex)
+        {
+            _appLog.Log("Steam", $"Startup manifest restore failed type={ex.GetType().Name}");
+        }
     }
 
     private async System.Threading.Tasks.Task WarmupMetadataStartupAsync()
