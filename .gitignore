@@ -14,6 +14,12 @@ gamehub/
 **/ARM64/
 **/Debug/
 **/Release/
+**/publish/
+**/artifacts/
+**/AppPackages/
+**/BundleArtifacts/
+!NexaPlay/release/
+!NexaPlay/release/**
 
 # User-specific files
 *.user
@@ -26,8 +32,11 @@ gamehub/
 *.tmp
 *.cache
 crash.txt
-*.txt
-*.exe
+nexaplay_crash_context.log
+nexaplay_run.log
+readgz.exe
+recovered_edits.md
+NexaPlay/scratch_steam_html.txt
 
 # NuGet
 *.nupkg
@@ -40,11 +49,26 @@ TestResults/
 *.coverage
 *.coveragexml
 
-# Publish artifacts
-publish/
-artifacts/
-AppPackages/
-BundleArtifacts/
+# Installer / release artifacts that should not go to repo
+*.msi
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.cer
+release/output/
+NexaPlay/release/output/
+NexaPlay/release/update-stable.generated.json
+NexaPlay/release/nexaplay.pfx
+
+# Personal AI/orchestration tools and runtime state
+.claude/
+.claude-flow/
+.swarm/
+ruvector.db
+ruvector.db-*
+*.db-shm
+*.db-wal
 
 .env
 agents/rules/antigravity-rtk-rules.md
