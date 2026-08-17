@@ -22,6 +22,8 @@ public static class AppConstants
     public const string LibraryCapsuleIndexUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/library_capsule.json";
     public const string LibraryCapsuleIndexGzipUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/library_capsule.json.gz";
     public const string YoutubeTutorialUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/youtube.json";
+    public const string NewGamesUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/new_games.json";
+    public const string R2MetadataBaseUrl = "https://meta.nexaplaymetadata.online/Metadata";
 
     // Online fix base URL
     public const string OnlineFixBaseUrl = "https://files.luatools.work/OnlineFix1/";
@@ -58,5 +60,8 @@ public static class AppConstants
     public const string LibraryCapsuleIndexGzipCacheFileName = "library_capsule.json.gz";
     public const string YoutubeTutorialCacheFileName = "youtube_tutorial.json";
     public const string YoutubeTutorialEtagFileName = "youtube_tutorial.etag";
+    public const string NewGamesCacheFileName = "new_games.json";
+    public const string NewGamesEtagFileName = "new_games.etag";
+    public const string NewGamesCatalogFileName = "new_games_catalog.json";
     public const string AppUpdateDownloadsFolderName = "updates";
 }

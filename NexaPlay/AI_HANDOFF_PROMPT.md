@@ -673,6 +673,42 @@ Tanggal: 2026-08-16
 - Build: Source-contract 6/6 lulus; MSBuild `Debug x64` ke `Debug-manifest-stability` sukses. Build tidak menjalankan Steam atau mengubah manifest pengguna.
 - Next: Jalankan build terbaru sebagai Administrator, biarkan NexaPlay terbuka minimal 90 detik, lalu pastikan `appmanifest_1225560.acf` beratribut ReadOnly dan cek log `Restore manifest verified appid=1225560 readonly=True`.
 
+Tanggal: 17 Agustus 2026
+- Fokus: Fast Catalog Refresh — lazy R2 library_capsule fallback, catalog hot-reload, fast Clear Cache, deterministic GZIP generator
+- Perubahan:
+  - Shared `IListingCoverResolver` untuk Games dan Home Popular: prioritas override → cover index → runtime capsule → lazy R2 (bounded 4 concurrency, 512-entry session cache) → header → NO CONTENT. Bypass Games, Bypass Detail, dan Library **tidak disentuh**.
+  - `CoverImageCacheService`: per-destination single-flight via `ConcurrentDictionary<string, Lazy<Task>>`, 60s internal timeout, atomic `File.Move` dengan GUID temp files.
+  - `ICatalogRefreshState` singleton lock-free generation counter. Home/Games `ReloadCatalogAsync()` via serialized `CatalogLoadCoordinator` (SemaphoreSlim(1,1), generation capture under gate).
+  - Games filter cache: schema-1 `CatalogCacheEnvelope<T>` dengan source revision (file name+length+UTC ticks), atomic write.
+  - `GameCoverIndexService.RefreshAsync()`: validated atomic publication via `GameCoverIndexFile.PublishValidatedAsync` — corrupt candidate rejected before replacing valid source.
+  - Settings Load Games: override refresh → cover index refresh → dynamic source rebuild → popular/new-fix refresh → bypass refresh → generation advance → resolver clear → Home/Games explicit reload.
+  - Clear Cache: MetadataService retains source catalogs (only derived files deleted); CoverImageCacheService dan SteamStoreService menggunakan rename-to-tombstone + background delete untuk kecepatan instan; generation advance + resolver + ViewModel invalidation.
+  - Generator `collect_library_capsule.py`: deterministic GZIP output dengan `mtime=0`, readback verification.
+- Build: Debug x64 `Build succeeded. 0 Warning(s) 0 Error(s)`. Self-check 6 cover priority scenarios + zero hot-path allocations + generation monotonic + cache revision + safe cover publication + serialized reload.
+- Next: Smoke test runtime — Home, Games, Settings Load Games/Clear Cache, navigasi sidebar. Merge branch ke main setelah review.
+
+Tanggal: 17 Agustus 2026
+- Fokus: Additive New Games Catalog dari AppID tipis ke metadata R2.
+- Perubahan:
+  - `new_games.json` di repo Nexaplay-Metadata-Override menjadi daftar AppID tambahan yang otoritatif; AppID yang sudah ada pada katalog Steam utama tidak di-fetch dan tidak ditimpa.
+  - Metadata AppID yang belum ada dimaterialisasi dari R2 hanya ketika pengguna menekan Load Games, dengan maksimum 4 request bersamaan dan timeout internal 30 detik. Startup, Home, dan Games tetap local-first tanpa loop R2.
+  - Hasil ringan dipublikasikan atomik ke `new_games_catalog.json`; file daftar, ETag, dan snapshot lokal bertahan saat Clear Cache. Valid daftar kosong menghapus seluruh tambahan, sedangkan daftar remote gagal/rusak mempertahankan last-known-good.
+  - Hierarki indeks: primary Steam → additive snapshot → `override_data.json` → protection/status → `nexaplay_override.json`; R2 `price_overview.final` tidak dipakai sebagai `PriceNormalized` rupiah.
+  - Load Games melanjutkan generation advance, resolver clear, dan serialized Home/Games reload tanpa restart. Bypass Games, Bypass Detail, dan Library tidak disentuh.
+- Verifikasi: Self-check parser/precedence/removal/price/atomic publication lulus; Debug x64 MSBuild dan scope guard dijalankan pada gate final.
+- Next: Smoke test runtime endpoint nyata untuk AppID 3751950 dan 3768760, pastikan muncul setelah Load Games tanpa Clear Cache/Clear Data/restart, lalu verifikasi persistensi lokal dan penghapusan otoritatif.
+
+Tanggal: 17 Agustus 2026
+- Fokus: Runtime smoke final Fast Catalog Refresh dan Additive New Games Catalog.
+- Verifikasi:
+  - Startup/Home, Games grid+search, Settings Load Games, hot reload, Clear Cache, Bypass listing, dan Library listing berhasil; tidak ada aksi destruktif pada Bypass/Library dan Clear Data tidak dijalankan.
+  - GitHub raw mengembalikan HTTP 429. Tanpa last-known-good, Load Games selesai aman dengan 0 tambahan; setelah daftar valid yang sama disediakan lokal, Load Games mematerialisasi 1 AppID baru dari R2 karena AppID kedua sudah ada di katalog primer.
+  - AppID `3751950` langsung dapat dicari tanpa restart sebagai `Assassin's Creed Black Flag Resynced`, membuktikan hot reload dan precedence `override_data.json`; AppID primer `3768760` tetap `007 First Light` tanpa duplikasi/replace.
+  - Clear Cache mempertahankan `new_games.json` dan `new_games_catalog.json`. Setelah restart tanpa menekan Load Games lagi, AppID `3751950` tetap dapat dicari.
+  - Smoke awal menemukan cover index dianggap wajib: setelah Clear Cache dan remote 429, startup overlay tertahan oleh `IOException`. `GameCoverIndexService` kini memperlakukan index sebagai lapisan opsional; regression self-check HTTP 429 membuktikan warmup selesai dan lookup mengembalikan null agar resolver lanjut ke runtime/R2/header/No Content. Restart ulang mencapai Home, log mencatat fallback tanpa startup exception, dan proses tutup normal dengan exit code 0.
+- Build: Self-check lengkap lulus; Debug x64 `Build succeeded` dengan `0 Warning(s), 0 Error(s)`; `git diff --check` dan scope guard Bypass/Library bersih.
+- Next: Integrasikan commit terverifikasi ke `main`, ulang self-check + Debug x64 dari checkout utama, lalu lakukan testing visual langsung dari project utama.
+
 ## 10. Update Log Ringkas
 
 ```text

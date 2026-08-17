@@ -58,12 +58,14 @@ public partial class App : Application
         services.AddSingleton<IAppUpdateService, AppUpdateService>();
         services.AddSingleton<IMetadataService, MetadataService>();
         services.AddSingleton<IGameCoverIndexService, GameCoverIndexService>();
+        services.AddSingleton<ICatalogRefreshState, CatalogRefreshState>();
         services.AddSingleton<ICoverImageCacheService, CoverImageCacheService>();
         services.AddSingleton<IBypassGamesDataService, BypassGamesDataService>();
         services.AddSingleton<IOnlineFixService, OnlineFixService>();
         services.AddSingleton<IAddGameService, AddGameService>();
         services.AddSingleton<ILicenseService, LicenseService>();
         services.AddSingleton<ISteamStoreService, SteamStoreService>();
+        services.AddSingleton<IListingCoverResolver, ListingCoverResolver>();
         services.AddSingleton<IAccountReportService, TelegramAccountReportService>();
 
         // ── Navigation ──────────────────────────────────────────────

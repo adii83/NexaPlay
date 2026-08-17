@@ -12,7 +12,6 @@ namespace NexaPlay.Infrastructure.Services;
 public sealed partial class SteamStoreService : ISteamStoreService
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromDays(7);
-    private const string R2MetadataBaseUrl = "https://meta.nexaplaymetadata.online/Metadata";
 
     private readonly IAppLogService _log;
     private readonly INexaPlayOverrideService _nexaPlayOverride;
@@ -80,7 +79,7 @@ public sealed partial class SteamStoreService : ISteamStoreService
     {
         try
         {
-            var url = $"{R2MetadataBaseUrl}/{appId}.json";
+            var url = $"{AppConstants.R2MetadataBaseUrl}/{appId}.json";
             using var response = await _http.GetAsync(url, ct);
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -320,4 +319,25 @@ public sealed partial class SteamStoreService : ISteamStoreService
     }
 
     private string CacheFilePath(int appId) => Path.Combine(_cacheDir, $"{appId}.json");
+
+    public Task ClearCacheAsync()
+    {
+        try
+        {
+            if (Directory.Exists(_cacheDir))
+            {
+                var tombstone = $"{_cacheDir}.tombstone.{Guid.NewGuid():N}";
+                Directory.Move(_cacheDir, tombstone);
+                _ = Task.Run(() => { try { Directory.Delete(tombstone, recursive: true); } catch { } });
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.Log("StoreService", $"Clear detail cache detach failed: {ex.Message}");
+        }
+
+        Directory.CreateDirectory(_cacheDir);
+        _log.Log("StoreService", "Detail cache cleared");
+        return Task.CompletedTask;
+    }
 }

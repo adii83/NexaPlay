@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\NexaPlay\Core\Helpers\ListingCoverPriority.cs" Link="ListingCoverPriority.cs" />
+    <Compile Include="..\NexaPlay\Core\Helpers\CatalogCacheStamp.cs" Link="CatalogCacheStamp.cs" />
+    <Compile Include="..\NexaPlay\Core\Helpers\CatalogLoadCoordinator.cs" Link="CatalogLoadCoordinator.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\GameCoverIndexFile.cs" Link="GameCoverIndexFile.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\GameCoverIndexService.cs" Link="GameCoverIndexService.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\IAppLogService.cs" Link="IAppLogService.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\IGameCoverIndexService.cs" Link="IGameCoverIndexService.cs" />
+    <Compile Include="..\NexaPlay\Core\Constants\AppConstants.cs" Link="AppConstants.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\ICatalogRefreshState.cs" Link="ICatalogRefreshState.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\CatalogRefreshState.cs" Link="CatalogRefreshState.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\NewGamesCatalogModels.cs" Link="NewGamesCatalogModels.cs" />
+    <Compile Include="..\NexaPlay\Core\Helpers\NewGamesCatalog.cs" Link="NewGamesCatalog.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\NewGamesCatalogFile.cs" Link="NewGamesCatalogFile.cs" />
+  </ItemGroup>
+</Project>

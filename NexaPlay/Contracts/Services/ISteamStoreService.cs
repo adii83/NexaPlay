@@ -22,4 +22,7 @@ public interface ISteamStoreService
 
     /// <summary>Removes the cached detail file for the given appId.</summary>
     Task InvalidateCacheAsync(int appId);
+
+    /// <summary>Clears all cached detail files (fast detach, background delete).</summary>
+    Task ClearCacheAsync();
 }

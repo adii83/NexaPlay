@@ -22,15 +22,21 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
     private Dictionary<int, string>? _coverIndex;
 
     public GameCoverIndexService(IAppLogService log)
+        : this(
+            log,
+            CreateHttpClient(),
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                AppConstants.AppDataFolder,
+                "runtime_catalog_sources"))
+    {
+    }
+
+    internal GameCoverIndexService(IAppLogService log, HttpClient http, string catalogDir)
     {
         _log = log;
-        _http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("NexaPlay/1.0");
-
-        _catalogDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppConstants.AppDataFolder,
-            "runtime_catalog_sources");
+        _http = http;
+        _catalogDir = catalogDir;
 
         _gzipPath = Path.Combine(_catalogDir, AppConstants.LibraryCapsuleIndexGzipCacheFileName);
         _jsonPath = Path.Combine(_catalogDir, AppConstants.LibraryCapsuleIndexCacheFileName);
@@ -47,6 +53,35 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
     }
 
     public Task WarmupAsync(CancellationToken ct = default) => EnsureLoadedAsync(ct);
+
+    public async Task RefreshAsync(CancellationToken ct = default)
+    {
+        await _loadLock.WaitAsync(ct);
+        try
+        {
+            var previous = _coverIndex;
+            await SyncSourcesAsync(force: true, ct);
+            if (!HasUsableLocalSource())
+            {
+                _coverIndex = previous ?? [];
+                return;
+            }
+
+            try
+            {
+                _coverIndex = await BuildIndexAsync(ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _log.Log("CoverIndex", $"Cover index refresh failed; keeping the previous index: {ex.Message}");
+                _coverIndex = previous ?? [];
+            }
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
+    }
 
     public Task ClearCacheAsync()
     {
@@ -78,15 +113,32 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
                 await SyncSourcesAsync(force: false, ct);
             }
 
+            if (!HasUsableLocalSource())
+            {
+                _log.Log("CoverIndex", "Library capsule index unavailable; using later cover fallbacks");
+                _coverIndex = [];
+                return;
+            }
+
             try
             {
                 _coverIndex = await BuildIndexAsync(ct);
             }
-            catch (JsonException ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _log.Log("CoverIndex", $"Local cover index parse failed, forcing refresh: {ex.Message}");
                 await SyncSourcesAsync(force: true, ct);
-                _coverIndex = await BuildIndexAsync(ct);
+                try
+                {
+                    _coverIndex = HasUsableLocalSource()
+                        ? await BuildIndexAsync(ct)
+                        : [];
+                }
+                catch (Exception retryEx) when (retryEx is not OperationCanceledException)
+                {
+                    _log.Log("CoverIndex", $"Cover index unavailable after refresh; using later cover fallbacks: {retryEx.Message}");
+                    _coverIndex = [];
+                }
             }
         }
         finally
@@ -117,7 +169,7 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
 
             if (!jsonAvailable)
             {
-                throw new IOException("Library capsule cover index unavailable.");
+                _log.Log("CoverIndex", "Library capsule cover index unavailable; continuing without index");
             }
         }
     }
@@ -135,7 +187,7 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
                     return fromGzip;
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _log.Log("CoverIndex", $"Gzip cover index parse failed: {ex.Message}");
             }
@@ -201,6 +253,13 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
         return null;
     }
 
+    private static HttpClient CreateHttpClient()
+    {
+        var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("NexaPlay/1.0");
+        return http;
+    }
+
     private async Task<bool> DownloadIfNeededSafeAsync(
         string url,
         string outputPath,
@@ -212,7 +271,7 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
         {
             return await DownloadIfNeededAsync(url, outputPath, force, ct, sourceName);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _log.Log("CoverIndex", $"Download failed for {sourceName}: {ex.Message}");
             return IsFileUsable(outputPath);
@@ -258,11 +317,15 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
                 throw new IOException($"Downloaded empty file for {sourceName}");
             }
 
-            File.Copy(tempPath, outputPath, overwrite: true);
+            await GameCoverIndexFile.PublishValidatedAsync(
+                tempPath,
+                outputPath,
+                outputPath.EndsWith(".gz", StringComparison.OrdinalIgnoreCase),
+                ct);
             _log.Log("CoverIndex", $"Download ok {sourceName}: {length} bytes");
             return true;
         }
-        catch
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             if (!IsFileUsable(outputPath))
             {

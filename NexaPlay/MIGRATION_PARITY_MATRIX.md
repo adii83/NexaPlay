@@ -32,13 +32,14 @@ Update status setiap selesai implementasi/validasi.
 |---|---|---|---|
 | Popular games feed | `HomeDataService` raw json cache | `HomeViewModel` ada, feed perlu wiring penuh | Partial |
 | New fix games feed | `HomeDataService` | Belum wiring penuh UI | Missing |
-| Cache TTL logic | Ada | Belum dipastikan parity | Missing |
+| Cache TTL logic | Ada | Catalog source revision + schema-1 envelope validation + generation-based invalidation | **Done** |
 
 ## D. Games Catalog
 
 | Area | GameHub (lama) | NexaPlay (baru) | Status |
 |---|---|---|---|
 | Metadata source | steam metadata archive + override | `IMetadataService`/`MetadataService` — field lengkap + override pipeline | **Done** |
+| Additive new-games source | N/A | `new_games.json` authoritative AppID list → missing primary metadata from R2 during Load Games → atomic local `new_games_catalog.json`; existing overrides remain later | **Done** |
 | Override data pipeline | `OverrideDataService` global + user | `ApplyOverrideDataAsync` (global + user, semua field) | **Done** |
 | Denuvo auto-flag | fix_games + steam_games list | `ApplyAutoDenuvoFromListsAsync` + override dapat reset | **Done** |
 | PREMIUM threshold | `price_normalized >= 130000` | `GameEntry.IsPremium` — parity exact | **Done** |
@@ -46,6 +47,9 @@ Update status setiap selesai implementasi/validasi.
 | Virtualized grid/list | Web rendering | `GridView` + `ItemsWrapGrid` virtualized | **Done** |
 | Game detail page | Modal popup web | `GameDetailPage` native — hero, screenshot strip, sidebar, aksi | **Done** |
 | Rich detail on-demand | Steam API via JS | `ISteamStoreService` + `SteamStoreService` — cache 7 hari per-appid | **Done** |
+| Cover priority pipeline | Steam CDN images | `IListingCoverResolver`: override → cover index → runtime capsule → lazy R2 → header (Games + Home Popular only) | **Done** |
+| Load Games hot-reload | Page reload | `ReloadCatalogAsync` via serialized `CatalogLoadCoordinator` — no app restart | **Done** |
+| Clear Cache vs Clear Data | N/A | Clear Cache: rename-to-tombstone (instant), sources retained. Clear Data: factory reset | **Done** |
 | Pagination/infinite strategy | Web-side logic | Load more via `LoadMorePopularGamesCommand` | Partial |
 
 ## E. Library

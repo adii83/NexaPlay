@@ -1,5 +1,6 @@
 using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Constants;
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -11,10 +12,13 @@ namespace NexaPlay.Infrastructure.Services;
 /// </summary>
 public sealed class CoverImageCacheService : ICoverImageCacheService
 {
+    private static readonly TimeSpan DownloadTimeout = TimeSpan.FromSeconds(60);
+
     private readonly IAppLogService _log;
     private readonly HttpClient _http;
     private readonly string _cacheDir;
     private readonly SemaphoreSlim _downloadGate = new(6, 6);
+    private readonly ConcurrentDictionary<string, Lazy<Task<string?>>> _downloads = new(StringComparer.OrdinalIgnoreCase);
 
     public CoverImageCacheService(IAppLogService log)
     {
@@ -33,90 +37,125 @@ public sealed class CoverImageCacheService : ICoverImageCacheService
 
     public async Task<string?> GetCachedOrFetchAsync(int appId, string? sourceUrl, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(sourceUrl))
-        {
+        if (string.IsNullOrWhiteSpace(sourceUrl) || !TryBuildRemoteUri(sourceUrl, out var remoteUri))
             return sourceUrl;
-        }
-
-        if (!TryBuildRemoteUri(sourceUrl, out var remoteUri))
-        {
-            return sourceUrl;
-        }
 
         var localPath = BuildCachePath(appId, remoteUri);
-        if (File.Exists(localPath) && new FileInfo(localPath).Length > 0)
-        {
+        if (IsUsable(localPath))
             return localPath;
-        }
 
-        await _downloadGate.WaitAsync(ct);
+        var shared = _downloads.GetOrAdd(
+            localPath,
+            _ => new Lazy<Task<string?>>(
+                () => DownloadAndReleaseAsync(appId, sourceUrl, remoteUri, localPath),
+                LazyThreadSafetyMode.ExecutionAndPublication));
+
+        return await shared.Value.WaitAsync(ct);
+    }
+
+    private async Task<string?> DownloadAndReleaseAsync(int appId, string sourceUrl, Uri remoteUri, string localPath)
+    {
         try
         {
-            if (File.Exists(localPath) && new FileInfo(localPath).Length > 0)
-            {
+            return await DownloadAsync(appId, sourceUrl, remoteUri, localPath);
+        }
+        finally
+        {
+            _downloads.TryRemove(localPath, out _);
+        }
+    }
+
+    private async Task<string?> DownloadAsync(int appId, string sourceUrl, Uri remoteUri, string localPath)
+    {
+        using var timeout = new CancellationTokenSource(DownloadTimeout);
+        var gateEntered = false;
+        try
+        {
+            await _downloadGate.WaitAsync(timeout.Token);
+            gateEntered = true;
+
+            if (IsUsable(localPath))
                 return localPath;
-            }
 
             Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
-            var tempPath = localPath + ".tmp";
+            var tempPath = $"{localPath}.{Guid.NewGuid():N}.tmp";
 
             try
             {
-                using var response = await _http.GetAsync(remoteUri, HttpCompletionOption.ResponseHeadersRead, ct);
+                using var response = await _http.GetAsync(remoteUri, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
                 response.EnsureSuccessStatusCode();
 
-                await using var source = await response.Content.ReadAsStreamAsync(ct);
-                await using (var target = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                await using var source = await response.Content.ReadAsStreamAsync(timeout.Token);
+                await using (var target = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {
-                    await source.CopyToAsync(target, ct);
-                    await target.FlushAsync(ct);
+                    await source.CopyToAsync(target, timeout.Token);
+                    await target.FlushAsync(timeout.Token);
                 }
 
-                if (!File.Exists(tempPath) || new FileInfo(tempPath).Length <= 0)
-                {
+                if (!IsUsable(tempPath))
                     return sourceUrl;
-                }
 
-                File.Copy(tempPath, localPath, overwrite: true);
+                File.Move(tempPath, localPath, overwrite: true);
                 return localPath;
-            }
-            catch (Exception ex)
-            {
-                _log.Log("CoverCache", $"Cover download failed appId={appId}: {ex.Message}");
-                return sourceUrl;
             }
             finally
             {
                 try
                 {
                     if (File.Exists(tempPath))
-                    {
                         File.Delete(tempPath);
-                    }
                 }
                 catch
                 {
                 }
             }
         }
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        {
+            _log.Log("CoverCache", $"Cover download timed out appId={appId}");
+            return sourceUrl;
+        }
+        catch (Exception ex)
+        {
+            _log.Log("CoverCache", $"Cover download failed appId={appId}: {ex.Message}");
+            return sourceUrl;
+        }
         finally
         {
-            _downloadGate.Release();
+            if (gateEntered)
+                _downloadGate.Release();
+        }
+    }
+
+    private static bool IsUsable(string path)
+    {
+        try
+        {
+            return File.Exists(path) && new FileInfo(path).Length > 0;
+        }
+        catch
+        {
+            return false;
         }
     }
 
     public Task ClearCacheAsync()
     {
+        _downloads.Clear();
+
         try
         {
             if (Directory.Exists(_cacheDir))
             {
-                Directory.Delete(_cacheDir, recursive: true);
+                var tombstone = $"{_cacheDir}.tombstone.{Guid.NewGuid():N}";
+                Directory.Move(_cacheDir, tombstone);
+                // ponytail: fire-and-forget delete; upgrade to hosted background service if needed
+                _ = Task.Run(() => { try { Directory.Delete(tombstone, recursive: true); } catch { } });
             }
         }
         catch (Exception ex)
         {
-            _log.Log("CoverCache", $"Clear cache failed: {ex.Message}");
+            _log.Log("CoverCache", $"Clear cache detach failed: {ex.Message}");
         }
 
         Directory.CreateDirectory(_cacheDir);

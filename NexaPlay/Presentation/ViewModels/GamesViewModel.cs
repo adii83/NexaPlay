@@ -13,9 +13,9 @@ namespace NexaPlay.Presentation.ViewModels;
 public sealed partial class GamesViewModel : ObservableObject
 {
     private readonly IMetadataService _metadata;
-    private readonly IGameCoverIndexService _gameCoverIndex;
+    private readonly IListingCoverResolver _listingCoverResolver;
     private readonly ICoverImageCacheService _coverImageCache;
-    private readonly INexaPlayOverrideService _nexaPlayOverride;
+    private readonly ICatalogRefreshState _catalogRefreshState;
     private const int RowsPerPage = 10;
     private const int MinimumSearchLength = 3;
 
@@ -61,26 +61,27 @@ public sealed partial class GamesViewModel : ObservableObject
     private CancellationTokenSource? _applyCts;
     private CancellationTokenSource? _prefetchCts;
     private static readonly SemaphoreSlim _prefetchGate = new SemaphoreSlim(4, 4);
-    private readonly SemaphoreSlim _loadGate = new(1, 1);
-    private Task? _loadTask;
-    private readonly string _gamesIndexCachePath = Path.Combine(
+    private readonly CatalogLoadCoordinator _catalogLoad = new();
+    private const int FilterIndexCacheSchema = 1;
+    private readonly string _catalogSourceDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "NexaPlay",
-        "runtime_catalog_sources",
-        "games_filter_index_cache_v3.json");
+        "runtime_catalog_sources");
+    private readonly string _gamesIndexCachePath;
 
     public bool IsEmpty => !IsLoading && Games.Count == 0;
 
     public GamesViewModel(
         IMetadataService metadata,
-        IGameCoverIndexService gameCoverIndex,
+        IListingCoverResolver listingCoverResolver,
         ICoverImageCacheService coverImageCache,
-        INexaPlayOverrideService nexaPlayOverride)
+        ICatalogRefreshState catalogRefreshState)
     {
         _metadata = metadata;
-        _gameCoverIndex = gameCoverIndex;
+        _listingCoverResolver = listingCoverResolver;
         _coverImageCache = coverImageCache;
-        _nexaPlayOverride = nexaPlayOverride;
+        _catalogRefreshState = catalogRefreshState;
+        _gamesIndexCachePath = Path.Combine(_catalogSourceDirectory, "games_filter_index_cache_v3.json");
 
         // Default values for partial properties
         Games = new ObservableCollection<FixEntry>();
@@ -99,42 +100,23 @@ public sealed partial class GamesViewModel : ObservableObject
         };
     }
 
-    public async Task LoadAsync()
-    {
-        Task pending;
-        await _loadGate.WaitAsync();
-        try
-        {
-            _loadTask ??= LoadCoreAsync();
-            pending = _loadTask;
-        }
-        finally
-        {
-            _loadGate.Release();
-        }
+    public Task LoadAsync() => LoadAsync(forceReload: false);
 
-        try
-        {
-            await pending;
-        }
-        finally
-        {
-            await _loadGate.WaitAsync();
-            try
-            {
-                if (ReferenceEquals(_loadTask, pending))
-                {
-                    _loadTask = null;
-                }
-            }
-            finally
-            {
-                _loadGate.Release();
-            }
-        }
+    public Task ReloadCatalogAsync() => LoadAsync(forceReload: true);
+
+    public void InvalidateDerivedCache()
+    {
+        InvalidateCatalogState();
+        try { File.Delete(_gamesIndexCachePath); } catch { }
     }
 
-    private async Task LoadCoreAsync()
+    private Task LoadAsync(bool forceReload) => _catalogLoad.RunAsync(
+        () => _catalogRefreshState.Generation,
+        forceReload,
+        InvalidateCatalogState,
+        LoadCoreAsync);
+
+    private async Task LoadCoreAsync(long generation)
     {
         IsLoading = true;
         try
@@ -142,14 +124,24 @@ public sealed partial class GamesViewModel : ObservableObject
             _allFilterIndex = await LoadOrBuildFilterIndexAsync();
 
             TotalCount = _allFilterIndex.Count;
-            await ApplyFiltersAndPaginationAsync();
+            await ApplyFiltersAndPaginationAsync(resetPage: false);
         }
         finally { IsLoading = false; }
     }
 
+    private void InvalidateCatalogState()
+    {
+        _applyCts?.Cancel();
+        _prefetchCts?.Cancel();
+        _allFilterIndex = Array.Empty<GameFilterIndex>();
+        _filteredAppIds.Clear();
+        _cardCache.Clear();
+    }
+
     private async Task<IReadOnlyList<GameFilterIndex>> LoadOrBuildFilterIndexAsync()
     {
-        var cached = await TryReadFilterIndexCacheAsync();
+        var sourceRevision = GetCatalogSourceRevision();
+        var cached = await TryReadFilterIndexCacheAsync(sourceRevision);
         if (cached.Count > 0)
         {
             return cached;
@@ -166,7 +158,11 @@ public sealed partial class GamesViewModel : ObservableObject
                 ParseGenreTokens(game.Genre)))
             .ToList();
 
-        await TryWriteFilterIndexCacheAsync(built);
+        if (string.Equals(sourceRevision, GetCatalogSourceRevision(), StringComparison.Ordinal))
+        {
+            await TryWriteFilterIndexCacheAsync(built, sourceRevision);
+        }
+
         return built;
     }
 
@@ -504,15 +500,11 @@ public sealed partial class GamesViewModel : ObservableObject
             return card;
         }
 
-        var overrideCover = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId, ct))?.LibraryCapsule;
-        var indexedCover = await _gameCoverIndex.GetLibraryCapsuleAsync(appId, ct);
-        var selectedCover = FirstNonEmpty(
-            overrideCover,
-            indexedCover,
-            metadata.PopularCoverImageUrl,
-            metadata.HeaderImageUrl,
+        var selectedCover = await _listingCoverResolver.ResolveAsync(
+            appId,
+            metadata.LibraryCapsuleUrl,
             metadata.RawHeaderImageUrl,
-            null);
+            ct);
 
         if (string.IsNullOrWhiteSpace(selectedCover))
         {
@@ -716,7 +708,40 @@ public sealed partial class GamesViewModel : ObservableObject
         bool HasDenuvo,
         string[] GenreTokens);
 
-    private async Task<IReadOnlyList<GameFilterIndex>> TryReadFilterIndexCacheAsync()
+    private string GetCatalogSourceRevision()
+    {
+        string[] sourceNames =
+        [
+            "fix_games.json",
+            "new_fix_games.json",
+            "new_games_catalog.json",
+            "nexaplay_override.json",
+            "override_data.json",
+            "steam_data.json",
+            "steam_data.json.gz",
+            "steam_games.json"
+        ];
+        var stamps = new List<CatalogSourceStamp>(sourceNames.Length);
+
+        foreach (var sourceName in sourceNames)
+        {
+            try
+            {
+                var file = new FileInfo(Path.Combine(_catalogSourceDirectory, sourceName));
+                if (file.Exists)
+                {
+                    stamps.Add(new CatalogSourceStamp(file.Name, file.Length, file.LastWriteTimeUtc.Ticks));
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        return CatalogCacheStamp.CreateRevision(stamps.ToArray());
+    }
+
+    private async Task<IReadOnlyList<GameFilterIndex>> TryReadFilterIndexCacheAsync(string sourceRevision)
     {
         try
         {
@@ -726,13 +751,14 @@ public sealed partial class GamesViewModel : ObservableObject
             }
 
             await using var fs = File.OpenRead(_gamesIndexCachePath);
-            var cached = await JsonSerializer.DeserializeAsync<List<GameFilterIndexCacheItem>>(fs);
-            if (cached is null || cached.Count == 0)
+            var cached = await JsonSerializer.DeserializeAsync<CatalogCacheEnvelope<List<GameFilterIndexCacheItem>>>(fs);
+            if (!CatalogCacheStamp.IsCurrent(cached, FilterIndexCacheSchema, sourceRevision) ||
+                cached!.Items.Count == 0)
             {
                 return Array.Empty<GameFilterIndex>();
             }
 
-            return cached.Select(x => new GameFilterIndex(
+            return cached.Items.Select(x => new GameFilterIndex(
                 x.AppId,
                 x.NameLower ?? string.Empty,
                 x.PriceNormalized,
@@ -747,17 +773,13 @@ public sealed partial class GamesViewModel : ObservableObject
         }
     }
 
-    private async Task TryWriteFilterIndexCacheAsync(IReadOnlyList<GameFilterIndex> source)
+    private async Task TryWriteFilterIndexCacheAsync(IReadOnlyList<GameFilterIndex> source, string sourceRevision)
     {
+        var tempPath = $"{_gamesIndexCachePath}.{Guid.NewGuid():N}.tmp";
         try
         {
-            var dir = Path.GetDirectoryName(_gamesIndexCachePath);
-            if (!string.IsNullOrWhiteSpace(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
-
-            var payload = source.Select(x => new GameFilterIndexCacheItem(
+            Directory.CreateDirectory(_catalogSourceDirectory);
+            var items = source.Select(x => new GameFilterIndexCacheItem(
                 x.AppId,
                 x.NameLower,
                 x.PriceNormalized,
@@ -765,59 +787,32 @@ public sealed partial class GamesViewModel : ObservableObject
                 x.HasDenuvo,
                 x.GenreTokens.ToArray()))
                 .ToList();
+            var payload = new CatalogCacheEnvelope<List<GameFilterIndexCacheItem>>(
+                FilterIndexCacheSchema,
+                sourceRevision,
+                items);
 
-            await using var fs = File.Create(_gamesIndexCachePath);
-            await JsonSerializer.SerializeAsync(fs, payload);
+            await using (var fs = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                await JsonSerializer.SerializeAsync(fs, payload);
+                await fs.FlushAsync();
+            }
+
+            File.Move(tempPath, _gamesIndexCachePath, overwrite: true);
         }
         catch
         {
         }
-    }
-
-
-
-    private static string? ReadFirstAssetUrl(string? rawMetadataJson, string assetKey)
-    {
-        if (string.IsNullOrWhiteSpace(rawMetadataJson))
-            return null;
-
-        try
+        finally
         {
-            using var doc = JsonDocument.Parse(rawMetadataJson);
-            JsonElement node;
-
-            if (doc.RootElement.TryGetProperty("assets", out var assets) &&
-                assets.TryGetProperty(assetKey, out var nestedNode))
+            try
             {
-                node = nestedNode;
+                File.Delete(tempPath);
             }
-            else if (doc.RootElement.TryGetProperty(assetKey, out var rootNode))
+            catch
             {
-                node = rootNode;
-            }
-            else
-            {
-                return null;
-            }
-
-            if (node.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var item in node.EnumerateArray())
-                {
-                    if (item.ValueKind == JsonValueKind.Object &&
-                        item.TryGetProperty("url", out var url) &&
-                        url.ValueKind == JsonValueKind.String)
-                    {
-                        return url.GetString();
-                    }
-                }
             }
         }
-        catch
-        {
-        }
-
-        return null;
     }
 
     private static string? FirstNonEmpty(params string?[] candidates)

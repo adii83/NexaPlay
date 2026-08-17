@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Enums;
+using NexaPlay.Core.Helpers;
 using NexaPlay.Core.Models;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -15,10 +16,11 @@ public sealed partial class HomeViewModel : ObservableObject
     private readonly IBypassGamesDataService _fixData;
     private readonly IAddGameService _addGame;
     private readonly IMetadataService _metadata;
-    private readonly IGameCoverIndexService _gameCoverIndex;
+    private readonly IListingCoverResolver _listingCoverResolver;
     private readonly ICoverImageCacheService _coverImageCache;
     private readonly ISteamStoreService _storeService;
     private readonly INexaPlayOverrideService _nexaPlayOverride;
+    private readonly ICatalogRefreshState _catalogRefreshState;
     private readonly IAppLogService _log;
 
     [ObservableProperty] public partial int TotalFixes { get; set; }
@@ -40,26 +42,27 @@ public sealed partial class HomeViewModel : ObservableObject
     
     private static readonly SemaphoreSlim _prefetchGate = new SemaphoreSlim(4, 4);
     private CancellationTokenSource? _prefetchCts;
-    private readonly SemaphoreSlim _loadGate = new(1, 1);
-    private Task? _loadTask;
+    private readonly CatalogLoadCoordinator _catalogLoad = new();
 
     public HomeViewModel(
         IBypassGamesDataService fixData,
         IAddGameService addGame,
         IMetadataService metadata,
-        IGameCoverIndexService gameCoverIndex,
+        IListingCoverResolver listingCoverResolver,
         ICoverImageCacheService coverImageCache,
         ISteamStoreService storeService,
         INexaPlayOverrideService nexaPlayOverride,
+        ICatalogRefreshState catalogRefreshState,
         IAppLogService log)
     {
         _fixData = fixData;
         _addGame = addGame;
         _metadata = metadata;
-        _gameCoverIndex = gameCoverIndex;
+        _listingCoverResolver = listingCoverResolver;
         _coverImageCache = coverImageCache;
         _storeService = storeService;
         _nexaPlayOverride = nexaPlayOverride;
+        _catalogRefreshState = catalogRefreshState;
         _log = log;
 
         // Default values for partial properties
@@ -68,42 +71,19 @@ public sealed partial class HomeViewModel : ObservableObject
         PopularGames = new ObservableCollection<GameEntry>();
     }
 
-    public async Task LoadAsync()
-    {
-        Task pending;
-        await _loadGate.WaitAsync();
-        try
-        {
-            _loadTask ??= LoadCoreAsync();
-            pending = _loadTask;
-        }
-        finally
-        {
-            _loadGate.Release();
-        }
+    public Task LoadAsync() => LoadAsync(forceReload: false);
 
-        try
-        {
-            await pending;
-        }
-        finally
-        {
-            await _loadGate.WaitAsync();
-            try
-            {
-                if (ReferenceEquals(_loadTask, pending))
-                {
-                    _loadTask = null;
-                }
-            }
-            finally
-            {
-                _loadGate.Release();
-            }
-        }
-    }
+    public Task ReloadCatalogAsync() => LoadAsync(forceReload: true);
 
-    private async Task LoadCoreAsync()
+    public void InvalidateDerivedCache() => InvalidateCatalogState();
+
+    private Task LoadAsync(bool forceReload) => _catalogLoad.RunAsync(
+        () => _catalogRefreshState.Generation,
+        forceReload,
+        InvalidateCatalogState,
+        LoadCoreAsync);
+
+    private async Task LoadCoreAsync(long generation)
     {
         IsLoading = true;
         try
@@ -151,10 +131,24 @@ public sealed partial class HomeViewModel : ObservableObject
 
             await LoadPopularGamesInBackgroundAsync();
         }
-        finally 
-        { 
-            IsLoading = false; 
+        finally
+        {
+            IsLoading = false;
         }
+    }
+
+    private void InvalidateCatalogState()
+    {
+        _prefetchCts?.Cancel();
+        _allPopularAppIds = Array.Empty<int>();
+        _loadedPopularCache.Clear();
+        _currentPopularPage = 0;
+        _gamesParityCatalog = null;
+        lock (_popularCardPrefetchCache)
+        {
+            _popularCardPrefetchCache.Clear();
+        }
+        PopularGames.Clear();
     }
 
     private async Task<Dictionary<int, FixEntry>> BuildBypassLookupAsync(CancellationToken ct = default)
@@ -223,6 +217,7 @@ public sealed partial class HomeViewModel : ObservableObject
         var targetRows = 4;
         var targetCount = _popularColumns * targetRows;
         var newGames = await LoadNextPopularPageAsync(targetCount);
+        newGames = await PreparePopularCardBatchAsync(newGames);
 
         foreach(var g in newGames)
         {
@@ -542,15 +537,11 @@ public sealed partial class HomeViewModel : ObservableObject
     private async Task<GameEntry> BuildPopularCardWithBestCoverAsync(GameEntry game, CancellationToken ct = default)
     {
         var clone = CloneGameEntry(game);
-        var overrideCover = (await _nexaPlayOverride.GetCatalogOverrideAsync(clone.AppId, ct))?.LibraryCapsule;
-        var indexedCover = await _gameCoverIndex.GetLibraryCapsuleAsync(clone.AppId, ct);
-
-        var preferredCover = FirstNonEmpty(
-            overrideCover,
-            indexedCover,
+        var preferredCover = await _listingCoverResolver.ResolveAsync(
+            clone.AppId,
             clone.LibraryCapsuleUrl,
             clone.RawHeaderImageUrl,
-            null);
+            ct);
 
         if (!string.IsNullOrWhiteSpace(preferredCover))
         {
@@ -585,11 +576,10 @@ public sealed partial class HomeViewModel : ObservableObject
                 await gate.WaitAsync();
                 try
                 {
-                    var overrideCover = (await _nexaPlayOverride.GetCatalogOverrideAsync(c.game.AppId))?.LibraryCapsule;
-                    var indexedCover = await _gameCoverIndex.GetLibraryCapsuleAsync(c.game.AppId);
-
-                    var preferredCover = !string.IsNullOrWhiteSpace(overrideCover) ? overrideCover 
-                        : indexedCover;
+                    var preferredCover = await _listingCoverResolver.ResolveAsync(
+                        c.game.AppId,
+                        c.game.LibraryCapsuleUrl,
+                        c.game.RawHeaderImageUrl);
                     if (string.IsNullOrWhiteSpace(preferredCover))
                         return;
 

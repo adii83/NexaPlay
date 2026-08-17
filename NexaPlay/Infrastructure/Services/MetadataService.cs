@@ -1,5 +1,6 @@
 using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Constants;
+using NexaPlay.Core.Helpers;
 using NexaPlay.Core.Models;
 using System.IO.Compression;
 using System.Net;
@@ -9,7 +10,7 @@ namespace NexaPlay.Infrastructure.Services;
 
 /// <summary>
 /// Lightweight runtime catalog for list surfaces.
-/// Source order: steam_data.json.gz -> steam_data.json -> override_data.json.
+/// Source order: steam_data.json.gz -> steam_data.json -> new_games_catalog.json -> override_data.json.
 /// Detail metadata is resolved on demand by ISteamStoreService.
 /// </summary>
 public sealed class MetadataService : IMetadataService
@@ -28,6 +29,10 @@ public sealed class MetadataService : IMetadataService
     private readonly string _fixGamesFile;
     private readonly string _newFixGamesFile;
     private readonly string _steamGamesFile;
+    private readonly string _newGamesFile;
+    private readonly string _newGamesEtagFile;
+    private readonly string _newGamesCatalogFile;
+    private static readonly TimeSpan NewGamesR2Timeout = TimeSpan.FromSeconds(30);
 
     private Dictionary<int, GameEntry>? _index;
     private DateTime _lastLoaded = DateTime.MinValue;
@@ -63,6 +68,9 @@ public sealed class MetadataService : IMetadataService
         _fixGamesFile = Path.Combine(_catalogDir, AppConstants.BypassGamesCacheFileName);
         _newFixGamesFile = Path.Combine(_catalogDir, AppConstants.NewFixGamesCacheFileName);
         _steamGamesFile = Path.Combine(_catalogDir, AppConstants.SteamGamesCacheFileName);
+        _newGamesFile = Path.Combine(_catalogDir, AppConstants.NewGamesCacheFileName);
+        _newGamesEtagFile = Path.Combine(_catalogDir, AppConstants.NewGamesEtagFileName);
+        _newGamesCatalogFile = Path.Combine(_catalogDir, AppConstants.NewGamesCatalogFileName);
         _popularAppIdsCacheFile = Path.Combine(_catalogDir, "appid_populer_cache.json");
         _newFixAppIdsCacheFile = Path.Combine(_catalogDir, "new_fix_appids_cache.json");
         _popularEtagFile = Path.Combine(_catalogDir, "appid_populer.etag");
@@ -177,10 +185,20 @@ public sealed class MetadataService : IMetadataService
     public async Task RefreshAsync(bool forceDownload = false, CancellationToken ct = default)
     {
         await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(forceDownload, useHeadCheck: false, ct), ct);
-        await BuildIndexAsync(ct);
+        await _loadLock.WaitAsync(ct);
+        try
+        {
+            await BuildIndexAsync(ct);
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
     }
 
-    public async Task RefreshDynamicSourcesAsync(IProgress<double>? progress = null, CancellationToken ct = default)
+    public async Task<NewGamesRefreshResult> RefreshDynamicSourcesAsync(
+        IProgress<double>? progress = null,
+        CancellationToken ct = default)
     {
         await RunWithSourceSyncLockAsync(async () =>
         {
@@ -195,8 +213,8 @@ public sealed class MetadataService : IMetadataService
             for (int i = 0; i < files.Length; i++)
             {
                 var file = files[i];
-                var basePercent = i * 100.0 / files.Length;
-                var chunkPercent = 100.0 / files.Length;
+                var basePercent = i * 20.0;
+                const double chunkPercent = 20.0;
 
                 var reporter = new Progress<double?>(p =>
                 {
@@ -216,7 +234,15 @@ public sealed class MetadataService : IMetadataService
         _popularAppIdsCache = null;
         _newFixAppIdsCache = null;
 
-        await BuildIndexAsync(ct);
+        await _loadLock.WaitAsync(ct);
+        try
+        {
+            return await BuildIndexAsync(ct, materializeNewGames: true, progress);
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
     }
 
     public async Task WarmupEssentialSourcesAsync(IProgress<MetadataWarmupProgress>? progress = null, CancellationToken ct = default)
@@ -277,16 +303,28 @@ public sealed class MetadataService : IMetadataService
     {
         _index = null;
         _lastLoaded = DateTime.MinValue;
+        _popularAppIdsCache = null;
+        _popularLastLoaded = DateTime.MinValue;
+        _newFixAppIdsCache = null;
+        _newFixLastLoaded = DateTime.MinValue;
+        _popularEtag = null;
+        _newFixEtag = null;
 
-        try
+        // Delete only derived/disposable files; source catalogs survive.
+        string[] disposable =
+        [
+            _popularAppIdsCacheFile,
+            _newFixAppIdsCacheFile,
+            _popularEtagFile,
+            _newFixEtagFile
+        ];
+
+        foreach (var path in disposable)
         {
-            if (Directory.Exists(_catalogDir))
-                Directory.Delete(_catalogDir, recursive: true);
+            try { if (File.Exists(path)) File.Delete(path); } catch { }
         }
-        catch { }
 
-        Directory.CreateDirectory(_catalogDir);
-        _log.Log("Metadata", "Runtime catalog cache cleared");
+        _log.Log("Metadata", "Metadata derived cache cleared (sources retained)");
         return Task.CompletedTask;
     }
 
@@ -409,21 +447,53 @@ public sealed class MetadataService : IMetadataService
         return new DownloadResult(available, updated);
     }
 
-    private async Task BuildIndexAsync(CancellationToken ct)
+    private async Task<NewGamesRefreshResult> BuildIndexAsync(
+        CancellationToken ct,
+        bool materializeNewGames = false,
+        IProgress<double>? progress = null)
     {
         var catalog = new Dictionary<int, RuntimeCatalogEntry>(capacity: 160_000);
         var gzParsedOk = await MergeSourceSafeAsync(_steamDataGzFile, isGzip: true, catalog, ct);
         var jsonParsedOk = await MergeSourceSafeAsync(_steamDataFile, isGzip: false, catalog, ct);
 
-        await MergeSourceSafeAsync(_overrideDataFile, isGzip: false, catalog, ct);
-
-        // Guard: if both primary sources fail or catalog is implausibly small,
-        // force caller to refresh sources (handled by EnsureIndexedAsync retry path).
+        // Guard before additional sources so they can never disguise a broken primary catalog.
         if ((!gzParsedOk && !jsonParsedOk) || catalog.Count < 50_000)
         {
             throw new JsonException(
                 $"Runtime catalog incomplete/corrupted (count={catalog.Count}, gzParsed={gzParsedOk}, jsonParsed={jsonParsedOk}).");
         }
+
+        var primaryAppIds = catalog.Keys.ToHashSet();
+        var materializeResult = default(NewGamesRefreshResult);
+        if (materializeNewGames)
+        {
+            var requestedAppIds = await RefreshNewGamesListAsync(ct);
+            if (requestedAppIds is not null)
+                materializeResult = await MaterializeNewGamesAsync(requestedAppIds, primaryAppIds, progress, ct);
+        }
+
+        var snapshotEntries = ReadNewGamesSnapshot();
+        var addedSnapshotIds = new HashSet<int>();
+        foreach (var entry in snapshotEntries)
+        {
+            if (catalog.TryAdd(entry.AppId, new RuntimeCatalogEntry
+                {
+                    AppId = entry.AppId,
+                    Title = entry.Name,
+                    PriceDisplay = entry.PriceDisplay,
+                    PriceNormalized = entry.PriceNormalized,
+                    Protection = entry.Protection,
+                    LibraryCapsuleUrl = entry.LibraryCapsuleUrl,
+                    HeaderImageUrl = entry.HeaderImageUrl,
+                    Genre = entry.Genre
+                }))
+            {
+                addedSnapshotIds.Add(entry.AppId);
+            }
+        }
+
+        // Existing archive override remains later than the additive snapshot.
+        await MergeSourceSafeAsync(_overrideDataFile, isGzip: false, catalog, ct);
 
         HashSet<int> protectedAppIds;
         try
@@ -452,10 +522,27 @@ public sealed class MetadataService : IMetadataService
             })
             .ToDictionary(e => e.AppId);
 
+        foreach (var entry in snapshotEntries)
+        {
+            if (!addedSnapshotIds.Contains(entry.AppId) || !_index.TryGetValue(entry.AppId, out var indexed))
+                continue;
+
+            indexed.Developer = entry.Developer;
+            indexed.Publisher = entry.Publisher;
+            indexed.Developers = entry.Developers;
+            indexed.Publishers = entry.Publishers;
+            indexed.ShortDescription = entry.ShortDescription;
+            indexed.ReleaseDate = entry.ReleaseDate;
+            indexed.IconImageUrl = entry.IconImageUrl;
+            indexed.LibraryHero2xUrl = entry.LibraryHero2xUrl;
+            indexed.BackgroundRawImageUrl = entry.BackgroundRawImageUrl;
+        }
+
         await ApplyNexaPlayCatalogOverridesAsync(ct);
 
         _lastLoaded = DateTime.UtcNow;
         _log.Log("Metadata", $"Runtime catalog built: {_index.Count:N0} unique appids, protected={protectedAppIds.Count:N0}");
+        return materializeResult;
     }
 
     private async Task ApplyNexaPlayCatalogOverridesAsync(CancellationToken ct)
@@ -627,6 +714,190 @@ public sealed class MetadataService : IMetadataService
                 Genre = ReadString(node, "genre") ?? existing?.Genre
             };
         }
+    }
+
+    private async Task<int[]?> RefreshNewGamesListAsync(CancellationToken ct)
+    {
+        var lastKnownGood = ReadNewGamesAppIds();
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, AppConstants.NewGamesUrl);
+            var etag = TryReadText(_newGamesEtagFile);
+            if (!string.IsNullOrWhiteSpace(etag))
+                request.Headers.TryAddWithoutValidation("If-None-Match", etag);
+
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(AppConstants.HttpDefaultTimeout);
+            using var response = await _http.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                timeout.Token);
+
+            if (response.StatusCode == HttpStatusCode.NotModified)
+                return ReadNewGamesAppIds();
+
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync(timeout.Token);
+            var appIds = NewGamesCatalog.ParseAppIds(json)
+                ?? throw new JsonException("new_games.json must be an array of positive integer AppIDs.");
+            var normalizedJson = JsonSerializer.Serialize(appIds);
+            await NewGamesCatalogFile.PublishAppIdListAsync(normalizedJson, _newGamesFile, ct);
+
+            var responseEtag = response.Headers.ETag?.ToString();
+            try
+            {
+                if (string.IsNullOrWhiteSpace(responseEtag))
+                {
+                    if (File.Exists(_newGamesEtagFile))
+                        File.Delete(_newGamesEtagFile);
+                }
+                else
+                {
+                    await File.WriteAllTextAsync(_newGamesEtagFile, responseEtag, ct);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _log.Log("Metadata", $"New Games ETag update failed (non-blocking): {ex.Message}");
+            }
+
+            _log.Log("Metadata", $"New Games AppIds fetched: {appIds.Length}");
+            return appIds;
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            _log.Log("Metadata", "New Games AppIds request timed out; using last-known-good list.");
+            return lastKnownGood;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _log.Log("Metadata", $"New Games AppIds refresh failed; using last-known-good list: {ex.Message}");
+            return lastKnownGood;
+        }
+    }
+
+    private int[]? ReadNewGamesAppIds()
+    {
+        var json = TryReadText(_newGamesFile);
+        return string.IsNullOrWhiteSpace(json) ? null : NewGamesCatalog.ParseAppIds(json);
+    }
+
+    private async Task<NewGamesRefreshResult> MaterializeNewGamesAsync(
+        IReadOnlyCollection<int> requestedAppIds,
+        ISet<int> primaryAppIds,
+        IProgress<double>? progress,
+        CancellationToken ct)
+    {
+        var previousEntries = ReadNewGamesSnapshot();
+        var cachedById = previousEntries.ToDictionary(entry => entry.AppId);
+        var fetchAppIds = NewGamesCatalog.SelectFetchAppIds(requestedAppIds, primaryAppIds, cachedById);
+        progress?.Report(80);
+
+        var completed = 0;
+        using var gate = new SemaphoreSlim(4, 4);
+        var fetchTasks = fetchAppIds.Select(async appId =>
+        {
+            await gate.WaitAsync(ct);
+            try
+            {
+                return await FetchNewGameEntryAsync(appId, ct);
+            }
+            finally
+            {
+                gate.Release();
+                var done = Interlocked.Increment(ref completed);
+                progress?.Report(80 + done * 20d / fetchAppIds.Length);
+            }
+        });
+
+        var fetched = fetchAppIds.Length == 0
+            ? Array.Empty<NewGamesCatalogEntry?>()
+            : await Task.WhenAll(fetchTasks);
+        var fetchedEntries = fetched.OfType<NewGamesCatalogEntry>().ToArray();
+        var availableById = previousEntries.ToDictionary(entry => entry.AppId);
+        foreach (var fetchedEntry in fetchedEntries)
+            availableById[fetchedEntry.AppId] = fetchedEntry;
+        var composed = NewGamesCatalog.ComposeSnapshot(requestedAppIds, primaryAppIds, availableById.Values);
+
+        try
+        {
+            var json = NewGamesCatalog.SerializeSnapshot(composed);
+            await NewGamesCatalogFile.PublishSnapshotAsync(json, _newGamesCatalogFile, ct);
+            progress?.Report(100);
+            var requestedAdditionalCount = requestedAppIds.Count(appId => !primaryAppIds.Contains(appId));
+            return new NewGamesRefreshResult(
+                fetchedEntries.Length,
+                Math.Max(0, requestedAdditionalCount - composed.Length));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _log.Log("Metadata", $"New Games snapshot publication failed; retaining previous snapshot: {ex.Message}");
+            progress?.Report(100);
+            var previousIds = previousEntries.Select(entry => entry.AppId).ToHashSet();
+            var unavailable = requestedAppIds.Count(appId =>
+                !primaryAppIds.Contains(appId) && !previousIds.Contains(appId));
+            return new NewGamesRefreshResult(0, unavailable);
+        }
+    }
+
+    private async Task<NewGamesCatalogEntry?> FetchNewGameEntryAsync(int appId, CancellationToken ct)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(NewGamesR2Timeout);
+            var url = $"{AppConstants.R2MetadataBaseUrl}/{appId}.json";
+            using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                _log.Log("Metadata", $"New Games metadata unavailable appId={appId}: 404");
+                return null;
+            }
+
+            response.EnsureSuccessStatusCode();
+            await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: timeout.Token);
+            var entry = NewGamesCatalog.ParseMetadata(appId, document.RootElement);
+            if (entry is null)
+                _log.Log("Metadata", $"New Games metadata invalid appId={appId}");
+            return entry;
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            _log.Log("Metadata", $"New Games metadata timed out appId={appId}");
+            return null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _log.Log("Metadata", $"New Games metadata unavailable appId={appId}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private NewGamesCatalogEntry[] ReadNewGamesSnapshot()
+    {
+        if (!File.Exists(_newGamesCatalogFile))
+            return [];
+
+        try
+        {
+            var json = File.ReadAllText(_newGamesCatalogFile);
+            var entries = NewGamesCatalog.ParseSnapshot(json);
+            if (entries is not null)
+                return entries;
+
+            _log.Log("Metadata", "New Games snapshot is invalid; ignoring it.");
+        }
+        catch (Exception ex)
+        {
+            _log.Log("Metadata", $"New Games snapshot read failed; ignoring it: {ex.Message}");
+        }
+
+        return [];
     }
 
     private async Task<bool> DownloadIfNeededAsync(

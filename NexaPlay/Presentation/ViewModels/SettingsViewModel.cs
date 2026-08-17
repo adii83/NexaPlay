@@ -22,6 +22,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly IBypassGamesDataService _fixData;
     private readonly IAppLogService _log;
     private readonly INexaPlayOverrideService _nexaPlayOverride;
+    private readonly ICatalogRefreshState _catalogRefreshState;
+    private readonly IListingCoverResolver _listingCoverResolver;
+    private readonly ISteamStoreService _storeService;
+    private readonly HomeViewModel _homeViewModel;
+    private readonly GamesViewModel _gamesViewModel;
 
     // License
     [ObservableProperty] public partial LicenseInfo? CurrentLicense { get; set; }
@@ -63,7 +68,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         IGameCoverIndexService gameCoverIndex,
         ICoverImageCacheService coverImageCache,
         IBypassGamesDataService fixData, IAppLogService log,
-        INexaPlayOverrideService nexaPlayOverride)
+        INexaPlayOverrideService nexaPlayOverride,
+        ICatalogRefreshState catalogRefreshState,
+        IListingCoverResolver listingCoverResolver,
+        ISteamStoreService storeService,
+        HomeViewModel homeViewModel,
+        GamesViewModel gamesViewModel)
     {
         _appUpdate = appUpdate;
         _license  = license;
@@ -75,6 +85,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         _fixData  = fixData;
         _log      = log;
         _nexaPlayOverride = nexaPlayOverride;
+        _catalogRefreshState = catalogRefreshState;
+        _listingCoverResolver = listingCoverResolver;
+        _storeService = storeService;
+        _homeViewModel = homeViewModel;
+        _gamesViewModel = gamesViewModel;
 
         // Default values for partial properties
         LicenseKeyInput   = string.Empty;
@@ -239,13 +254,20 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public async Task<(bool Success, string Message)> ClearMetadataCacheAsync()
     {
-        try 
+        try
         {
             await _metadata.ClearCacheAsync();
             await _gameCoverIndex.ClearCacheAsync();
             await _coverImageCache.ClearCacheAsync();
-            _log.Log("Settings", "Metadata cache cleared");
-            return (true, "Cache aplikasi berhasil dihapus. Ruang penyimpanan telah dikosongkan.");
+            await _storeService.ClearCacheAsync();
+
+            _homeViewModel.InvalidateDerivedCache();
+            _gamesViewModel.InvalidateDerivedCache();
+            _catalogRefreshState.Advance();
+            _listingCoverResolver.ClearCache();
+
+            _log.Log("Settings", "Disposable cache cleared (source catalogs retained)");
+            return (true, "Cache berhasil dihapus. Katalog sumber tetap tersedia.");
         }
         catch (Exception ex)
         {
@@ -269,28 +291,42 @@ public sealed partial class SettingsViewModel : ObservableObject
                 DownloadProgressText = $"{DownloadProgress:F0}%";
             });
 
+            await _nexaPlayOverride.RefreshAsync();
+            await _gameCoverIndex.RefreshAsync();
+
             // Refresh main dynamic sources (override_data.json, fix_games.json, new_fix_games.json, steam_games.json)
-            await _metadata.RefreshDynamicSourcesAsync(progress);
+            var newGamesResult = await _metadata.RefreshDynamicSourcesAsync(progress);
 
             DownloadProgress = 85;
             DownloadProgressText = "85%";
             await _metadata.GetPopularAppIdsAsync();
-            
+
             DownloadProgress = 90;
             DownloadProgressText = "90%";
             await _metadata.GetNewFixAppIdsAsync();
 
             DownloadProgress = 95;
             DownloadProgressText = "95%";
-            await _nexaPlayOverride.RefreshAsync();
-            
-            // Refresh fix data service from newly downloaded files
             await _fixData.RefreshAsync();
+
+            _catalogRefreshState.Advance();
+            _listingCoverResolver.ClearCache();
+            await _homeViewModel.ReloadCatalogAsync();
+            await _gamesViewModel.ReloadCatalogAsync();
 
             DownloadProgress = 100;
             DownloadProgressText = "100%";
-            _log.Log("Settings", "Games data successfully loaded.");
-            return (true, "Data game terbaru berhasil diunduh dan diperbarui.");
+            _log.Log("Settings", $"Games data successfully loaded. NewGames added={newGamesResult.Added}, unavailable={newGamesResult.Unavailable}");
+
+            var message = "Data game terbaru berhasil diunduh dan diperbarui.";
+            if (newGamesResult.Added > 0 || newGamesResult.Unavailable > 0)
+            {
+                message += $" {newGamesResult.Added} game baru ditambahkan";
+                if (newGamesResult.Unavailable > 0)
+                    message += $", {newGamesResult.Unavailable} belum tersedia";
+                message += ".";
+            }
+            return (true, message);
         }
         catch (System.Net.Http.HttpRequestException hex)
         {
