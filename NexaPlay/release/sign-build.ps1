@@ -7,9 +7,9 @@ $ErrorActionPreference = "Stop"
 # =========================
 # CONFIG
 # =========================
-$ProjectDir  = "D:\My Project\NexaPlay\NexaPlay"
-$PublishDir = "$ProjectDir\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish"
-$PfxPath    = "$ProjectDir\release\nexaplay.pfx"
+$ProjectDir = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+$PublishDir = Join-Path $ProjectDir "bin\Release\net8.0-windows10.0.19041.0\win-x64\publish"
+$PfxPath = Join-Path $PSScriptRoot "nexaplay.pfx"
 
 # Password PFX default
 $PlainPassword = 'NexaPlay83geel!'
@@ -17,20 +17,20 @@ $PlainPassword = 'NexaPlay83geel!'
 # =========================
 # CEK FILE / FOLDER
 # =========================
-if (-not (Test-Path $PublishDir)) {
+if (-not (Test-Path -LiteralPath $PublishDir -PathType Container)) {
     Write-Host "Folder publish tidak ditemukan: $PublishDir" -ForegroundColor Red
     Write-Host "Pastikan aplikasi sudah di-build/publish terlebih dahulu." -ForegroundColor Yellow
     exit 1
 }
 
-if (-not (Test-Path $PfxPath)) {
+if (-not (Test-Path -LiteralPath $PfxPath -PathType Leaf)) {
     Write-Host "File certificate tidak ditemukan: $PfxPath" -ForegroundColor Red
     exit 1
 }
 
-$MainExe = "$PublishDir\NexaPlay.exe"
+$MainExe = Join-Path $PublishDir "NexaPlay.exe"
 
-if (-not (Test-Path $MainExe)) {
+if (-not (Test-Path -LiteralPath $MainExe -PathType Leaf)) {
     Write-Host "File utama NexaPlay.exe tidak ditemukan: $MainExe" -ForegroundColor Red
     exit 1
 }
@@ -40,7 +40,8 @@ if (-not (Test-Path $MainExe)) {
 # =========================
 Write-Host "Mencari signtool.exe..." -ForegroundColor Cyan
 
-$SignTool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+$WindowsKitsBin = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"
+$SignTool = Get-ChildItem $WindowsKitsBin -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
     Where-Object { $_.FullName -like "*\x64\signtool.exe" } |
     Sort-Object FullName -Descending |
     Select-Object -First 1 -ExpandProperty FullName

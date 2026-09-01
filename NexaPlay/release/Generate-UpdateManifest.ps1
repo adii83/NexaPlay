@@ -17,12 +17,19 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$resolvedInstaller = (Resolve-Path $InstallerPath).Path
-if (-not (Test-Path $resolvedInstaller)) {
-    throw "Installer tidak ditemukan: $InstallerPath"
+$installerCandidate = if ([System.IO.Path]::IsPathRooted($InstallerPath)) {
+    $InstallerPath
+}
+else {
+    Join-Path $PSScriptRoot $InstallerPath
 }
 
-$hash = (Get-FileHash -Path $resolvedInstaller -Algorithm SHA256).Hash.ToUpperInvariant()
+if (-not (Test-Path -LiteralPath $installerCandidate -PathType Leaf)) {
+    throw "Installer tidak ditemukan: $installerCandidate"
+}
+
+$resolvedInstaller = (Resolve-Path -LiteralPath $installerCandidate).Path
+$hash = (Get-FileHash -LiteralPath $resolvedInstaller -Algorithm SHA256).Hash.ToUpperInvariant()
 $publishedAt = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
 
 $manifest = [ordered]@{

@@ -709,6 +709,24 @@ Tanggal: 17 Agustus 2026
 - Build: Self-check lengkap lulus; Debug x64 `Build succeeded` dengan `0 Warning(s), 0 Error(s)`; `git diff --check` dan scope guard Bypass/Library bersih.
 - Next: Integrasikan commit terverifikasi ke `main`, ulang self-check + Debug x64 dari checkout utama, lalu lakukan testing visual langsung dari project utama.
 
+Tanggal: 2 September 2026
+- Fokus: Membuat empat script release bebas lokasi checkout setelah project pindah.
+- Perubahan:
+  - `Generate-AppIcon.ps1` menerima path rooted atau path relatif terhadap folder script; `Generate-UpdateManifest.ps1` menyelesaikan installer relatif terhadap folder `release` dan memvalidasi file sebelum resolve/hash.
+  - `sign-build.ps1` menurunkan project/publish/PFX dari `$PSScriptRoot`; `sign-installer.ps1` menurunkan PFX/installer dari `$PSScriptRoot`. Kedua script mencari Windows Kits lewat `${env:ProgramFiles(x86)}`.
+  - `release/README.md` diselaraskan dengan kontrak path baru. `NexaPlaySetup.iss` tidak perlu diubah karena path sudah relatif terhadap lokasi script.
+- Build: Empat script lulus PowerShell parser; resolusi path menunjuk checkout aktif; generator ICO dari CWD lain menghasilkan 9 ukuran; generator manifest dari CWD lain menghasilkan SHA-256 yang cocok; `git diff --check` lulus.
+- Next: Jalankan `sign-build.ps1` pada publish Release final, compile Inno Setup, lalu jalankan `sign-installer.ps1` untuk verifikasi signature end-to-end.
+
+Tanggal: 2 September 2026
+- Fokus: Memperbarui seluruh permukaan branding NexaPlay dari `D:\_NEXAPLAY\LOGO\2.png`.
+- Perubahan:
+  - `Assets\Icons\logo.png` menjadi master RGBA 1024×1024 dengan safe-area sekitar 10%, rounded corner sedang, dan sudut transparan.
+  - `Assets\Icons\app.ico` diregenerasi pada ukuran 16, 20, 24, 32, 40, 48, 64, 128, dan 256 px untuk executable, window/taskbar, installer, Start menu, dan desktop shortcut.
+  - `Assets\logo.svg` tetap memakai wrapper `SvgImageSource` yang aman, dengan embedded PNG 1024×1024; seluruh PNG MSIX square, wide, Store, lock-screen, dan splash ikut diregenerasi tanpa stretch.
+- Build: Debug x64 MSBuild lulus (`MSBUILD_EXIT=0`); validasi PNG/SVG/ICO lulus. Smoke test visual runtime masih diperlukan.
+- Next: Smoke test visual logo runtime, window/taskbar icon, Start menu/desktop shortcut, serta pastikan tidak ada crash parser SVG `0xC000027B`.
+
 ## 10. Update Log Ringkas
 
 ```text

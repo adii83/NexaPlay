@@ -10,15 +10,29 @@ $ErrorActionPreference = "Stop"
 
 Add-Type -AssemblyName System.Drawing
 
-$sourcePath = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot $SourcePng))
-$outputPath = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot $OutputIco))
+$sourceCandidate = if ([System.IO.Path]::IsPathRooted($SourcePng)) {
+    $SourcePng
+}
+else {
+    Join-Path $PSScriptRoot $SourcePng
+}
+
+$outputCandidate = if ([System.IO.Path]::IsPathRooted($OutputIco)) {
+    $OutputIco
+}
+else {
+    Join-Path $PSScriptRoot $OutputIco
+}
+
+$sourcePath = [System.IO.Path]::GetFullPath($sourceCandidate)
+$outputPath = [System.IO.Path]::GetFullPath($outputCandidate)
 $outputDir = [System.IO.Path]::GetDirectoryName($outputPath)
 
-if (-not (Test-Path $sourcePath)) {
+if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
     throw "Source PNG tidak ditemukan: $sourcePath"
 }
 
-if (-not (Test-Path $outputDir)) {
+if (-not (Test-Path -LiteralPath $outputDir -PathType Container)) {
     New-Item -ItemType Directory -Path $outputDir | Out-Null
 }
 

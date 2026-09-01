@@ -6,9 +6,8 @@ $ErrorActionPreference = "Stop"
 # =========================
 # CONFIG
 # =========================
-$ProjectDir = "D:\My Project\NexaPlay\NexaPlay"
-$PfxPath   = "$ProjectDir\release\nexaplay.pfx"
-$Installer = "$ProjectDir\release\output\NexaPlay-Setup.exe"
+$PfxPath = Join-Path $PSScriptRoot "nexaplay.pfx"
+$Installer = Join-Path $PSScriptRoot "output\NexaPlay-Setup.exe"
 
 # Password PFX default
 $PlainPassword = 'NexaPlay83geel!'
@@ -16,12 +15,12 @@ $PlainPassword = 'NexaPlay83geel!'
 # =========================
 # CEK FILE
 # =========================
-if (-not (Test-Path $PfxPath)) {
+if (-not (Test-Path -LiteralPath $PfxPath -PathType Leaf)) {
     Write-Host "File certificate tidak ditemukan: $PfxPath" -ForegroundColor Red
     exit 1
 }
 
-if (-not (Test-Path $Installer)) {
+if (-not (Test-Path -LiteralPath $Installer -PathType Leaf)) {
     Write-Host "Installer tidak ditemukan: $Installer" -ForegroundColor Red
     Write-Host "Pastikan NexaPlay-Setup.exe sudah dibuat terlebih dahulu." -ForegroundColor Yellow
     exit 1
@@ -32,7 +31,8 @@ if (-not (Test-Path $Installer)) {
 # =========================
 Write-Host "Mencari signtool.exe..." -ForegroundColor Cyan
 
-$SignTool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+$WindowsKitsBin = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"
+$SignTool = Get-ChildItem $WindowsKitsBin -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
     Where-Object { $_.FullName -like "*\x64\signtool.exe" } |
     Sort-Object FullName -Descending |
     Select-Object -First 1 -ExpandProperty FullName

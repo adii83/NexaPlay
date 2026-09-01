@@ -94,7 +94,7 @@ di:
 
 ### 3. Clean dan publish app
 
-Jalankan dari folder `NexaPlay`. Clean `bin` dan `obj` memastikan apphost dibentuk ulang dengan icon terbaru:
+Jalankan dari folder `NexaPlay`. Script dalam folder `release` menyelesaikan path dari lokasi file script, sehingga checkout dapat dipindahkan tanpa mengubah path internal. Clean `bin` dan `obj` memastikan apphost dibentuk ulang dengan icon terbaru:
 
 ```powershell
 Remove-Item ".\bin", ".\obj" -Recurse -Force
@@ -228,7 +228,7 @@ Setelah installer final yang sudah ditandatangani di-upload, baru generate manif
 ```powershell
 .\release\Generate-UpdateManifest.ps1 `
   -Version 1.0.3 `
-  -InstallerPath ".\release\output\NexaPlay-Setup.exe" `
+  -InstallerPath "output\NexaPlay-Setup.exe" `
   -InstallerUrl "https://github.com/adii83/NexaPlay/releases/download/v1.0.3/NexaPlay-Setup.exe"
 ```
 
@@ -309,7 +309,7 @@ Hitung manifest hanya dari installer final yang sudah ditandatangani:
 ```powershell
 .\release\Generate-UpdateManifest.ps1 `
   -Version 1.0.2 `
-  -InstallerPath ".\release\output\NexaPlay-Setup.exe" `
+  -InstallerPath "output\NexaPlay-Setup.exe" `
   -InstallerUrl "https://github.com/adii83/NexaPlay/releases/download/v1.0.2/NexaPlay-Setup.exe"
 ```
 

@@ -63,10 +63,6 @@ NexaPlay/release/nexaplay.pfx
 
 # Personal AI/orchestration tools and runtime state
 .claude/
-.claude-flow/
-.swarm/
-ruvector.db
-ruvector.db-*
 *.db-shm
 *.db-wal
 

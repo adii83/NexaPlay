@@ -1,5 +1,5 @@
 #define MyAppName "NexaPlay"
-#define MyAppVersion "1.0.3"
+#define MyAppVersion "1.0.4"
 #define MyAppPublisher "NexaPlay"
 #define MyAppExeName "NexaPlay.exe"
 #define MyAppSourceDir "..\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish"
