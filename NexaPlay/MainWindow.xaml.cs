@@ -34,6 +34,10 @@ public sealed partial class MainWindow : Window
     private readonly IAppLogService _appLog;
     private readonly HomeViewModel _homeViewModel;
     private readonly GamesViewModel _gamesViewModel;
+    private readonly ICatalogRefreshState _catalogRefreshState;
+    private readonly IListingCoverResolver _listingCoverResolver;
+    private readonly IBypassGamesDataService _bypassGamesDataService;
+    private int _metadataReloadQueued;
     private bool _hasShownStartupUpdatePrompt;
     private IntPtr _windowIconHandle;
     private readonly Storyboard _startupLoadingLogoStoryboard;
@@ -51,7 +55,10 @@ public sealed partial class MainWindow : Window
         ISteamService steamService,
         IAppLogService appLog,
         HomeViewModel homeViewModel,
-        GamesViewModel gamesViewModel)
+        GamesViewModel gamesViewModel,
+        ICatalogRefreshState catalogRefreshState,
+        IListingCoverResolver listingCoverResolver,
+        IBypassGamesDataService bypassGamesDataService)
     {
         _vm             = vm;
         _nav            = nav;
@@ -63,7 +70,11 @@ public sealed partial class MainWindow : Window
         _appLog = appLog;
         _homeViewModel = homeViewModel;
         _gamesViewModel = gamesViewModel;
+        _catalogRefreshState = catalogRefreshState;
+        _listingCoverResolver = listingCoverResolver;
+        _bypassGamesDataService = bypassGamesDataService;
         InitializeComponent();
+        _metadataService.CatalogUpdated += OnMetadataCatalogUpdated;
         VersionText.Text = $"v{AppConstants.AppVersion}";
         UpdateLicenseBadge(LicensePlan.Standard);
         _startupLoadingLogoStoryboard = CreateLoadingLogoStoryboard(StartupLoadingLogoRotation);
@@ -89,6 +100,36 @@ public sealed partial class MainWindow : Window
         this.Activated += OnFirstActivated;
         SetBypassSubmenuActive("all");
         UpdateShellChrome();
+    }
+
+    private void OnMetadataCatalogUpdated(object? sender, EventArgs e)
+    {
+        if (Interlocked.Exchange(ref _metadataReloadQueued, 1) != 0)
+            return;
+
+        if (!DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                await _bypassGamesDataService.RefreshAsync();
+                _catalogRefreshState.Advance();
+                _listingCoverResolver.ClearCache();
+                await _homeViewModel.ReloadCatalogAsync();
+                await _gamesViewModel.ReloadCatalogAsync();
+                _appLog.Log("Metadata", "Background catalog update reloaded Home and Games.");
+            }
+            catch (Exception ex)
+            {
+                _appLog.Log("Metadata", $"Background catalog reload failed: {ex.Message}");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _metadataReloadQueued, 0);
+            }
+        }))
+        {
+            Interlocked.Exchange(ref _metadataReloadQueued, 0);
+        }
     }
 
     private void ApplyWindowIcon(Microsoft.UI.Windowing.AppWindow appWindow, IntPtr hWnd)

@@ -1,16 +1,16 @@
-# Graph Report - NexaPlay  (2026-09-02)
+# Graph Report - NexaPlay  (2026-09-11)
 
 ## Corpus Check
-- 128 files · ~152,157 words
+- 146 files · ~165,942 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1849 nodes · 3931 edges · 110 communities (86 shown, 24 thin omitted)
-- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 304 edges (avg confidence: 0.76)
+- 1982 nodes · 4144 edges · 122 communities (94 shown, 28 thin omitted)
+- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 309 edges (avg confidence: 0.76)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8c8b8e4d`
+- Built from commit: `2c90fdbc`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -24,7 +24,7 @@
 - SteamPlatformService
 - NexaPlayOverrideService
 - LicenseInfo
-- IAppLogService
+- OnlineFixService
 - Application
 - Page
 - GamesViewModel
@@ -32,20 +32,20 @@
 - Page
 - SteamStoreService
 - GameDetailPage
-- BypassTutorialVideoService
+- IAppLogService
 - GameCoverIndexService
 - AddGameService
 - BypassGameDetailViewModel
 - GamesPage
-- NexaPlay.Core.Enums
+- NexaPlay.Core.Models
 - GameDetailViewModel
 - LibraryPage
 - MainWindow
 - BypassGameDetailPage
 - AppUpdateService
-- NexaPlay.Presentation.ViewModels
+- NewGamesCatalog
 - IWindowsDefenderService
-- NexaPlay.Core.Models
+- What You Must Do When Invoked
 - Page
 - LibraryViewModel
 - SettingsPage
@@ -54,56 +54,59 @@
 - Border
 - Page
 - Page
-- .ApplyFiltersAndPaginationAsync
+- NexaPlay.Presentation.ViewModels
 - CoverImageCacheService
 - SettingsViewModel
 - Authoritative New Games AppID List
 - .FindSiblingSkeletonOverlay
 - RoutedEventArgs
-- NullLogService
+- NexaPlay.Core.Constants
 - TelegramAccountReportService
-- IAddGameService
+- .LoadAsync
 - .NavigateTo
-- .LoadGamesAsync
-- AppUpdateCheckResult
+- .ClearMetadataCacheAsync
+- IAppUpdateService
 - AccountReportLimitStore
 - RoutedEventArgs
 - INavigationService
 - ISteamService
 - NexaPlay.csproj
-- CoverArtImage
+- .OnPageUnloaded
 - .SelectManualFolderAsync
 - .ExtractDownloadedArchives
+- IOnlineFixService
 - .LoadAsync
-- Task
 - .ViewModel_PropertyChanged
-- .LoadAsync
+- Program.cs
 - .ApplyHwndIcon
-- .GetAsync
+- .TutorialThumbnail_Tapped
 - BoolToVisibilityConverter
 - .MediaCard_Tapped
 - .ExtractWithExternalTool
-- RelayCommand
+- .RemoveFixAsync
 - CatalogCacheStamp.cs
 - .OnNavChecked
-- .TutorialThumbnail_Tapped
-- SteamGuardService
+- graphify reference: extra exports and benchmark
+- IAddGameService
 - .LoadAsync
 - GameHub Feature Parity
 - .AboutGameWebView_NavigationCompleted
 - IReadOnlyList
-- ObservableObject
-- .RootLayout_SizeChanged
+- SteamGuardService
+- .ShowUpdateAvailableDialogAsync
 - RootCardBorder
 - NexaPlay Wide Tile Logo
-- AppConstants
-- AppUpdateManifest
+- RelayCommand
+- graphify reference: query, path, explain
+- Q: saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan
+- Q: pas ngunduh data apakah dia mengunduh juga file data ini new_games.json atau file tersebut hanya diunduh saat load game saja yang berada di setting?
 - LibraryList
 - NexaPlay.SelfCheck.csproj
 - Minimalist Monochrome Branding
 - NexaPlay Square App Logo
 - Gray Framed X Symbol
-- StringExtensions.cs
+- Q: tombol load games ini mengunduh apa saja karena sangat lama dan kenapa mengunduh itu cari tau direadme atau di doc project apakah ada yang memberikan info tersebut
+- Q: file ini harus terbaru apakah memakai etag seperti new games dan bagaimana penerapan terbaik agar tidak lama
 - Small Batch Build Workflow
 - Letter N Monogram
 - Lock Screen Logo Asset
@@ -118,17 +121,27 @@
 - NexaPlay Splash Screen
 - NexaPlay Application Logo
 - Game Detail Stabilization Edit Log
+- AppConstants
+- AppUpdateManifest
+- StringExtensions.cs
+- graphify reference: add a URL and watch a folder
+- graphify reference: commit hook and native CLAUDE.md integration
+- graphify reference: incremental update and cluster-only
+- graphify reference: GitHub clone and cross-repo merge
+- graphify reference: transcribe video and audio
+- AGENTS.md
+- extraction-spec.md
 
 ## God Nodes (most connected - your core abstractions)
 1. `GameDetailViewModel` - 86 edges
 2. `GameDetailPage` - 83 edges
-3. `BypassGameDetailViewModel` - 70 edges
-4. `GamesViewModel` - 66 edges
-5. `Window` - 60 edges
-6. `MainWindow` - 58 edges
-7. `NexaPlay.Core.Models` - 56 edges
-8. `BypassGameDetailPage` - 56 edges
-9. `MetadataService` - 55 edges
+3. `MetadataService` - 70 edges
+4. `BypassGameDetailViewModel` - 70 edges
+5. `GamesViewModel` - 66 edges
+6. `MainWindow` - 62 edges
+7. `Window` - 60 edges
+8. `NexaPlay.Core.Models` - 58 edges
+9. `BypassGameDetailPage` - 56 edges
 10. `HomeViewModel` - 50 edges
 
 ## Surprising Connections (you probably didn't know these)
@@ -152,27 +165,27 @@
 - **Native Migration Governance** — nexaplay_agents_feature_parity, nexaplay_agents_small_batch_workflow, nexaplay_agents_ui_design_contract, nexaplay_agents_performance_contract [EXTRACTED 1.00]
 - **NexaPlay Wide Tile Visual Composition** — nexaplay_assets_wide310x150logo_scale_200_stylized_x_emblem, nexaplay_assets_wide310x150logo_scale_200_rounded_square_frame, nexaplay_assets_wide310x150logo_scale_200_transparent_wide_tile_canvas [EXTRACTED 1.00]
 
-## Communities (110 total, 24 thin omitted)
+## Communities (122 total, 28 thin omitted)
 
 ### Community 0 - ".Log"
-Cohesion: 0.07
-Nodes (32): DownloadResult, IReadOnlyCollection, IEnumerable, IReadOnlyDictionary, ISet, JsonElement, JsonSerializerOptions, NewGamesCatalog (+24 more)
+Cohesion: 0.06
+Nodes (41): ActivePath, CandidatePath, CatalogSource, DownloadResult, IReadOnlyCollection, ManifestSyncResult, IReadOnlyDictionary, IReadOnlySet (+33 more)
 
 ### Community 1 - "HomeViewModel"
 Cohesion: 0.06
-Nodes (35): CancellationToken, Task, ICoverImageCacheService, CancellationToken, Task, IListingCoverResolver, CancellationToken, IProgress (+27 more)
+Nodes (34): CancellationToken, Task, ICoverImageCacheService, CancellationToken, Task, CancellationToken, IProgress, IReadOnlyList (+26 more)
 
 ### Community 2 - "BypassGamesViewModel"
-Cohesion: 0.08
-Nodes (28): CancellationToken, IReadOnlyList, Task, IBypassGamesDataService, CancellationToken, IProgress, Task, IOnlineFixService (+20 more)
+Cohesion: 0.07
+Nodes (29): CancellationToken, IReadOnlyList, Task, IBypassGamesDataService, BypassStatus, IReadOnlyList, FixEntry, CancellationToken (+21 more)
 
 ### Community 3 - "Window"
 Cohesion: 0.06
 Nodes (51): AccountHeader, BypassChevron, BypassSubmenuPanel, ContentFrame, ContentTopBarRow, LblBypassGames, LblGames, LblHome (+43 more)
 
 ### Community 4 - "BypassGamesPage"
-Cohesion: 0.06
-Nodes (25): Task, LicenseAccessDialogHelper, GamesGrid, HoverTitleLayer, Page, RootPage, Brush, DependencyObject (+17 more)
+Cohesion: 0.07
+Nodes (24): Task, LicenseAccessDialogHelper, GamesGrid, HoverTitleLayer, Page, RootPage, Brush, DependencyObject (+16 more)
 
 ### Community 5 - "HomePage"
 Cohesion: 0.06
@@ -190,9 +203,9 @@ Nodes (22): CancellationToken, IReadOnlySet, Task, INexaPlayOverrideService, IRe
 Cohesion: 0.10
 Nodes (14): CancellationToken, Task, ILicenseService, LicensePlan, LicenseStatus, LicenseInfo, string, Task (+6 more)
 
-### Community 9 - "IAppLogService"
-Cohesion: 0.07
-Nodes (21): IReadOnlyList, Task, IAppLogService, ConcurrentQueue, int, IReadOnlyList, string, Task (+13 more)
+### Community 9 - "OnlineFixService"
+Cohesion: 0.15
+Nodes (12): Dictionary, IReadOnlyDictionary, SemaphoreSlim, string, Task, AppliedStateStore, CancellationToken, HttpClient (+4 more)
 
 ### Community 10 - "Application"
 Cohesion: 0.07
@@ -222,29 +235,29 @@ Nodes (15): HasTransientError, Json, JsonArray, JsonObject, DateTime, IReadOnlyL
 Cohesion: 0.08
 Nodes (14): double, MediaSource, bool, CancellationTokenSource, Dictionary, int, JsonSerializerOptions, List (+6 more)
 
-### Community 17 - "BypassTutorialVideoService"
-Cohesion: 0.11
-Nodes (17): CancellationToken, Task, IBypassTutorialVideoService, GameCategory, BypassTutorialVideo, CancellationToken, DateTime, Dictionary (+9 more)
+### Community 17 - "IAppLogService"
+Cohesion: 0.06
+Nodes (26): IReadOnlyList, Task, IAppLogService, CancellationToken, Task, IBypassTutorialVideoService, GameCategory, BypassTutorialVideo (+18 more)
 
 ### Community 18 - "GameCoverIndexService"
 Cohesion: 0.15
 Nodes (12): CancellationToken, JsonElement, Task, GameCoverIndexFile, CancellationToken, Dictionary, HttpClient, JsonElement (+4 more)
 
 ### Community 19 - "AddGameService"
-Cohesion: 0.11
-Nodes (10): BypassStatus, BypassProgressState, RemoveGameResult, CancellationToken, ConcurrentDictionary, HttpResponseMessage, IProgress, IReadOnlyList (+2 more)
+Cohesion: 0.14
+Nodes (8): BypassProgressState, CancellationToken, ConcurrentDictionary, HttpResponseMessage, IProgress, IReadOnlyList, Task, AddGameService
 
 ### Community 20 - "BypassGameDetailViewModel"
 Cohesion: 0.10
-Nodes (14): Func, HttpClient, int, IReadOnlyList, RelayCommand, string, BypassGameDetailViewModel, CopySteamGuardCodeCommand (+6 more)
+Nodes (13): Func, HttpClient, int, IReadOnlyList, string, BypassGameDetailViewModel, CopySteamGuardCodeCommand, CopySteamPasswordCommand (+5 more)
 
 ### Community 21 - "GamesPage"
 Cohesion: 0.09
 Nodes (14): bool, Brush, DependencyObject, DispatcherTimer, IEnumerable, ImageSource, int, IReadOnlyList (+6 more)
 
-### Community 22 - "NexaPlay.Core.Enums"
-Cohesion: 0.14
-Nodes (5): NexaPlay.Core.Constants, NexaPlay.Infrastructure.Persistence, NexaPlay.Infrastructure.Services, NexaPlay.Core.Enums, NexaPlay.Infrastructure.Platform
+### Community 22 - "NexaPlay.Core.Models"
+Cohesion: 0.13
+Nodes (5): NexaPlay.Core.Helpers, NexaPlay.Core.Models, NexaPlay.Contracts.Services, NexaPlay.Core.Enums, NavigationItem
 
 ### Community 23 - "GameDetailViewModel"
 Cohesion: 0.09
@@ -259,36 +272,36 @@ Cohesion: 0.12
 Nodes (15): Color, bool, ContentDialog, int, NavigationEventArgs, RoutedEventArgs, Storyboard, string (+7 more)
 
 ### Community 26 - "BypassGameDetailPage"
-Cohesion: 0.10
-Nodes (9): ShimmerContainer, bool, CoreWebView2WebMessageReceivedEventArgs, PointerRoutedEventArgs, PropertyChangedEventArgs, Storyboard, Uri, Visibility (+1 more)
+Cohesion: 0.11
+Nodes (10): RootLayout, bool, CoreWebView2WebMessageReceivedEventArgs, PointerRoutedEventArgs, PropertyChangedEventArgs, SizeChangedEventArgs, Storyboard, Uri (+2 more)
 
 ### Community 27 - "AppUpdateService"
-Cohesion: 0.16
-Nodes (11): DateTimeOffset, List, AppUpdateState, CancellationToken, HttpClient, IProgress, JsonSerializerOptions, string (+3 more)
+Cohesion: 0.14
+Nodes (14): DateTimeOffset, IReadOnlyList, AppUpdateCheckResult, DateTimeOffset, List, AppUpdateState, CancellationToken, HttpClient (+6 more)
 
-### Community 28 - "NexaPlay.Presentation.ViewModels"
-Cohesion: 0.17
-Nodes (8): NexaPlay.Contracts.Navigation, NexaPlay.Presentation.Navigation, NexaPlay, NexaPlay.Infrastructure.Logging, NexaPlay.Presentation.Helpers, NexaPlay.Presentation.ViewModels, NexaPlay.Presentation.Views.Pages, SystemRequirementItem
+### Community 28 - "NewGamesCatalog"
+Cohesion: 0.15
+Nodes (11): IEnumerable, IReadOnlyDictionary, ISet, JsonElement, JsonSerializerOptions, NewGamesCatalog, NewGamesCatalogEntry, CancellationToken (+3 more)
 
 ### Community 29 - "IWindowsDefenderService"
 Cohesion: 0.15
 Nodes (9): IReadOnlyList, Task, IWindowsDefenderService, AntivirusVendor, AntivirusInfo, DefenderExclusionResult, IReadOnlyList, Task (+1 more)
 
-### Community 30 - "NexaPlay.Core.Models"
-Cohesion: 0.16
-Nodes (4): NexaPlay.Core.Helpers, NexaPlay.Core.Models, NexaPlay.Contracts.Services, NavigationItem
+### Community 30 - "What You Must Do When Invoked"
+Cohesion: 0.08
+Nodes (24): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+16 more)
 
 ### Community 31 - "Page"
 Cohesion: 0.12
 Nodes (14): FilterOverlay, FilterOverlayTranslate, GamesGrid, GenreItemsControl, HoverTitleLayer, Page, RootPage, PointerRoutedEventArgs (+6 more)
 
 ### Community 32 - "LibraryViewModel"
-Cohesion: 0.13
-Nodes (15): CancellationTokenSource, int, IReadOnlyList, List, ObservableCollection, LibraryGameCard, LibraryViewModel, Get (+7 more)
+Cohesion: 0.10
+Nodes (18): IReadOnlyList, CancellationTokenSource, int, IReadOnlyList, List, ObservableCollection, RelayCommand, Task (+10 more)
 
 ### Community 33 - "SettingsPage"
-Cohesion: 0.19
-Nodes (5): ContentDialog, RoutedEventArgs, Task, Visibility, SettingsPage
+Cohesion: 0.21
+Nodes (3): RoutedEventArgs, Visibility, SettingsPage
 
 ### Community 34 - "Task"
 Cohesion: 0.22
@@ -310,16 +323,16 @@ Nodes (17): BgGlowLeft, BgGlowRight, BorderGlowLeft, BorderGlowRight, LibraryRem
 Cohesion: 0.12
 Nodes (15): ActivationMessage, CurrentAppVersion, DownloadProgress, DownloadProgressText, IsUpdateAvailable, LastUpdateCheckedText, LatestAppVersion, UpdateDownloadProgress (+7 more)
 
-### Community 39 - ".ApplyFiltersAndPaginationAsync"
-Cohesion: 0.22
-Nodes (3): IReadOnlyList, RelayCommand, Task
+### Community 39 - "NexaPlay.Presentation.ViewModels"
+Cohesion: 0.20
+Nodes (8): NexaPlay.Contracts.Navigation, NexaPlay.Presentation.Navigation, NexaPlay, NexaPlay.Infrastructure.Logging, NexaPlay.Presentation.Helpers, NexaPlay.Presentation.ViewModels, NexaPlay.Presentation.Views.Pages, SystemRequirementItem
 
 ### Community 40 - "CoverImageCacheService"
 Cohesion: 0.23
 Nodes (9): CancellationToken, ConcurrentDictionary, HttpClient, SemaphoreSlim, string, Task, TimeSpan, Uri (+1 more)
 
 ### Community 41 - "SettingsViewModel"
-Cohesion: 0.19
+Cohesion: 0.23
 Nodes (5): IReadOnlyList, Task, SettingsViewModel, Get, NavigationEventArgs
 
 ### Community 42 - "Authoritative New Games AppID List"
@@ -331,39 +344,35 @@ Cohesion: 0.16
 Nodes (7): FrameworkElement, Image, HeroImage, MediaOverlayImage, ExceptionRoutedEventArgs, Image, TranslateTransform
 
 ### Community 44 - "RoutedEventArgs"
-Cohesion: 0.16
-Nodes (5): OfflineActivationCheckbox, TutorialVideoOverlayCloseBtn, RoutedEventArgs, Button, CheckBox
+Cohesion: 0.17
+Nodes (4): OfflineActivationCheckbox, ShimmerContainer, RoutedEventArgs, CheckBox
 
-### Community 45 - "NullLogService"
-Cohesion: 0.15
-Nodes (8): HttpMessageHandler, HttpRequestMessage, CancellationToken, HttpResponseMessage, IReadOnlyList, Task, NullLogService, StatusCodeHandler
+### Community 45 - "NexaPlay.Core.Constants"
+Cohesion: 0.18
+Nodes (4): NexaPlay.Core.Constants, NexaPlay.Infrastructure.Persistence, NexaPlay.Infrastructure.Services, NexaPlay.Infrastructure.Platform
 
 ### Community 46 - "TelegramAccountReportService"
 Cohesion: 0.15
 Nodes (10): CancellationToken, Task, IAccountReportService, AccountReportResult, CancellationToken, HttpClient, string, Task (+2 more)
 
-### Community 47 - "IAddGameService"
-Cohesion: 0.20
-Nodes (5): CancellationToken, IProgress, Task, IAddGameService, Task
-
 ### Community 48 - ".NavigateTo"
 Cohesion: 0.19
 Nodes (8): ActivateButton, BypassSubmenuSteam, BypassSubmenuThirdParty, ValidationEnterKeyButton, ValidationRetryButton, Button, RadioButton, TextBlock
 
-### Community 49 - ".LoadGamesAsync"
-Cohesion: 0.19
-Nodes (5): Message, ICatalogRefreshState, long, CatalogRefreshState, Success
+### Community 49 - ".ClearMetadataCacheAsync"
+Cohesion: 0.17
+Nodes (7): EventArgs, Message, ICatalogRefreshState, IListingCoverResolver, long, CatalogRefreshState, Success
 
-### Community 50 - "AppUpdateCheckResult"
-Cohesion: 0.27
-Nodes (7): CancellationToken, IProgress, Task, IAppUpdateService, DateTimeOffset, IReadOnlyList, AppUpdateCheckResult
+### Community 50 - "IAppUpdateService"
+Cohesion: 0.42
+Nodes (4): CancellationToken, IProgress, Task, IAppUpdateService
 
 ### Community 51 - "AccountReportLimitStore"
 Cohesion: 0.24
 Nodes (8): CancellationToken, Dictionary, int, SemaphoreSlim, string, Task, AccountReportLimitStore, ReportLimitState
 
 ### Community 53 - "INavigationService"
-Cohesion: 0.18
+Cohesion: 0.15
 Nodes (6): Frame, Type, INavigationService, Frame, Type, NavigationService
 
 ### Community 54 - "ISteamService"
@@ -374,9 +383,9 @@ Nodes (5): CancellationToken, IReadOnlyList, Task, ISteamService, SteamFinalizeR
 Cohesion: 0.18
 Nodes (9): net8.0-windows10.0.19041.0, Microsoft.NET.Sdk, CommunityToolkit.Mvvm (8.4.2), MailKit (4.16.0), Microsoft.Extensions.DependencyInjection (10.0.8), Microsoft.Windows.SDK.BuildTools (10.0.28000.1839), Microsoft.WindowsAppSDK (1.6.241114003), SharpCompress (0.48.1) (+1 more)
 
-### Community 57 - "CoverArtImage"
-Cohesion: 0.22
-Nodes (4): CoverArtImage, HeroImage, ExceptionRoutedEventArgs, Image
+### Community 57 - ".OnPageUnloaded"
+Cohesion: 0.13
+Nodes (6): CoverArtImage, HeroImage, TutorialVideoOverlayCloseBtn, ExceptionRoutedEventArgs, Button, Image
 
 ### Community 58 - ".SelectManualFolderAsync"
 Cohesion: 0.24
@@ -386,21 +395,29 @@ Nodes (3): ContentDialogButtonClickEventArgs, ContentDialog, Task
 Cohesion: 0.24
 Nodes (5): fileName, meta, FixFile, List, path
 
-### Community 61 - "Task"
-Cohesion: 0.39
-Nodes (3): Action, HttpResponseMessage, Task
+### Community 60 - "IOnlineFixService"
+Cohesion: 0.31
+Nodes (4): CancellationToken, IProgress, Task, IOnlineFixService
+
+### Community 61 - ".LoadAsync"
+Cohesion: 0.21
+Nodes (5): Action, CancellationToken, HttpResponseMessage, Task, NavigationEventArgs
 
 ### Community 62 - ".ViewModel_PropertyChanged"
 Cohesion: 0.25
 Nodes (4): DenuvoBadge, DenuvoBadgeGlowOverlay, PropertyChangedEventArgs, Border
 
+### Community 63 - "Program.cs"
+Cohesion: 0.17
+Nodes (9): HttpMessageHandler, HttpRequestMessage, CancellationToken, HttpResponseMessage, IReadOnlyList, Task, MatchingHeadEtagHandler, NullLogService (+1 more)
+
 ### Community 64 - ".ApplyHwndIcon"
 Cohesion: 0.48
 Nodes (3): AppWindow, DllImport, IntPtr
 
-### Community 65 - ".GetAsync"
-Cohesion: 0.38
-Nodes (4): CoreWebView2Environment, Lazy, Task, WebView2EnvironmentHelper
+### Community 65 - ".TutorialThumbnail_Tapped"
+Cohesion: 0.18
+Nodes (7): CoreWebView2, CoreWebView2Environment, Lazy, Task, WebView2EnvironmentHelper, TutorialThumbnailOverlay, TappedRoutedEventArgs
 
 ### Community 66 - "BoolToVisibilityConverter"
 Cohesion: 0.33
@@ -418,13 +435,13 @@ Nodes (3): CatalogCacheEnvelope, CatalogCacheStamp, CatalogSourceStamp
 Cohesion: 0.48
 Nodes (6): NavBypass, NavGames, NavHome, NavLibrary, NavSettings, RadioButton
 
-### Community 72 - ".TutorialThumbnail_Tapped"
-Cohesion: 0.33
-Nodes (3): CoreWebView2, TutorialThumbnailOverlay, TappedRoutedEventArgs
+### Community 72 - "graphify reference: extra exports and benchmark"
+Cohesion: 0.22
+Nodes (8): graphify reference: extra exports and benchmark, Step 6b - Wiki (only if --wiki flag), Step 7 - Neo4j export (only if --neo4j or --neo4j-push flag), Step 7a - FalkorDB export (only if --falkordb or --falkordb-push flag), Step 7b - SVG export (only if --svg flag), Step 7c - GraphML export (only if --graphml flag), Step 7d - MCP server (only if --mcp flag), Step 8 - Token reduction benchmark (only if total_words > 5000)
 
-### Community 73 - "SteamGuardService"
-Cohesion: 0.40
-Nodes (3): Action, Task, SteamGuardService
+### Community 73 - "IAddGameService"
+Cohesion: 0.29
+Nodes (5): CancellationToken, IProgress, Task, IAddGameService, RemoveGameResult
 
 ### Community 75 - "GameHub Feature Parity"
 Cohesion: 0.50
@@ -434,9 +451,9 @@ Nodes (5): NexaPlay Native Remake, GameHub Feature Parity, Enterprise-Clean UI D
 Cohesion: 0.40
 Nodes (3): CoreWebView2NavigationCompletedEventArgs, CoreWebView2WebMessageReceivedEventArgs, WebView2
 
-### Community 78 - "ObservableObject"
+### Community 78 - "SteamGuardService"
 Cohesion: 0.40
-Nodes (3): string, MainViewModel, ObservableObject
+Nodes (3): Action, Task, SteamGuardService
 
 ### Community 80 - "RootCardBorder"
 Cohesion: 0.50
@@ -446,13 +463,17 @@ Nodes (3): RootCardBorder, PointerRoutedEventArgs, Border
 Cohesion: 0.50
 Nodes (4): NexaPlay Wide Tile Logo, Rounded Square Frame, Stylized X Emblem, Transparent Wide Tile Canvas
 
-### Community 83 - "AppConstants"
-Cohesion: 0.50
-Nodes (3): string, TimeSpan, AppConstants
+### Community 83 - "graphify reference: query, path, explain"
+Cohesion: 0.33
+Nodes (5): For /graphify explain, For /graphify path, graphify reference: query, path, explain, Step 0 — Constrained query expansion (REQUIRED before traversal), Step 1 — Traversal
 
-### Community 84 - "AppUpdateManifest"
-Cohesion: 0.50
-Nodes (3): DateTimeOffset, List, AppUpdateManifest
+### Community 84 - "Q: saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
+Cohesion: 0.40
+Nodes (4): Answer, Outcome, Q: saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan, Source Nodes
+
+### Community 85 - "Q: pas ngunduh data apakah dia mengunduh juga file data ini new_games.json atau file tersebut hanya diunduh saat load game saja yang berada di setting?"
+Cohesion: 0.40
+Nodes (4): Answer, Outcome, Q: pas ngunduh data apakah dia mengunduh juga file data ini new_games.json atau file tersebut hanya diunduh saat load game saja yang berada di setting?, Source Nodes
 
 ### Community 86 - "LibraryList"
 Cohesion: 0.50
@@ -470,25 +491,61 @@ Nodes (3): Framed X Mark, NexaPlay Square App Logo, Transparent Monochrome Icon
 Cohesion: 0.67
 Nodes (3): Gray Framed X Symbol, Store Logo, Unavailable Image Placeholder
 
+### Community 91 - "Q: tombol load games ini mengunduh apa saja karena sangat lama dan kenapa mengunduh itu cari tau direadme atau di doc project apakah ada yang memberikan info tersebut"
+Cohesion: 0.40
+Nodes (4): Answer, Outcome, Q: tombol load games ini mengunduh apa saja karena sangat lama dan kenapa mengunduh itu cari tau direadme atau di doc project apakah ada yang memberikan info tersebut, Source Nodes
+
+### Community 92 - "Q: file ini harus terbaru apakah memakai etag seperti new games dan bagaimana penerapan terbaik agar tidak lama"
+Cohesion: 0.40
+Nodes (4): Answer, Outcome, Q: file ini harus terbaru apakah memakai etag seperti new games dan bagaimana penerapan terbaik agar tidak lama, Source Nodes
+
+### Community 112 - "AppConstants"
+Cohesion: 0.50
+Nodes (3): string, TimeSpan, AppConstants
+
+### Community 113 - "AppUpdateManifest"
+Cohesion: 0.50
+Nodes (3): DateTimeOffset, List, AppUpdateManifest
+
+### Community 116 - "graphify reference: add a URL and watch a folder"
+Cohesion: 0.50
+Nodes (3): For /graphify add, For --watch, graphify reference: add a URL and watch a folder
+
+### Community 117 - "graphify reference: commit hook and native CLAUDE.md integration"
+Cohesion: 0.50
+Nodes (3): For git commit hook, For native CLAUDE.md integration, graphify reference: commit hook and native CLAUDE.md integration
+
+### Community 118 - "graphify reference: incremental update and cluster-only"
+Cohesion: 0.50
+Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphify reference: incremental update and cluster-only
+
 ## Ambiguous Edges - Review These
 - `Gray Framed X Symbol` → `Unavailable Image Placeholder`  [AMBIGUOUS]
   NexaPlay/Assets/StoreLogo.png · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **135 isolated node(s):** `net8.0`, `Microsoft.NET.Sdk`, `Viewbox`, `FontIcon`, `ScaleTransform` (+130 more)
+- **192 isolated node(s):** `net8.0`, `Microsoft.NET.Sdk`, `Viewbox`, `FontIcon`, `ScaleTransform` (+187 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **24 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **28 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+
+## Work-memory lessons
+
+**Preferred sources** — corroborated by past sessions; start here.
+- `MetadataService` (4× useful, score=3.997539117) _(code changed — re-verify)_
+- `SettingsViewModel` (3× useful, score=2.999298652) _(code changed — re-verify)_
+- `BypassGamesDataService` (3× useful, score=2.997888305) _(code changed — re-verify)_
+- `GameCoverIndexService` (2× useful, score=1.99964784) _(code changed — re-verify)_
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `Gray Framed X Symbol` and `Unavailable Image Placeholder`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `IAppLogService` connect `IAppLogService` to `.Log`, `HomeViewModel`, `BypassGamesViewModel`, `SteamPlatformService`, `NexaPlayOverrideService`, `LicenseInfo`, `ListingCoverResolver`, `SteamStoreService`, `GameDetailPage`, `BypassTutorialVideoService`, `GameCoverIndexService`, `AddGameService`, `BypassGameDetailViewModel`, `GameDetailViewModel`, `MainWindow`, `BypassGameDetailPage`, `AppUpdateService`, `IWindowsDefenderService`, `LibraryViewModel`, `CoverImageCacheService`, `SettingsViewModel`, `NullLogService`, `TelegramAccountReportService`?**
-  _High betweenness centrality (0.272) - this node is a cross-community bridge._
-- **Why does `MainWindow` connect `MainWindow` to `.ApplyHwndIcon`, `HomeViewModel`, `Window`, `Border`, `.OnNavChecked`, `LicenseInfo`, `IAppLogService`, `GamesViewModel`, `ListingCoverResolver`, `ObservableObject`, `.NavigateTo`, `AppUpdateCheckResult`, `INavigationService`, `ISteamService`, `NexaPlay.Presentation.ViewModels`?**
-  _High betweenness centrality (0.128) - this node is a cross-community bridge._
-- **Why does `GameDetailPage` connect `GameDetailPage` to `.MediaCard_Tapped`, `ScreenshotEntry`, `BypassGamesPage`, `IAppLogService`, `Page`, `.AboutGameWebView_NavigationCompleted`, `.FindSiblingSkeletonOverlay`, `IAddGameService`, `.HandleAddGameDialogAction`, `RoutedEventArgs`, `.HandleOnlineFixPrimaryActionAsync`, `GameDetailViewModel`, `NexaPlay.Presentation.ViewModels`, `.ViewModel_PropertyChanged`?**
+- **Why does `IAppLogService` connect `IAppLogService` to `.Log`, `HomeViewModel`, `BypassGamesViewModel`, `SteamPlatformService`, `NexaPlayOverrideService`, `LicenseInfo`, `OnlineFixService`, `ListingCoverResolver`, `SteamStoreService`, `GameDetailPage`, `GameCoverIndexService`, `AddGameService`, `BypassGameDetailViewModel`, `GameDetailViewModel`, `MainWindow`, `BypassGameDetailPage`, `AppUpdateService`, `IWindowsDefenderService`, `LibraryViewModel`, `CoverImageCacheService`, `SettingsViewModel`, `TelegramAccountReportService`, `Program.cs`?**
+  _High betweenness centrality (0.245) - this node is a cross-community bridge._
+- **Why does `MainWindow` connect `MainWindow` to `.ApplyHwndIcon`, `HomeViewModel`, `BypassGamesViewModel`, `Window`, `Border`, `NexaPlay.Presentation.ViewModels`, `LicenseInfo`, `.OnNavChecked`, `GamesViewModel`, `ListingCoverResolver`, `.NavigateTo`, `IAppLogService`, `IAppUpdateService`, `.ClearMetadataCacheAsync`, `INavigationService`, `ISteamService`?**
+  _High betweenness centrality (0.124) - this node is a cross-community bridge._
+- **Why does `GameDetailViewModel` connect `GameDetailViewModel` to `HomeViewModel`, `BypassGamesViewModel`, `NexaPlayOverrideService`, `LicenseInfo`, `Page`, `ListingCoverResolver`, `SteamStoreService`, `GameDetailPage`, `IAppLogService`, `ScreenshotEntry`, `NexaPlay.Presentation.ViewModels`, `.LoadAsync`, `RoutedEventArgs`, `INavigationService`, `ISteamService`, `.HandleOnlineFixPrimaryActionAsync`, `IOnlineFixService`, `.MediaCard_Tapped`, `.RemoveFixAsync`, `IAddGameService`, `IReadOnlyList`?**
   _High betweenness centrality (0.118) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `GameDetailViewModel` (e.g. with `AddGameCommand` and `ApplyFixCommand`) actually correct?**
   _`GameDetailViewModel` has 11 INFERRED edges - model-reasoned connections that need verification._

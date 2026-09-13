@@ -137,6 +137,20 @@ public static class NewGamesCatalog
             .ToArray();
     }
 
+    public static int[] SelectRefreshAppIds(
+        IEnumerable<int> requestedAppIds,
+        ISet<int> primaryAppIds)
+    {
+        ArgumentNullException.ThrowIfNull(requestedAppIds);
+        ArgumentNullException.ThrowIfNull(primaryAppIds);
+
+        return requestedAppIds
+            .Where(appId => appId > 0 && !primaryAppIds.Contains(appId))
+            .Distinct()
+            .Order()
+            .ToArray();
+    }
+
     public static NewGamesCatalogEntry[] ComposeSnapshot(
         IEnumerable<int> requestedAppIds,
         ISet<int> primaryAppIds,

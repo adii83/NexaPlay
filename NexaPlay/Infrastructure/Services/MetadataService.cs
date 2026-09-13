@@ -2,6 +2,7 @@ using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Constants;
 using NexaPlay.Core.Helpers;
 using NexaPlay.Core.Models;
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Net;
 using System.Text.Json;
@@ -30,9 +31,14 @@ public sealed class MetadataService : IMetadataService
     private readonly string _newFixGamesFile;
     private readonly string _steamGamesFile;
     private readonly string _newGamesFile;
-    private readonly string _newGamesEtagFile;
     private readonly string _newGamesCatalogFile;
+    private readonly string _catalogManifestFile;
+    private readonly string _catalogManifestEtagFile;
+    private readonly string _sourceEtagDir;
+    private readonly string _sourceHashDir;
+    private readonly string _r2EtagDir;
     private static readonly TimeSpan NewGamesR2Timeout = TimeSpan.FromSeconds(30);
+    private const int SourceDownloadConcurrency = 3;
 
     private Dictionary<int, GameEntry>? _index;
     private DateTime _lastLoaded = DateTime.MinValue;
@@ -47,6 +53,9 @@ public sealed class MetadataService : IMetadataService
     private readonly string _popularEtagFile;
     private readonly string _newFixEtagFile;
     private DateTime _lastBackgroundCheckUtc = DateTime.MinValue;
+    private DateTime _lastNewGamesMetadataCheckUtc = DateTime.MinValue;
+
+    public event EventHandler? CatalogUpdated;
 
     public MetadataService(IAppLogService log, INexaPlayOverrideService nexaPlayOverride)
     {
@@ -69,18 +78,29 @@ public sealed class MetadataService : IMetadataService
         _newFixGamesFile = Path.Combine(_catalogDir, AppConstants.NewFixGamesCacheFileName);
         _steamGamesFile = Path.Combine(_catalogDir, AppConstants.SteamGamesCacheFileName);
         _newGamesFile = Path.Combine(_catalogDir, AppConstants.NewGamesCacheFileName);
-        _newGamesEtagFile = Path.Combine(_catalogDir, AppConstants.NewGamesEtagFileName);
         _newGamesCatalogFile = Path.Combine(_catalogDir, AppConstants.NewGamesCatalogFileName);
-        _popularAppIdsCacheFile = Path.Combine(_catalogDir, "appid_populer_cache.json");
-        _newFixAppIdsCacheFile = Path.Combine(_catalogDir, "new_fix_appids_cache.json");
-        _popularEtagFile = Path.Combine(_catalogDir, "appid_populer.etag");
-        _newFixEtagFile = Path.Combine(_catalogDir, "new_fix_games.etag");
+        _catalogManifestFile = Path.Combine(_catalogDir, AppConstants.CatalogManifestCacheFileName);
+        _catalogManifestEtagFile = Path.Combine(_catalogDir, AppConstants.CatalogManifestEtagFileName);
+        _sourceEtagDir = Path.Combine(_catalogDir, ".etags");
+        _sourceHashDir = Path.Combine(_catalogDir, ".sha256");
+        _r2EtagDir = Path.Combine(_catalogDir, "metadata_etags");
+        _popularAppIdsCacheFile = Path.Combine(_catalogDir, "appid_populer.json");
+        _newFixAppIdsCacheFile = _newFixGamesFile;
+        _popularEtagFile = GetSourceEtagPath("appid_populer.json");
+        _newFixEtagFile = GetSourceEtagPath("new_fix_games.json");
 
         Directory.CreateDirectory(_catalogDir);
+        Directory.CreateDirectory(_sourceEtagDir);
+        Directory.CreateDirectory(_sourceHashDir);
+        Directory.CreateDirectory(_r2EtagDir);
         _popularEtag = TryReadText(_popularEtagFile);
         _newFixEtag = TryReadText(_newFixEtagFile);
         _popularAppIdsCache = TryReadAppIdArray(_popularAppIdsCacheFile);
         _newFixAppIdsCache = TryReadAppIdArray(_newFixAppIdsCacheFile);
+        if (_popularAppIdsCache is { Count: > 0 })
+            _popularLastLoaded = DateTime.UtcNow;
+        if (_newFixAppIdsCache is { Count: > 0 })
+            _newFixLastLoaded = DateTime.UtcNow;
     }
 
     public bool IsCacheAvailable =>
@@ -184,7 +204,9 @@ public sealed class MetadataService : IMetadataService
 
     public async Task RefreshAsync(bool forceDownload = false, CancellationToken ct = default)
     {
-        await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(forceDownload, useHeadCheck: false, ct), ct);
+        await RunWithSourceSyncLockAsync(
+            () => SyncSourcesCoreAsync(revalidate: forceDownload, progress: null, ct),
+            ct);
         await _loadLock.WaitAsync(ct);
         try
         {
@@ -200,44 +222,17 @@ public sealed class MetadataService : IMetadataService
         IProgress<double>? progress = null,
         CancellationToken ct = default)
     {
-        await RunWithSourceSyncLockAsync(async () =>
-        {
-            var files = new[]
-            {
-                (AppConstants.OverrideDataUrl, _overrideDataFile, "override_data.json"),
-                (AppConstants.BypassGamesUrl, _fixGamesFile, "fix_games.json"),
-                (AppConstants.NewFixGamesUrl, _newFixGamesFile, "new_fix_games.json"),
-                (AppConstants.SteamGamesUrl, _steamGamesFile, "steam_games.json")
-            };
-
-            for (int i = 0; i < files.Length; i++)
-            {
-                var file = files[i];
-                var basePercent = i * 20.0;
-                const double chunkPercent = 20.0;
-
-                var reporter = new Progress<double?>(p =>
-                {
-                    if (p.HasValue)
-                        progress?.Report(basePercent + (p.Value * chunkPercent / 100.0));
-                });
-
-                await DownloadIfNeededSafeAsync(file.Item1, file.Item2, force: true, useHeadCheck: false, ct, file.Item3, reporter);
-            }
-        }, ct);
-
-        // Delete etags for appid_populer and new_fix_games to force refresh
-        if (File.Exists(_popularEtagFile)) { try { File.Delete(_popularEtagFile); } catch { } }
-        if (File.Exists(_newFixEtagFile)) { try { File.Delete(_newFixEtagFile); } catch { } }
-        _popularEtag = null;
-        _newFixEtag = null;
-        _popularAppIdsCache = null;
-        _newFixAppIdsCache = null;
+        await RunWithSourceSyncLockAsync(
+            () => SyncSourcesCoreAsync(revalidate: true, progress, ct),
+            ct);
+        ReloadAppIdCachesFromDisk();
 
         await _loadLock.WaitAsync(ct);
         try
         {
-            return await BuildIndexAsync(ct, materializeNewGames: true, progress);
+            var result = await BuildIndexAsync(ct, materializeNewGames: true, progress);
+            _lastNewGamesMetadataCheckUtc = DateTime.UtcNow;
+            return result;
         }
         finally
         {
@@ -247,56 +242,51 @@ public sealed class MetadataService : IMetadataService
 
     public async Task WarmupEssentialSourcesAsync(IProgress<MetadataWarmupProgress>? progress = null, CancellationToken ct = default)
     {
-        await RunWithSourceSyncLockAsync(async () =>
+        if (HasEssentialLocalSources())
         {
-            var essentials = new (string Url, string Path, string Name)[]
+            await _loadLock.WaitAsync(ct);
+            try
             {
-                (AppConstants.SteamDataJsonUrl, _steamDataFile, "steam_data.json"),
-                (AppConstants.SteamDataUrl, _steamDataGzFile, "steam_data.json.gz"),
-                (AppConstants.OverrideDataUrl, _overrideDataFile, "override_data.json")
-            };
-
-            var total = essentials.Length;
-            for (var i = 0; i < total; i++)
-            {
-                var item = essentials[i];
-                var completedBefore = i;
-                var reporter = new Progress<double?>(filePercent =>
-                {
-                    progress?.Report(new MetadataWarmupProgress
-                    {
-                        FileName = item.Name,
-                        Stage = "downloading",
-                        CompletedFiles = completedBefore,
-                        TotalFiles = total,
-                        FilePercent = filePercent,
-                        Message = $"Downloading {item.Name}"
-                    });
-                });
-
-                progress?.Report(new MetadataWarmupProgress
-                {
-                    FileName = item.Name,
-                    Stage = "start",
-                    CompletedFiles = completedBefore,
-                    TotalFiles = total,
-                    FilePercent = 0,
-                    Message = $"Start {item.Name}"
-                });
-
-                await DownloadIfNeededSafeAsync(item.Url, item.Path, force: false, useHeadCheck: false, ct, item.Name, reporter);
-
-                progress?.Report(new MetadataWarmupProgress
-                {
-                    FileName = item.Name,
-                    Stage = "done",
-                    CompletedFiles = i + 1,
-                    TotalFiles = total,
-                    FilePercent = 100,
-                    Message = $"Done {item.Name}"
-                });
+                if (_index is null)
+                    await BuildIndexAsync(ct);
             }
-        }, ct);
+            finally
+            {
+                _loadLock.Release();
+            }
+
+            _ = PerformBackgroundUpdateAsync();
+            return;
+        }
+
+        var warmupProgress = progress is null
+            ? null
+            : new Progress<double>(value => progress.Report(new MetadataWarmupProgress
+            {
+                FileName = "catalog metadata",
+                Stage = "downloading",
+                CompletedFiles = 0,
+                TotalFiles = 1,
+                FilePercent = value,
+                Message = "Downloading catalog metadata"
+            }));
+
+        await RunWithSourceSyncLockAsync(
+            () => SyncSourcesCoreAsync(revalidate: true, warmupProgress, ct),
+            ct);
+        ReloadAppIdCachesFromDisk();
+
+        await _loadLock.WaitAsync(ct);
+        try
+        {
+            await BuildIndexAsync(ct, materializeNewGames: true, progress: null);
+            _lastNewGamesMetadataCheckUtc = DateTime.UtcNow;
+            _lastBackgroundCheckUtc = DateTime.UtcNow;
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
     }
 
     public Task ClearCacheAsync()
@@ -307,22 +297,8 @@ public sealed class MetadataService : IMetadataService
         _popularLastLoaded = DateTime.MinValue;
         _newFixAppIdsCache = null;
         _newFixLastLoaded = DateTime.MinValue;
-        _popularEtag = null;
-        _newFixEtag = null;
-
-        // Delete only derived/disposable files; source catalogs survive.
-        string[] disposable =
-        [
-            _popularAppIdsCacheFile,
-            _newFixAppIdsCacheFile,
-            _popularEtagFile,
-            _newFixEtagFile
-        ];
-
-        foreach (var path in disposable)
-        {
-            try { if (File.Exists(path)) File.Delete(path); } catch { }
-        }
+        _popularEtag = TryReadText(_popularEtagFile);
+        _newFixEtag = TryReadText(_newFixEtagFile);
 
         _log.Log("Metadata", "Metadata derived cache cleared (sources retained)");
         return Task.CompletedTask;
@@ -354,13 +330,18 @@ public sealed class MetadataService : IMetadataService
                     return;
                 }
 
-                await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(force: false, useHeadCheck: false, ct), ct);
+                await RunWithSourceSyncLockAsync(
+                    () => SyncSourcesCoreAsync(revalidate: true, progress: null, ct),
+                    ct);
                 await BuildIndexAsync(ct);
             }
-            catch (JsonException ex)
+            catch (Exception ex) when (ex is JsonException or InvalidDataException)
             {
                 _log.Log("Metadata", $"Catalog parse failed, trying force refresh: {ex.Message}");
-                await RunWithSourceSyncLockAsync(() => SyncSourcesCoreAsync(force: true, useHeadCheck: false, ct), ct);
+                ClearCatalogValidationState();
+                await RunWithSourceSyncLockAsync(
+                    () => SyncSourcesCoreAsync(revalidate: true, progress: null, ct),
+                    ct);
                 await BuildIndexAsync(ct);
             }
         }
@@ -370,14 +351,22 @@ public sealed class MetadataService : IMetadataService
         }
     }
 
-    private async Task<bool> SyncSourcesCoreAsync(bool force, bool useHeadCheck, CancellationToken ct)
+    private async Task<bool> SyncSourcesCoreAsync(
+        bool revalidate,
+        IProgress<double>? progress,
+        CancellationToken ct)
     {
-        var anyUpdated = false;
-        var jsonResult = await DownloadIfNeededSafeAsync(
-            AppConstants.SteamDataJsonUrl, _steamDataFile, force, useHeadCheck, ct, "steam_data.json", null);
-        var gzResult = await DownloadIfNeededSafeAsync(
-            AppConstants.SteamDataUrl, _steamDataGzFile, force, useHeadCheck, ct, "steam_data.json.gz", null);
-        anyUpdated |= jsonResult.Updated || gzResult.Updated;
+        var sources = GetCatalogSources();
+        var manifestResult = await TrySyncFromManifestAsync(sources, revalidate, progress, ct);
+        var covered = manifestResult?.CoveredNames ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var remaining = sources.Where(source => !covered.Contains(source.RemoteName)).ToArray();
+        var fallbackUpdated = await SyncSourcesWithEtagsAsync(remaining, revalidate, progress, ct);
+        var anyUpdated = (manifestResult?.Updated ?? false) || fallbackUpdated;
+
+        ReloadAppIdCachesFromDisk();
+
+        var jsonResult = new DownloadResult(IsFileUsable(_steamDataFile), anyUpdated);
+        var gzResult = new DownloadResult(IsFileUsable(_steamDataGzFile), anyUpdated);
 
         if (!gzResult.Available && jsonResult.Available)
         {
@@ -389,12 +378,268 @@ public sealed class MetadataService : IMetadataService
             throw new IOException("Both primary metadata sources are unavailable/corrupted.");
         }
 
-        anyUpdated |= (await DownloadIfNeededSafeAsync(AppConstants.OverrideDataUrl, _overrideDataFile, force, useHeadCheck, ct, "override_data.json", null)).Updated;
-        anyUpdated |= (await DownloadIfNeededSafeAsync(AppConstants.BypassGamesUrl, _fixGamesFile, force, useHeadCheck, ct, "fix_games.json", null)).Updated;
-        anyUpdated |= (await DownloadIfNeededSafeAsync(AppConstants.NewFixGamesUrl, _newFixGamesFile, force, useHeadCheck, ct, "new_fix_games.json", null)).Updated;
-        anyUpdated |= (await DownloadIfNeededSafeAsync(AppConstants.SteamGamesUrl, _steamGamesFile, force, useHeadCheck, ct, "steam_games.json", null)).Updated;
-
         return anyUpdated;
+    }
+
+    private IReadOnlyList<CatalogSource> GetCatalogSources() =>
+    [
+        new("steam_data.json", AppConstants.SteamDataJsonUrl, _steamDataFile, false),
+        new("steam_data.json.gz", AppConstants.SteamDataUrl, _steamDataGzFile, true),
+        new("override_data.json", AppConstants.OverrideDataUrl, _overrideDataFile, false),
+        new("fix_games.json", AppConstants.BypassGamesUrl, _fixGamesFile, false),
+        new("new_fix_games.json", AppConstants.NewFixGamesUrl, _newFixGamesFile, false),
+        new("steam_games/steam_games.json", AppConstants.SteamGamesUrl, _steamGamesFile, false),
+        new("appid_populer.json", AppConstants.PopularGamesUrl, _popularAppIdsCacheFile, false),
+        new("new_games.json", AppConstants.NewGamesUrl, _newGamesFile, false)
+    ];
+
+    private async Task<ManifestSyncResult?> TrySyncFromManifestAsync(
+        IReadOnlyList<CatalogSource> sources,
+        bool revalidate,
+        IProgress<double>? progress,
+        CancellationToken ct)
+    {
+        if (!revalidate)
+            return null;
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, AppConstants.CatalogManifestUrl);
+            var currentEtag = TryReadText(_catalogManifestEtagFile);
+            if (!string.IsNullOrWhiteSpace(currentEtag))
+                request.Headers.TryAddWithoutValidation("If-None-Match", currentEtag);
+
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(AppConstants.HttpDefaultTimeout);
+            using var response = await _http.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                timeout.Token);
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                _log.Log("Metadata", "catalog_manifest.json not published; using per-file ETags.");
+                return null;
+            }
+
+            string? manifestJson;
+            string? responseEtag = null;
+            if (response.StatusCode == HttpStatusCode.NotModified)
+            {
+                manifestJson = TryReadText(_catalogManifestFile);
+            }
+            else
+            {
+                response.EnsureSuccessStatusCode();
+                manifestJson = await response.Content.ReadAsStringAsync(timeout.Token);
+                responseEtag = response.Headers.ETag?.ToString();
+            }
+
+            if (string.IsNullOrWhiteSpace(manifestJson))
+                return null;
+
+            var allowedNames = sources.Select(source => source.RemoteName)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var manifest = CatalogManifestRules.Parse(manifestJson, allowedNames);
+            if (manifest is null)
+            {
+                _log.Log("Metadata", "catalog_manifest.json invalid; using per-file ETags.");
+                return null;
+            }
+
+            var sourceByName = sources.ToDictionary(
+                source => source.RemoteName,
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in manifest.Files.Values)
+            {
+                if (!sourceByName.TryGetValue(entry.Name, out var source) ||
+                    !string.Equals(entry.Url, source.Url, StringComparison.OrdinalIgnoreCase))
+                {
+                    _log.Log("Metadata", $"Manifest URL mismatch for {entry.Name}; using per-file ETags.");
+                    return null;
+                }
+            }
+
+            var localStates = new Dictionary<string, CatalogFileState>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in manifest.Files.Values)
+            {
+                var source = sourceByName[entry.Name];
+                if (!IsFileUsable(source.LocalPath) || new FileInfo(source.LocalPath).Length != entry.Size)
+                    continue;
+
+                var knownHash = TryReadText(GetSourceHashPath(source.RemoteName));
+                if (string.Equals(knownHash, entry.Sha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    localStates[entry.Name] = new CatalogFileState(entry.Size, entry.Sha256);
+                    continue;
+                }
+
+                try
+                {
+                    var actualHash = await CatalogSourceFile.ValidateAsync(
+                        source.LocalPath,
+                        source.IsGzip,
+                        entry.Size,
+                        entry.Sha256,
+                        ct,
+                        source.RemoteName);
+                    localStates[entry.Name] = new CatalogFileState(entry.Size, actualHash);
+                    await WriteTextAtomicallyAsync(GetSourceHashPath(source.RemoteName), actualHash, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _log.Log("Metadata", $"Local manifest validation failed for {entry.Name}: {ex.Message}");
+                }
+            }
+
+            var changedNames = CatalogManifestRules.SelectChangedFiles(manifest, localStates);
+            var staged = new ConcurrentBag<StagedCatalogSource>();
+            try
+            {
+                using var gate = new SemaphoreSlim(SourceDownloadConcurrency, SourceDownloadConcurrency);
+                var completed = 0;
+                var tasks = changedNames.Select(async name =>
+                {
+                    await gate.WaitAsync(ct);
+                    try
+                    {
+                        var candidate = await DownloadManifestCandidateAsync(
+                            sourceByName[name],
+                            manifest.Files[name],
+                            ct);
+                        staged.Add(candidate);
+                    }
+                    finally
+                    {
+                        gate.Release();
+                        var done = Interlocked.Increment(ref completed);
+                        progress?.Report(changedNames.Length == 0 ? 100 : done * 100d / changedNames.Length);
+                    }
+                });
+                await Task.WhenAll(tasks);
+
+                var orderedCandidates = staged
+                    .OrderBy(item => item.Source.RemoteName, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                CatalogSourceFile.PublishBatch(orderedCandidates
+                    .Select(candidate => (candidate.TempPath, candidate.Source.LocalPath))
+                    .ToArray());
+                foreach (var candidate in orderedCandidates)
+                {
+                    try
+                    {
+                        await WriteTextAtomicallyAsync(
+                            GetSourceHashPath(candidate.Source.RemoteName),
+                            candidate.Sha256,
+                            ct);
+                        if (!string.IsNullOrWhiteSpace(candidate.ETag))
+                            await WriteTextAtomicallyAsync(GetSourceEtagPath(candidate.Source.RemoteName), candidate.ETag!, ct);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        _log.Log("Metadata", $"Source validation state update failed for {candidate.Source.RemoteName}: {ex.Message}");
+                    }
+                }
+
+                if (response.StatusCode != HttpStatusCode.NotModified)
+                {
+                    await WriteTextAtomicallyAsync(_catalogManifestFile, manifestJson, ct);
+                    if (!string.IsNullOrWhiteSpace(responseEtag))
+                        await WriteTextAtomicallyAsync(_catalogManifestEtagFile, responseEtag!, ct);
+                }
+
+                _log.Log("Metadata", $"Catalog manifest {manifest.Revision}: changed={changedNames.Length}");
+                return new ManifestSyncResult(changedNames.Length > 0, manifest.Files.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase));
+            }
+            finally
+            {
+                foreach (var candidate in staged)
+                    TryDelete(candidate.TempPath);
+            }
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            _log.Log("Metadata", "Catalog manifest request timed out; using per-file ETags.");
+            return null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _log.Log("Metadata", $"Catalog manifest sync failed; using per-file ETags: {ex.Message}");
+            return null;
+        }
+    }
+
+    private async Task<StagedCatalogSource> DownloadManifestCandidateAsync(
+        CatalogSource source,
+        CatalogManifestEntry entry,
+        CancellationToken ct)
+    {
+        var tempPath = CreateTempPath(source.RemoteName);
+        try
+        {
+            using var response = await _http.GetAsync(source.Url, HttpCompletionOption.ResponseHeadersRead, ct);
+            response.EnsureSuccessStatusCode();
+            await using var remote = await response.Content.ReadAsStreamAsync(ct);
+            await using (var local = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                await remote.CopyToAsync(local, ct);
+                await local.FlushAsync(ct);
+            }
+
+            var hash = await CatalogSourceFile.ValidateAsync(
+                tempPath,
+                source.IsGzip,
+                entry.Size,
+                entry.Sha256,
+                ct,
+                source.RemoteName);
+            return new StagedCatalogSource(source, tempPath, hash, response.Headers.ETag?.ToString());
+        }
+        catch
+        {
+            TryDelete(tempPath);
+            throw;
+        }
+    }
+
+    private async Task<bool> SyncSourcesWithEtagsAsync(
+        IReadOnlyList<CatalogSource> sources,
+        bool revalidate,
+        IProgress<double>? progress,
+        CancellationToken ct)
+    {
+        if (sources.Count == 0)
+        {
+            progress?.Report(100);
+            return false;
+        }
+
+        using var gate = new SemaphoreSlim(SourceDownloadConcurrency, SourceDownloadConcurrency);
+        var completed = 0;
+        var tasks = sources.Select(async source =>
+        {
+            await gate.WaitAsync(ct);
+            try
+            {
+                return await DownloadIfNeededSafeAsync(
+                    source.Url,
+                    source.LocalPath,
+                    revalidate,
+                    ct,
+                    source.RemoteName,
+                    source.IsGzip,
+                    null);
+            }
+            finally
+            {
+                gate.Release();
+                var done = Interlocked.Increment(ref completed);
+                progress?.Report(done * 100d / sources.Count);
+            }
+        });
+
+        var results = await Task.WhenAll(tasks);
+        return results.Any(result => result.Updated);
     }
 
     private async Task RunWithSourceSyncLockAsync(Func<Task> action, CancellationToken ct)
@@ -426,16 +671,16 @@ public sealed class MetadataService : IMetadataService
     private async Task<DownloadResult> DownloadIfNeededSafeAsync(
         string url,
         string outputPath,
-        bool force,
-        bool useHeadCheck,
+        bool revalidate,
         CancellationToken ct,
         string sourceName,
+        bool isGzip,
         IProgress<double?>? progress)
     {
         var updated = false;
         try
         {
-            updated = await DownloadIfNeededAsync(url, outputPath, force, useHeadCheck, ct, sourceName, progress);
+            updated = await DownloadIfNeededAsync(url, outputPath, revalidate, ct, sourceName, isGzip, progress);
         }
         catch (Exception ex)
         {
@@ -467,7 +712,7 @@ public sealed class MetadataService : IMetadataService
         var materializeResult = default(NewGamesRefreshResult);
         if (materializeNewGames)
         {
-            var requestedAppIds = await RefreshNewGamesListAsync(ct);
+            var requestedAppIds = ReadNewGamesAppIds();
             if (requestedAppIds is not null)
                 materializeResult = await MaterializeNewGamesAsync(requestedAppIds, primaryAppIds, progress, ct);
         }
@@ -502,7 +747,7 @@ public sealed class MetadataService : IMetadataService
                 [_fixGamesFile, _newFixGamesFile, _steamGamesFile],
                 ct);
         }
-        catch (JsonException ex)
+        catch (Exception ex) when (ex is JsonException or InvalidDataException)
         {
             _log.Log("Metadata", $"Protection source parse error, continue without protection list: {ex.Message}");
             protectedAppIds = new HashSet<int>();
@@ -605,7 +850,7 @@ public sealed class MetadataService : IMetadataService
             await MergeSourceAsync(path, isGzip, catalog, ct);
             return true;
         }
-        catch (JsonException ex)
+        catch (Exception ex) when (ex is JsonException or InvalidDataException)
         {
             _log.Log("Metadata", $"Skip corrupted source {Path.GetFileName(path)}: {ex.Message}");
             return false;
@@ -716,70 +961,6 @@ public sealed class MetadataService : IMetadataService
         }
     }
 
-    private async Task<int[]?> RefreshNewGamesListAsync(CancellationToken ct)
-    {
-        var lastKnownGood = ReadNewGamesAppIds();
-        try
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, AppConstants.NewGamesUrl);
-            var etag = TryReadText(_newGamesEtagFile);
-            if (!string.IsNullOrWhiteSpace(etag))
-                request.Headers.TryAddWithoutValidation("If-None-Match", etag);
-
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(AppConstants.HttpDefaultTimeout);
-            using var response = await _http.SendAsync(
-                request,
-                HttpCompletionOption.ResponseHeadersRead,
-                timeout.Token);
-
-            if (response.StatusCode == HttpStatusCode.NotModified)
-                return ReadNewGamesAppIds();
-
-            response.EnsureSuccessStatusCode();
-            var json = await response.Content.ReadAsStringAsync(timeout.Token);
-            var appIds = NewGamesCatalog.ParseAppIds(json)
-                ?? throw new JsonException("new_games.json must be an array of positive integer AppIDs.");
-            var normalizedJson = JsonSerializer.Serialize(appIds);
-            await NewGamesCatalogFile.PublishAppIdListAsync(normalizedJson, _newGamesFile, ct);
-
-            var responseEtag = response.Headers.ETag?.ToString();
-            try
-            {
-                if (string.IsNullOrWhiteSpace(responseEtag))
-                {
-                    if (File.Exists(_newGamesEtagFile))
-                        File.Delete(_newGamesEtagFile);
-                }
-                else
-                {
-                    await File.WriteAllTextAsync(_newGamesEtagFile, responseEtag, ct);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _log.Log("Metadata", $"New Games ETag update failed (non-blocking): {ex.Message}");
-            }
-
-            _log.Log("Metadata", $"New Games AppIds fetched: {appIds.Length}");
-            return appIds;
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
-            _log.Log("Metadata", "New Games AppIds request timed out; using last-known-good list.");
-            return lastKnownGood;
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _log.Log("Metadata", $"New Games AppIds refresh failed; using last-known-good list: {ex.Message}");
-            return lastKnownGood;
-        }
-    }
-
     private int[]? ReadNewGamesAppIds()
     {
         var json = TryReadText(_newGamesFile);
@@ -794,7 +975,7 @@ public sealed class MetadataService : IMetadataService
     {
         var previousEntries = ReadNewGamesSnapshot();
         var cachedById = previousEntries.ToDictionary(entry => entry.AppId);
-        var fetchAppIds = NewGamesCatalog.SelectFetchAppIds(requestedAppIds, primaryAppIds, cachedById);
+        var fetchAppIds = NewGamesCatalog.SelectRefreshAppIds(requestedAppIds, primaryAppIds);
         progress?.Report(80);
 
         var completed = 0;
@@ -804,7 +985,8 @@ public sealed class MetadataService : IMetadataService
             await gate.WaitAsync(ct);
             try
             {
-                return await FetchNewGameEntryAsync(appId, ct);
+                cachedById.TryGetValue(appId, out var cachedEntry);
+                return await FetchNewGameEntryAsync(appId, cachedEntry, ct);
             }
             finally
             {
@@ -818,6 +1000,7 @@ public sealed class MetadataService : IMetadataService
             ? Array.Empty<NewGamesCatalogEntry?>()
             : await Task.WhenAll(fetchTasks);
         var fetchedEntries = fetched.OfType<NewGamesCatalogEntry>().ToArray();
+        var newlyAdded = fetchedEntries.Count(entry => !cachedById.ContainsKey(entry.AppId));
         var availableById = previousEntries.ToDictionary(entry => entry.AppId);
         foreach (var fetchedEntry in fetchedEntries)
             availableById[fetchedEntry.AppId] = fetchedEntry;
@@ -830,7 +1013,7 @@ public sealed class MetadataService : IMetadataService
             progress?.Report(100);
             var requestedAdditionalCount = requestedAppIds.Count(appId => !primaryAppIds.Contains(appId));
             return new NewGamesRefreshResult(
-                fetchedEntries.Length,
+                newlyAdded,
                 Math.Max(0, requestedAdditionalCount - composed.Length));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -844,18 +1027,38 @@ public sealed class MetadataService : IMetadataService
         }
     }
 
-    private async Task<NewGamesCatalogEntry?> FetchNewGameEntryAsync(int appId, CancellationToken ct)
+    private async Task<NewGamesCatalogEntry?> FetchNewGameEntryAsync(
+        int appId,
+        NewGamesCatalogEntry? cachedEntry,
+        CancellationToken ct)
     {
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(NewGamesR2Timeout);
             var url = $"{AppConstants.R2MetadataBaseUrl}/{appId}.json";
-            using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var etagPath = Path.Combine(_r2EtagDir, $"{appId}.etag");
+            var currentEtag = cachedEntry is null ? null : TryReadText(etagPath);
+            if (cachedEntry is not null && !string.IsNullOrWhiteSpace(currentEtag) &&
+                await RemoteEtagMatchesAsync(url, currentEtag, timeout.Token))
+            {
+                return cachedEntry;
+            }
+
+            if (!string.IsNullOrWhiteSpace(currentEtag))
+                request.Headers.TryAddWithoutValidation("If-None-Match", currentEtag);
+
+            using var response = await _http.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                timeout.Token);
+            if (response.StatusCode == HttpStatusCode.NotModified)
+                return cachedEntry;
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 _log.Log("Metadata", $"New Games metadata unavailable appId={appId}: 404");
-                return null;
+                return cachedEntry;
             }
 
             response.EnsureSuccessStatusCode();
@@ -863,18 +1066,25 @@ public sealed class MetadataService : IMetadataService
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: timeout.Token);
             var entry = NewGamesCatalog.ParseMetadata(appId, document.RootElement);
             if (entry is null)
+            {
                 _log.Log("Metadata", $"New Games metadata invalid appId={appId}");
+                return cachedEntry;
+            }
+
+            var responseEtag = response.Headers.ETag?.ToString();
+            if (!string.IsNullOrWhiteSpace(responseEtag))
+                await WriteTextAtomicallyAsync(etagPath, responseEtag!, ct);
             return entry;
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             _log.Log("Metadata", $"New Games metadata timed out appId={appId}");
-            return null;
+            return cachedEntry;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _log.Log("Metadata", $"New Games metadata unavailable appId={appId}: {ex.Message}");
-            return null;
+            return cachedEntry;
         }
     }
 
@@ -903,10 +1113,10 @@ public sealed class MetadataService : IMetadataService
     private async Task<bool> DownloadIfNeededAsync(
         string url,
         string outputPath,
-        bool force,
-        bool useHeadCheck,
+        bool revalidate,
         CancellationToken ct,
         string sourceName,
+        bool isGzip,
         IProgress<double?>? progress)
     {
         var localExists = File.Exists(outputPath);
@@ -914,7 +1124,7 @@ public sealed class MetadataService : IMetadataService
             ? DateTime.UtcNow - File.GetLastWriteTimeUtc(outputPath)
             : TimeSpan.MaxValue;
 
-        if (!force && localExists && !useHeadCheck)
+        if (!revalidate && localExists)
         {
             var len = new FileInfo(outputPath).Length;
             if (localAge < AppConstants.SafetyNetTtl && len > 0)
@@ -925,52 +1135,45 @@ public sealed class MetadataService : IMetadataService
             }
         }
 
-        if (!force && useHeadCheck && localExists)
-        {
-            try
-            {
-                using var headReq = new HttpRequestMessage(HttpMethod.Head, url);
-                using var headResp = await _http.SendAsync(headReq, HttpCompletionOption.ResponseHeadersRead, ct);
-                headResp.EnsureSuccessStatusCode();
-
-                var remoteLastModified = headResp.Content.Headers.LastModified;
-                var localLastModified = File.GetLastWriteTimeUtc(outputPath);
-                if (remoteLastModified.HasValue && remoteLastModified.Value.UtcDateTime <= localLastModified)
-                {
-                    _log.Log("Metadata", $"Skip download {sourceName}: not modified on GitHub");
-                    progress?.Report(100);
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                if (localAge < AppConstants.SafetyNetTtl)
-                {
-                    _log.Log("Metadata", $"Skip download {sourceName}: HEAD failed but cache still valid ({ex.Message})");
-                    progress?.Report(100);
-                    return false;
-                }
-
-                _log.Log("Metadata", $"HEAD failed for {sourceName}, trying GET fallback: {ex.Message}");
-            }
-        }
-
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-        _log.Log("Metadata", $"Download start {sourceName} (force={force})");
+        _log.Log("Metadata", $"Revalidate source {sourceName}");
         try
         {
+            var etagPath = GetSourceEtagPath(sourceName);
+            var currentEtag = localExists ? TryReadText(etagPath) : null;
+            if (localExists && !string.IsNullOrWhiteSpace(currentEtag) &&
+                await RemoteEtagMatchesAsync(url, currentEtag, ct))
+            {
+                _log.Log("Metadata", $"Source unchanged {sourceName} (HEAD ETag)");
+                progress?.Report(100);
+                return false;
+            }
+
             const int maxAttempts = 3;
             for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
                 var tempPath = Path.Combine(
                     Path.GetTempPath(),
                     "NexaPlay",
-                    $"{sourceName}.{Environment.ProcessId}.{attempt}.{Guid.NewGuid():N}.tmp");
+                    $"{SanitizeSourceName(sourceName)}.{Environment.ProcessId}.{attempt}.{Guid.NewGuid():N}.tmp");
                 try
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(tempPath)!);
-                    // Wait until transfer finishes; cancellation only comes from caller/user action.
-                    using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+                    using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                    if (!string.IsNullOrWhiteSpace(currentEtag))
+                        request.Headers.TryAddWithoutValidation("If-None-Match", currentEtag);
+
+                    using var response = await _http.SendAsync(
+                        request,
+                        HttpCompletionOption.ResponseHeadersRead,
+                        ct);
+                    if (response.StatusCode == HttpStatusCode.NotModified)
+                    {
+                        _log.Log("Metadata", $"Source unchanged {sourceName} (ETag)");
+                        progress?.Report(100);
+                        return false;
+                    }
+
                     _log.Log("Metadata",
                         $"Download response {sourceName}: status={(int)response.StatusCode}, len={(response.Content.Headers.ContentLength?.ToString() ?? "unknown")}");
                     response.EnsureSuccessStatusCode();
@@ -1010,7 +1213,44 @@ public sealed class MetadataService : IMetadataService
                     if (downloadedLen <= 0)
                         throw new IOException($"Downloaded empty file from {url}");
 
-                    File.Copy(tempPath, outputPath, overwrite: true);
+                    var hash = await CatalogSourceFile.ValidateAsync(
+                        tempPath,
+                        isGzip,
+                        ct: ct,
+                        sourceName: sourceName);
+                    var hashPath = GetSourceHashPath(sourceName);
+                    var currentHash = localExists ? TryReadText(hashPath) : null;
+                    if (localExists && string.IsNullOrWhiteSpace(currentHash))
+                    {
+                        try
+                        {
+                            currentHash = await CatalogSourceFile.ValidateAsync(
+                                outputPath,
+                                isGzip,
+                                ct: ct,
+                                sourceName: sourceName);
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            _log.Log("Metadata", $"Existing source validation failed for {sourceName}: {ex.Message}");
+                        }
+                    }
+
+                    var responseEtag = response.Headers.ETag?.ToString();
+                    if (string.Equals(currentHash, hash, StringComparison.OrdinalIgnoreCase))
+                    {
+                        await WriteTextAtomicallyAsync(hashPath, hash, ct);
+                        if (!string.IsNullOrWhiteSpace(responseEtag))
+                            await WriteTextAtomicallyAsync(etagPath, responseEtag!, ct);
+                        _log.Log("Metadata", $"Source unchanged {sourceName} (SHA-256)");
+                        progress?.Report(100);
+                        return false;
+                    }
+
+                    CatalogSourceFile.Publish(tempPath, outputPath);
+                    await WriteTextAtomicallyAsync(hashPath, hash, ct);
+                    if (!string.IsNullOrWhiteSpace(responseEtag))
+                        await WriteTextAtomicallyAsync(etagPath, responseEtag!, ct);
                     _log.Log("Metadata", $"Download ok {sourceName}: {downloadedLen} bytes");
                     progress?.Report(100);
                     return true;
@@ -1046,11 +1286,92 @@ public sealed class MetadataService : IMetadataService
         }
     }
 
-    private async Task<string> DownloadStringAsync(string url, CancellationToken ct)
+    private void ReloadAppIdCachesFromDisk()
     {
-        using var response = await _http.GetAsync(url, ct);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(ct);
+        _popularAppIdsCache = TryReadAppIdArray(_popularAppIdsCacheFile);
+        _newFixAppIdsCache = TryReadAppIdArray(_newFixAppIdsCacheFile);
+        _popularEtag = TryReadText(_popularEtagFile);
+        _newFixEtag = TryReadText(_newFixEtagFile);
+        _popularLastLoaded = DateTime.UtcNow;
+        _newFixLastLoaded = DateTime.UtcNow;
+    }
+
+    private async Task<bool> RemoteEtagMatchesAsync(string url, string currentEtag, CancellationToken ct)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(AppConstants.HttpHeadTimeout);
+            using var request = new HttpRequestMessage(HttpMethod.Head, url);
+            using var response = await _http.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                timeout.Token);
+            if (!response.IsSuccessStatusCode)
+                return false;
+
+            var remoteEtag = response.Headers.ETag?.ToString();
+            return !string.IsNullOrWhiteSpace(remoteEtag) &&
+                   string.Equals(remoteEtag, currentEtag, StringComparison.Ordinal);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _log.Log("Metadata", $"HEAD ETag check failed for {url}: {ex.Message}");
+            return false;
+        }
+    }
+
+    private string GetSourceEtagPath(string sourceName) =>
+        Path.Combine(_sourceEtagDir, $"{SanitizeSourceName(sourceName)}.etag");
+
+    private string GetSourceHashPath(string sourceName) =>
+        Path.Combine(_sourceHashDir, $"{SanitizeSourceName(sourceName)}.sha256");
+
+    private static string SanitizeSourceName(string sourceName) =>
+        sourceName.Replace('/', '_').Replace('\\', '_');
+
+    private static string CreateTempPath(string sourceName)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "NexaPlay");
+        Directory.CreateDirectory(directory);
+        return Path.Combine(directory, $"{SanitizeSourceName(sourceName)}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp");
+    }
+
+    private static async Task WriteTextAtomicallyAsync(string path, string value, CancellationToken ct)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var tempPath = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, value, ct);
+            File.Move(tempPath, path, overwrite: true);
+        }
+        finally
+        {
+            TryDelete(tempPath);
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); } catch { }
+    }
+
+    private void ClearCatalogValidationState()
+    {
+        foreach (var directory in new[] { _sourceEtagDir, _sourceHashDir })
+        {
+            try
+            {
+                foreach (var path in Directory.EnumerateFiles(directory))
+                    TryDelete(path);
+            }
+            catch { }
+        }
     }
 
     private bool HasEssentialLocalSources()
@@ -1130,19 +1451,21 @@ public sealed class MetadataService : IMetadataService
 
         resp.EnsureSuccessStatusCode();
         var json = await resp.Content.ReadAsStringAsync(ct);
-        await File.WriteAllTextAsync(cacheFile, json, ct);
+        var parsed = ParseAppIdsFromJson(json);
+        if (parsed.Count == 0)
+            throw new JsonException($"{logScope} response contains no valid AppIDs.");
+        await WriteTextAtomicallyAsync(cacheFile, json, ct);
 
-        var etag = resp.Headers.ETag?.Tag;
+        var etag = resp.Headers.ETag?.ToString();
         if (!string.IsNullOrWhiteSpace(etag))
         {
-            await File.WriteAllTextAsync(etagFile, etag!, ct);
+            await WriteTextAtomicallyAsync(etagFile, etag!, ct);
             if (logScope.StartsWith("Popular", StringComparison.OrdinalIgnoreCase))
                 _popularEtag = etag;
             else
                 _newFixEtag = etag;
         }
 
-        var parsed = ParseAppIdsFromJson(json);
         _log.Log("Metadata", $"{logScope} fetched: {parsed.Count} appids");
         return parsed;
     }
@@ -1197,22 +1520,31 @@ public sealed class MetadataService : IMetadataService
         try
         {
             var updated = await RunWithSourceSyncLockAsync(
-                () => SyncSourcesCoreAsync(force: false, useHeadCheck: true, CancellationToken.None),
+                () => SyncSourcesCoreAsync(revalidate: true, progress: null, CancellationToken.None),
                 CancellationToken.None);
 
-            if (!updated)
+            var refreshNewGamesMetadata = updated ||
+                DateTime.UtcNow - _lastNewGamesMetadataCheckUtc >= AppConstants.SafetyNetTtl;
+            if (!updated && !refreshNewGamesMetadata)
                 return;
 
             await _loadLock.WaitAsync();
             try
             {
-                await BuildIndexAsync(CancellationToken.None);
+                await BuildIndexAsync(
+                    CancellationToken.None,
+                    materializeNewGames: refreshNewGamesMetadata,
+                    progress: null);
+                if (refreshNewGamesMetadata)
+                    _lastNewGamesMetadataCheckUtc = DateTime.UtcNow;
                 _log.Log("Metadata", "Background metadata update applied (hot-reload index).");
             }
             finally
             {
                 _loadLock.Release();
             }
+
+            CatalogUpdated?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
@@ -1323,6 +1655,16 @@ public sealed class MetadataService : IMetadataService
         public string? HeaderImageUrl { get; init; }
         public string? Genre { get; init; }
     }
+
+    private sealed record CatalogSource(string RemoteName, string Url, string LocalPath, bool IsGzip);
+
+    private sealed record StagedCatalogSource(
+        CatalogSource Source,
+        string TempPath,
+        string Sha256,
+        string? ETag);
+
+    private sealed record ManifestSyncResult(bool Updated, IReadOnlySet<string> CoveredNames);
 
     private readonly record struct DownloadResult(bool Available, bool Updated);
 

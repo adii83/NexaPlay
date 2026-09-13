@@ -18,6 +18,8 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
     private readonly string _catalogDir;
     private readonly string _gzipPath;
     private readonly string _jsonPath;
+    private readonly string _gzipEtagPath;
+    private readonly string _jsonEtagPath;
 
     private Dictionary<int, string>? _coverIndex;
 
@@ -40,8 +42,12 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
 
         _gzipPath = Path.Combine(_catalogDir, AppConstants.LibraryCapsuleIndexGzipCacheFileName);
         _jsonPath = Path.Combine(_catalogDir, AppConstants.LibraryCapsuleIndexCacheFileName);
+        var etagDirectory = Path.Combine(_catalogDir, ".etags");
+        _gzipEtagPath = Path.Combine(etagDirectory, $"{AppConstants.LibraryCapsuleIndexGzipCacheFileName}.etag");
+        _jsonEtagPath = Path.Combine(etagDirectory, $"{AppConstants.LibraryCapsuleIndexCacheFileName}.etag");
 
         Directory.CreateDirectory(_catalogDir);
+        Directory.CreateDirectory(etagDirectory);
     }
 
     public async Task<string?> GetLibraryCapsuleAsync(int appId, CancellationToken ct = default)
@@ -301,7 +307,26 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(tempPath)!);
-            using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+            var etagPath = outputPath == _gzipPath ? _gzipEtagPath : _jsonEtagPath;
+            var currentEtag = localExists ? TryReadText(etagPath) : null;
+            if (localExists && !string.IsNullOrWhiteSpace(currentEtag) &&
+                await RemoteEtagMatchesAsync(url, currentEtag, ct))
+            {
+                _log.Log("CoverIndex", $"Source unchanged {sourceName} (HEAD ETag)");
+                return true;
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (!string.IsNullOrWhiteSpace(currentEtag))
+                request.Headers.TryAddWithoutValidation("If-None-Match", currentEtag);
+
+            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
+            {
+                _log.Log("CoverIndex", $"Source unchanged {sourceName} (ETag)");
+                return true;
+            }
+
             response.EnsureSuccessStatusCode();
 
             await using var source = await response.Content.ReadAsStreamAsync(ct);
@@ -322,6 +347,9 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
                 outputPath,
                 outputPath.EndsWith(".gz", StringComparison.OrdinalIgnoreCase),
                 ct);
+            var responseEtag = response.Headers.ETag?.ToString();
+            if (!string.IsNullOrWhiteSpace(responseEtag))
+                await WriteTextAtomicallyAsync(etagPath, responseEtag!, ct);
             _log.Log("CoverIndex", $"Download ok {sourceName}: {length} bytes");
             return true;
         }
@@ -363,6 +391,47 @@ public sealed class GameCoverIndexService : IGameCoverIndexService
         }
         catch
         {
+        }
+    }
+
+    private static string? TryReadText(string path)
+    {
+        try { return File.Exists(path) ? File.ReadAllText(path).Trim() : null; }
+        catch { return null; }
+    }
+
+    private static async Task WriteTextAtomicallyAsync(string path, string value, CancellationToken ct)
+    {
+        var tempPath = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, value, ct);
+            File.Move(tempPath, path, overwrite: true);
+        }
+        finally
+        {
+            TryDelete(tempPath);
+        }
+    }
+
+    private async Task<bool> RemoteEtagMatchesAsync(string url, string currentEtag, CancellationToken ct)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(AppConstants.HttpHeadTimeout);
+            using var request = new HttpRequestMessage(HttpMethod.Head, url);
+            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+            return response.IsSuccessStatusCode &&
+                   string.Equals(response.Headers.ETag?.ToString(), currentEtag, StringComparison.Ordinal);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+            return false;
         }
     }
 }

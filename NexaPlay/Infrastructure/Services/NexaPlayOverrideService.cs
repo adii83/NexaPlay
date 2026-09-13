@@ -112,6 +112,13 @@ public sealed class NexaPlayOverrideService : INexaPlayOverrideService
     {
         try
         {
+            if (File.Exists(_cacheFile) && !string.IsNullOrWhiteSpace(_etag) &&
+                await RemoteEtagMatchesAsync(_etag, ct))
+            {
+                _log.Log("NexaPlayOverride", "HEAD ETag matched; using cache.");
+                return;
+            }
+
             using var req = new HttpRequestMessage(HttpMethod.Get, AppConstants.NexaPlayOverrideUrl);
             if (!string.IsNullOrWhiteSpace(_etag))
                 req.Headers.IfNoneMatch.Add(new System.Net.Http.Headers.EntityTagHeaderValue(_etag));
@@ -126,21 +133,42 @@ public sealed class NexaPlayOverrideService : INexaPlayOverrideService
 
             resp.EnsureSuccessStatusCode();
             var json = await resp.Content.ReadAsStringAsync(ct);
+            var parsed = ParseJson(json);
 
-            var newEtag = resp.Headers.ETag?.Tag;
+            await WriteTextAtomicallyAsync(_cacheFile, json, ct);
+
+            var newEtag = resp.Headers.ETag?.ToString();
             if (!string.IsNullOrWhiteSpace(newEtag))
             {
                 _etag = newEtag;
-                TryWriteText(_etagFile, newEtag);
+                await WriteTextAtomicallyAsync(_etagFile, newEtag, ct);
             }
 
-            await File.WriteAllTextAsync(_cacheFile, json, ct);
-            _index = ParseJson(json);
+            _index = parsed;
             _log.Log("NexaPlayOverride", $"Downloaded {_index.Count} overrides (ETag updated)");
         }
         catch (Exception ex)
         {
             _log.Log("NexaPlayOverride", $"ETag fetch failed (non-blocking): {ex.Message}");
+        }
+    }
+
+    private async Task<bool> RemoteEtagMatchesAsync(string currentEtag, CancellationToken ct)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Head, AppConstants.NexaPlayOverrideUrl);
+            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            return response.IsSuccessStatusCode &&
+                   string.Equals(response.Headers.ETag?.ToString(), currentEtag, StringComparison.Ordinal);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -319,10 +347,18 @@ public sealed class NexaPlayOverrideService : INexaPlayOverrideService
         catch { return null; }
     }
 
-    private static void TryWriteText(string path, string text)
+    private static async Task WriteTextAtomicallyAsync(string path, string text, CancellationToken ct)
     {
-        try { File.WriteAllText(path, text); }
-        catch { }
+        var tempPath = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, text, ct);
+            File.Move(tempPath, path, overwrite: true);
+        }
+        finally
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+        }
     }
 
     private sealed class OverrideEntry

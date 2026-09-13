@@ -291,19 +291,11 @@ public sealed partial class SettingsViewModel : ObservableObject
                 DownloadProgressText = $"{DownloadProgress:F0}%";
             });
 
-            await _nexaPlayOverride.RefreshAsync();
-            await _gameCoverIndex.RefreshAsync();
+            await Task.WhenAll(
+                _nexaPlayOverride.RefreshAsync(),
+                _gameCoverIndex.RefreshAsync());
 
-            // Refresh main dynamic sources (override_data.json, fix_games.json, new_fix_games.json, steam_games.json)
             var newGamesResult = await _metadata.RefreshDynamicSourcesAsync(progress);
-
-            DownloadProgress = 85;
-            DownloadProgressText = "85%";
-            await _metadata.GetPopularAppIdsAsync();
-
-            DownloadProgress = 90;
-            DownloadProgressText = "90%";
-            await _metadata.GetNewFixAppIdsAsync();
 
             DownloadProgress = 95;
             DownloadProgressText = "95%";

@@ -28,7 +28,8 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
     {
         _log = log;
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppConstants.AppDataFolder);
+            AppConstants.AppDataFolder,
+            "runtime_catalog_sources");
         Directory.CreateDirectory(dir);
         _cacheFile = Path.Combine(dir, AppConstants.BypassGamesCacheFileName);
         _newCacheFile = Path.Combine(dir, AppConstants.NewFixGamesCacheFileName);

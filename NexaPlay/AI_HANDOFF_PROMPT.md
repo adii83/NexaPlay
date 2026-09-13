@@ -727,6 +727,16 @@ Tanggal: 2 September 2026
 - Build: Debug x64 MSBuild lulus (`MSBUILD_EXIT=0`); validasi PNG/SVG/ICO lulus. Smoke test visual runtime masih diperlukan.
 - Next: Smoke test visual logo runtime, window/taskbar icon, Start menu/desktop shortcut, serta pastikan tidak ada crash parser SVG `0xC000027B`.
 
+Tanggal: 11 September 2026
+- Fokus: Migrasi penuh source metadata dan sinkronisasi katalog cepat berbasis ETag/manifest.
+- Perubahan:
+  - Seluruh URL `steam_data`, `override_data`, `fix_games`, `new_fix_games`, `steam_games`, `appid_populer`, dan ZIP manifest pindah ke `adii83/Nexaplay-Metadata-Override`.
+  - `MetadataService` mendukung `catalog_manifest.json` schema 1 dengan revision/size/SHA-256, changed-files-only concurrency 3, validasi JSON/GZIP, publikasi batch dengan rollback, serta fallback HEAD ETag + conditional GET per-file ketika manifest masih 404.
+  - `new_games.json` kini masuk first startup, startup background update, restart setelah Clear Data, dan Settings Load Games. Metadata R2 direvalidasi memakai ETag per AppID dengan concurrency 4 dan last-known-good snapshot.
+  - Cache bypass disatukan ke `runtime_catalog_sources`; HEAD ETag dipakai untuk source utama, cover, override, dan metadata R2 karena CDN live mengembalikan 200 pada conditional GET yang cocok. Background update memicu satu generation advance dan serialized reload Home/Games.
+- Build: Self-check manifest/SHA/ETag/new-games lulus; Debug x64 `Build succeeded` (`0 Warning(s), 0 Error(s)`); smoke launch 12 detik tetap hidup dan proses uji ditutup normal.
+- Next: Publikasikan `catalog_manifest.json` di repo metadata agar startup cukup satu conditional request; fallback per-file ETag tetap aktif sampai file tersedia.
+
 ## 10. Update Log Ringkas
 
 ```text

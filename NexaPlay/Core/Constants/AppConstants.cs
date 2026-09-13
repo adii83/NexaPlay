@@ -8,21 +8,20 @@ public static class AppConstants
     public const string AppUpdateManifestUrl = "https://raw.githubusercontent.com/adii83/NexaPlay/main/NexaPlay/release/update-stable.json";
     public const string AppUpdateInstallerArguments = "";
 
-    // Legacy GitHub data sources
-    public const string SteamDataUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/steam_data.json.gz";
-    public const string SteamDataJsonUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/steam_data.json";
-    public const string BypassGamesUrl  = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/fix_games.json";
-    public const string NewFixGamesUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/new_fix_games.json";
-    public const string SteamGamesUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/steam_games/steam_games.json";
-    public const string PopularGamesUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/appid_populer.json";
-    public const string OverrideDataUrl = "https://raw.githubusercontent.com/adii83/steam-metadata-archive/main/override_data.json";
-
-    // NexaPlay-specific override (separate repo)
-    public const string NexaPlayOverrideUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/nexaplay_override.json";
-    public const string LibraryCapsuleIndexUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/library_capsule.json";
-    public const string LibraryCapsuleIndexGzipUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/library_capsule.json.gz";
-    public const string YoutubeTutorialUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/youtube.json";
-    public const string NewGamesUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/new_games.json";
+    public const string MetadataRepositoryRawUrl = "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main";
+    public const string CatalogManifestUrl = $"{MetadataRepositoryRawUrl}/catalog_manifest.json";
+    public const string SteamDataUrl = $"{MetadataRepositoryRawUrl}/steam_data.json.gz";
+    public const string SteamDataJsonUrl = $"{MetadataRepositoryRawUrl}/steam_data.json";
+    public const string BypassGamesUrl = $"{MetadataRepositoryRawUrl}/fix_games.json";
+    public const string NewFixGamesUrl = $"{MetadataRepositoryRawUrl}/new_fix_games.json";
+    public const string SteamGamesUrl = $"{MetadataRepositoryRawUrl}/steam_games/steam_games.json";
+    public const string PopularGamesUrl = $"{MetadataRepositoryRawUrl}/appid_populer.json";
+    public const string OverrideDataUrl = $"{MetadataRepositoryRawUrl}/override_data.json";
+    public const string NexaPlayOverrideUrl = $"{MetadataRepositoryRawUrl}/nexaplay_override.json";
+    public const string LibraryCapsuleIndexUrl = $"{MetadataRepositoryRawUrl}/library_capsule.json";
+    public const string LibraryCapsuleIndexGzipUrl = $"{MetadataRepositoryRawUrl}/library_capsule.json.gz";
+    public const string YoutubeTutorialUrl = $"{MetadataRepositoryRawUrl}/youtube.json";
+    public const string NewGamesUrl = $"{MetadataRepositoryRawUrl}/new_games.json";
     public const string R2MetadataBaseUrl = "https://meta.nexaplaymetadata.online/Metadata";
 
     // Online fix base URL
@@ -63,5 +62,7 @@ public static class AppConstants
     public const string NewGamesCacheFileName = "new_games.json";
     public const string NewGamesEtagFileName = "new_games.etag";
     public const string NewGamesCatalogFileName = "new_games_catalog.json";
+    public const string CatalogManifestCacheFileName = "catalog_manifest.json";
+    public const string CatalogManifestEtagFileName = "catalog_manifest.etag";
     public const string AppUpdateDownloadsFolderName = "updates";
 }

@@ -1,5 +1,8 @@
 using NexaPlay.Core.Helpers;
+using NexaPlay.Core.Constants;
 using NexaPlay.Infrastructure.Services;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 static void AssertEqual(string? expected, string? actual, string scenario)
@@ -269,6 +272,10 @@ var fetchIds = NewGamesCatalog.SelectFetchAppIds(requested, primary, cachedById)
 if (!fetchIds.SequenceEqual([20]))
     throw new InvalidOperationException("primary/cached AppIDs must not be fetched from R2");
 
+var refreshIds = NewGamesCatalog.SelectRefreshAppIds(requested, primary);
+if (!refreshIds.SequenceEqual([10, 20]))
+    throw new InvalidOperationException("R2 refresh must revalidate cached and missing additive AppIDs");
+
 var composed = NewGamesCatalog.ComposeSnapshot(requested, primary, [cached, fetched]);
 if (!composed.Select(x => x.AppId).SequenceEqual([10, 20]))
     throw new InvalidOperationException("snapshot composition violated additive precedence");
@@ -326,7 +333,145 @@ finally
     Directory.Delete(newGamesPublishDirectory, recursive: true);
 }
 
-Console.WriteLine("Self-check passed (cover priority, optional cover index, catalog generation, cache revision, safe cover publication, serialized reload, new-games catalog logic, and new-games atomic publication).");
+var manifestHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("{}"))).ToLowerInvariant();
+var manifestJson = $$"""
+{
+  "schema": 1,
+  "revision": "2026-09-11.1",
+  "files": {
+    "override_data.json": {
+      "url": "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/main/override_data.json",
+      "size": 2,
+      "sha256": "{{manifestHash}}"
+    }
+  }
+}
+""";
+var allowedManifestNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "override_data.json" };
+var manifest = CatalogManifestRules.Parse(manifestJson, allowedManifestNames)
+    ?? throw new InvalidOperationException("valid catalog manifest was rejected");
+var unchangedState = new Dictionary<string, NexaPlay.Core.Models.CatalogFileState>(StringComparer.OrdinalIgnoreCase)
+{
+    ["override_data.json"] = new(2, manifestHash)
+};
+if (CatalogManifestRules.SelectChangedFiles(manifest, unchangedState).Length != 0 ||
+    !CatalogManifestRules.SelectChangedFiles(manifest, new Dictionary<string, NexaPlay.Core.Models.CatalogFileState>())
+        .SequenceEqual(["override_data.json"]))
+{
+    throw new InvalidOperationException("manifest changed-file selection is incorrect");
+}
+
+var duplicateManifest = $$$"""
+{"schema":1,"revision":"x","files":{
+  "override_data.json":{"url":"https://example.test/a","size":2,"sha256":"{{{manifestHash}}}"},
+  "override_data.json":{"url":"https://example.test/b","size":2,"sha256":"{{{manifestHash}}}"}
+}}
+""";
+if (CatalogManifestRules.Parse(duplicateManifest, allowedManifestNames) is not null)
+    throw new InvalidOperationException("manifest duplicate source names were accepted");
+
+var sourcePublishDirectory = Path.Combine(Path.GetTempPath(), $"nexaplay-source-publish-{Guid.NewGuid():N}");
+Directory.CreateDirectory(sourcePublishDirectory);
+try
+{
+    var activePath = Path.Combine(sourcePublishDirectory, "override_data.json");
+    var validCandidate = Path.Combine(sourcePublishDirectory, "valid.tmp");
+    var invalidCandidate = Path.Combine(sourcePublishDirectory, "invalid.tmp");
+    await File.WriteAllTextAsync(activePath, "{\"stable\":true}");
+    await File.WriteAllTextAsync(validCandidate, "{}");
+    await File.WriteAllTextAsync(invalidCandidate, "<html>bad gateway</html>");
+
+    var actualHash = await CatalogSourceFile.ValidateAsync(validCandidate, isGzip: false, expectedSize: 2, expectedSha256: manifestHash);
+    if (actualHash != manifestHash)
+        throw new InvalidOperationException("catalog source SHA-256 validation returned wrong hash");
+
+    var hashRejected = false;
+    try
+    {
+        await CatalogSourceFile.ValidateAsync(validCandidate, isGzip: false, expectedSize: 2, expectedSha256: new string('0', 64));
+    }
+    catch (InvalidDataException)
+    {
+        hashRejected = true;
+    }
+
+    var jsonRejected = false;
+    try
+    {
+        await CatalogSourceFile.ValidateAsync(invalidCandidate, isGzip: false);
+    }
+    catch (JsonException)
+    {
+        jsonRejected = true;
+    }
+
+    if (!hashRejected || !jsonRejected || await File.ReadAllTextAsync(activePath) != "{\"stable\":true}")
+        throw new InvalidOperationException("invalid catalog candidate replaced or bypassed active-source validation");
+
+    var activeSecond = Path.Combine(sourcePublishDirectory, "fix_games.json");
+    var batchCandidate = Path.Combine(sourcePublishDirectory, "batch-valid.tmp");
+    var missingCandidate = Path.Combine(sourcePublishDirectory, "missing.tmp");
+    await File.WriteAllTextAsync(activePath, "{\"first\":\"stable\"}");
+    await File.WriteAllTextAsync(activeSecond, "{\"second\":\"stable\"}");
+    await File.WriteAllTextAsync(batchCandidate, "{\"first\":\"new\"}");
+    var batchRejected = false;
+    try
+    {
+        CatalogSourceFile.PublishBatch(
+        [
+            (batchCandidate, activePath),
+            (missingCandidate, activeSecond)
+        ]);
+    }
+    catch (FileNotFoundException)
+    {
+        batchRejected = true;
+    }
+
+    if (!batchRejected ||
+        await File.ReadAllTextAsync(activePath) != "{\"first\":\"stable\"}" ||
+        await File.ReadAllTextAsync(activeSecond) != "{\"second\":\"stable\"}")
+    {
+        throw new InvalidOperationException("failed catalog batch did not roll back all active sources");
+    }
+}
+finally
+{
+    Directory.Delete(sourcePublishDirectory, recursive: true);
+}
+
+var coverNotModifiedDirectory = Path.Combine(Path.GetTempPath(), $"nexaplay-cover-etag-{Guid.NewGuid():N}");
+Directory.CreateDirectory(coverNotModifiedDirectory);
+try
+{
+    var activePath = Path.Combine(coverNotModifiedDirectory, AppConstants.LibraryCapsuleIndexGzipCacheFileName);
+    await using (var file = File.Create(activePath))
+    await using (var gzip = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionLevel.SmallestSize))
+    await using (var writer = new StreamWriter(gzip))
+        await writer.WriteAsync("{\"1\":{\"library_capsule\":\"https://example.test/cached.jpg\"}}");
+    var originalBytes = await File.ReadAllBytesAsync(activePath);
+    var etagDirectory = Path.Combine(coverNotModifiedDirectory, ".etags");
+    Directory.CreateDirectory(etagDirectory);
+    const string matchingEtag = "\"cover-v1\"";
+    await File.WriteAllTextAsync(
+        Path.Combine(etagDirectory, $"{AppConstants.LibraryCapsuleIndexGzipCacheFileName}.etag"),
+        matchingEtag);
+
+    using var notModifiedHttp = new HttpClient(new MatchingHeadEtagHandler(matchingEtag));
+    var coverService = new GameCoverIndexService(new NullLogService(), notModifiedHttp, coverNotModifiedDirectory);
+    await coverService.RefreshAsync();
+    if (!originalBytes.SequenceEqual(await File.ReadAllBytesAsync(activePath)) ||
+        await coverService.GetLibraryCapsuleAsync(1) != "https://example.test/cached.jpg")
+    {
+        throw new InvalidOperationException("304 response did not retain active cover-index cache");
+    }
+}
+finally
+{
+    Directory.Delete(coverNotModifiedDirectory, recursive: true);
+}
+
+Console.WriteLine("Self-check passed (cover priority/ETag, catalog generation/cache/manifest/SHA, safe publication, serialized reload, and new-games/R2 logic).");
 
 sealed class StatusCodeHandler(System.Net.HttpStatusCode statusCode) : HttpMessageHandler
 {
@@ -334,6 +479,21 @@ sealed class StatusCodeHandler(System.Net.HttpStatusCode statusCode) : HttpMessa
         HttpRequestMessage request,
         CancellationToken cancellationToken) =>
         Task.FromResult(new HttpResponseMessage(statusCode) { RequestMessage = request });
+}
+
+sealed class MatchingHeadEtagHandler(string etag) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        if (request.Method != HttpMethod.Head)
+            throw new InvalidOperationException("matching HEAD ETag must skip GET body download");
+
+        var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK) { RequestMessage = request };
+        response.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue(etag);
+        return Task.FromResult(response);
+    }
 }
 
 sealed class NullLogService : NexaPlay.Contracts.Services.IAppLogService

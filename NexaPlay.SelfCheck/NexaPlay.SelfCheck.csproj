@@ -19,5 +19,8 @@
     <Compile Include="..\NexaPlay\Core\Models\NewGamesCatalogModels.cs" Link="NewGamesCatalogModels.cs" />
     <Compile Include="..\NexaPlay\Core\Helpers\NewGamesCatalog.cs" Link="NewGamesCatalog.cs" />
     <Compile Include="..\NexaPlay\Infrastructure\Services\NewGamesCatalogFile.cs" Link="NewGamesCatalogFile.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\CatalogManifestModels.cs" Link="CatalogManifestModels.cs" />
+    <Compile Include="..\NexaPlay\Core\Helpers\CatalogManifestRules.cs" Link="CatalogManifestRules.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\CatalogSourceFile.cs" Link="CatalogSourceFile.cs" />
   </ItemGroup>
 </Project>
