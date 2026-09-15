@@ -17,16 +17,15 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ISteamService _steam;
     private readonly IWindowsDefenderService _defender;
     private readonly IMetadataService _metadata;
-    private readonly IGameCoverIndexService _gameCoverIndex;
+    private readonly ICatalogUpdateService _catalogUpdate;
     private readonly ICoverImageCacheService _coverImageCache;
     private readonly IBypassGamesDataService _fixData;
     private readonly IAppLogService _log;
-    private readonly INexaPlayOverrideService _nexaPlayOverride;
     private readonly ICatalogRefreshState _catalogRefreshState;
-    private readonly IListingCoverResolver _listingCoverResolver;
     private readonly ISteamStoreService _storeService;
     private readonly HomeViewModel _homeViewModel;
     private readonly GamesViewModel _gamesViewModel;
+    private readonly BypassGamesViewModel _bypassGamesViewModel;
 
     // License
     [ObservableProperty] public partial LicenseInfo? CurrentLicense { get; set; }
@@ -65,31 +64,29 @@ public sealed partial class SettingsViewModel : ObservableObject
         IAppUpdateService appUpdate,
         ILicenseService license, ISteamService steam,
         IWindowsDefenderService defender, IMetadataService metadata,
-        IGameCoverIndexService gameCoverIndex,
+        ICatalogUpdateService catalogUpdate,
         ICoverImageCacheService coverImageCache,
         IBypassGamesDataService fixData, IAppLogService log,
-        INexaPlayOverrideService nexaPlayOverride,
         ICatalogRefreshState catalogRefreshState,
-        IListingCoverResolver listingCoverResolver,
         ISteamStoreService storeService,
         HomeViewModel homeViewModel,
-        GamesViewModel gamesViewModel)
+        GamesViewModel gamesViewModel,
+        BypassGamesViewModel bypassGamesViewModel)
     {
         _appUpdate = appUpdate;
         _license  = license;
         _steam    = steam;
         _defender = defender;
         _metadata = metadata;
-        _gameCoverIndex = gameCoverIndex;
+        _catalogUpdate = catalogUpdate;
         _coverImageCache = coverImageCache;
         _fixData  = fixData;
         _log      = log;
-        _nexaPlayOverride = nexaPlayOverride;
         _catalogRefreshState = catalogRefreshState;
-        _listingCoverResolver = listingCoverResolver;
         _storeService = storeService;
         _homeViewModel = homeViewModel;
         _gamesViewModel = gamesViewModel;
+        _bypassGamesViewModel = bypassGamesViewModel;
 
         // Default values for partial properties
         LicenseKeyInput   = string.Empty;
@@ -257,14 +254,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             await _metadata.ClearCacheAsync();
-            await _gameCoverIndex.ClearCacheAsync();
             await _coverImageCache.ClearCacheAsync();
             await _storeService.ClearCacheAsync();
 
             _homeViewModel.InvalidateDerivedCache();
             _gamesViewModel.InvalidateDerivedCache();
-            _catalogRefreshState.Advance();
-            _listingCoverResolver.ClearCache();
 
             _log.Log("Settings", "Disposable cache cleared (source catalogs retained)");
             return (true, "Cache berhasil dihapus. Katalog sumber tetap tersedia.");
@@ -291,33 +285,45 @@ public sealed partial class SettingsViewModel : ObservableObject
                 DownloadProgressText = $"{DownloadProgress:F0}%";
             });
 
-            await Task.WhenAll(
-                _nexaPlayOverride.RefreshAsync(),
-                _gameCoverIndex.RefreshAsync());
+            var metadataResult = await _metadata.RefreshDynamicSourcesAsync(force: true, progress);
 
-            var newGamesResult = await _metadata.RefreshDynamicSourcesAsync(progress);
+            DownloadProgress = 82;
+            DownloadProgressText = "82%";
+            var bypassChanged = (metadataResult.Feeds.Changes &
+                (DynamicFeedChanges.FixGames | DynamicFeedChanges.SteamGames)) != 0;
+            if (bypassChanged)
+            {
+                await _fixData.RefreshAsync();
+                _bypassGamesViewModel.InvalidateData();
+            }
 
-            DownloadProgress = 95;
-            DownloadProgressText = "95%";
-            await _fixData.RefreshAsync();
+            DownloadProgress = 90;
+            DownloadProgressText = "90%";
+            var catalogResult = await _catalogUpdate.CheckAndApplyPatchesAsync(force: true);
 
-            _catalogRefreshState.Advance();
-            _listingCoverResolver.ClearCache();
-            await _homeViewModel.ReloadCatalogAsync();
-            await _gamesViewModel.ReloadCatalogAsync();
+            var catalogChanged = catalogResult.Changed || metadataResult.OverlayChanged;
+            var homeChanged = catalogChanged || (metadataResult.Feeds.Changes &
+                (DynamicFeedChanges.Popular | DynamicFeedChanges.NewFix)) != 0;
+            if (catalogChanged)
+            {
+                _catalogRefreshState.Advance();
+                _gamesViewModel.InvalidateDerivedCache();
+            }
+            if (homeChanged)
+                _homeViewModel.InvalidateDerivedCache();
 
             DownloadProgress = 100;
             DownloadProgressText = "100%";
-            _log.Log("Settings", $"Games data successfully loaded. NewGames added={newGamesResult.Added}, unavailable={newGamesResult.Unavailable}");
+            _log.Log("Settings", $"Games data refresh complete. catalog={catalogResult.Status}, version={catalogResult.CurrentVersion}");
 
-            var message = "Data game terbaru berhasil diunduh dan diperbarui.";
-            if (newGamesResult.Added > 0 || newGamesResult.Unavailable > 0)
-            {
-                message += $" {newGamesResult.Added} game baru ditambahkan";
-                if (newGamesResult.Unavailable > 0)
-                    message += $", {newGamesResult.Unavailable} belum tersedia";
-                message += ".";
-            }
+            if (catalogResult.Status == CatalogUpdateStatus.Failed)
+                return (false, $"Feed kecil selesai diperiksa, tetapi patch katalog gagal: {catalogResult.Message}");
+            if (metadataResult.Feeds.Failed > 0)
+                return (false, $"Katalog selesai diperiksa, tetapi {metadataResult.Feeds.Failed} feed kecil gagal diperbarui.");
+
+            var message = catalogResult.Status == CatalogUpdateStatus.Applied
+                ? $"Data game diperbarui ke katalog versi {catalogResult.CurrentVersion}."
+                : "Data game sudah menggunakan katalog terbaru.";
             return (true, message);
         }
         catch (System.Net.Http.HttpRequestException hex)
@@ -340,9 +346,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            var appDataPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                Core.Constants.AppConstants.AppDataFolder);
+            var appDataPath = Core.Constants.AppConstants.AppDataPath;
             var exePath = Environment.ProcessPath;
 
             if (string.IsNullOrWhiteSpace(exePath) || !File.Exists(exePath))
@@ -391,13 +395,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
 
         Application.Current.Exit();
-    }
-
-    public async Task RefreshFixDataAsync()
-    {
-        await _fixData.RefreshAsync();
-        ActivationMessage = "Fix catalog refreshed.";
-        _log.Log("Settings", "Fix data refreshed");
     }
 
     public async Task RestartSteamAsync()

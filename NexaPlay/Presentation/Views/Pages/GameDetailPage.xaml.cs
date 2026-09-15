@@ -15,6 +15,7 @@ using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media;
 using NexaPlay.Contracts.Services;
+using NexaPlay.Core.Helpers;
 using NexaPlay.Presentation.Helpers;
 using NexaPlay.Presentation.ViewModels;
 using NexaPlay.Core.Models;
@@ -757,7 +758,7 @@ public sealed partial class GameDetailPage : Page
 
     public static Uri SafeUri(string? raw)
     {
-        if (!string.IsNullOrWhiteSpace(raw) && Uri.TryCreate(raw, UriKind.Absolute, out var parsed))
+        if (ImageUriResolver.TryCreate(raw, out var parsed))
             return parsed;
 
         return new Uri("ms-appx:///Assets/StoreLogo.png");

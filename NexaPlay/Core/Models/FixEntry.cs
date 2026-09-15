@@ -27,7 +27,7 @@ public sealed class FixEntry
     public bool DapatkanKode { get; init; }
 
     // Computed helpers
-    public bool HasPopularCover => !string.IsNullOrWhiteSpace(PosterUrl);
+    public bool HasPopularCover => !string.IsNullOrWhiteSpace(PosterUrl) && PosterUrl != "NO CONTENT";
     public bool IsSteamType => Category == GameCategory.SteamAccount || Category == GameCategory.SteamSharing;
     public bool ShowAktivasiOfflineBadge => AktivasiOffline;
     public bool ShowSteamSharingBadge => Category == GameCategory.SteamSharing;

@@ -150,10 +150,7 @@ public sealed class AddGameService : IAddGameService
                 return;
             }
 
-            var downloadsRoot = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "GameHub",
-                "downloads");
+            var downloadsRoot = Path.Combine(AppConstants.LocalAppDataPath, "GameHub", "downloads");
             Directory.CreateDirectory(downloadsRoot);
 
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
@@ -425,7 +422,7 @@ public sealed class AddGameService : IAddGameService
     {
         var candidates = new[]
         {
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppConstants.AppDataFolder, "api.json"),
+            Path.Combine(AppConstants.AppDataPath, "api.json"),
             Path.Combine(AppContext.BaseDirectory, "data", "api.json"),
             Path.Combine(AppContext.BaseDirectory, "public", "data", "api.json")
         };

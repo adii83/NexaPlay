@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using NexaPlay.Contracts.Navigation;
 using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Enums;
+using NexaPlay.Core.Helpers;
 using NexaPlay.Core.Models;
 using NexaPlay.Presentation.Views.Pages;
 using System;
@@ -154,18 +155,8 @@ public sealed partial class BypassGameDetailViewModel : ObservableObject
             IsDetailAvailable = Detail is not null;
 
             NotifyDisplayProperties();
-            var heroOverride = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId))?.LibraryHero2x;
-            HeroBackgroundUrl = heroOverride
-                ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "library_hero_2x")
-                ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "library_hero")
-                ?? Detail?.SgdbHeroUrl
-                ?? Game?.LibraryHero2xUrl
-                ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "background_raw")
-                ?? Game?.BackgroundRawImageUrl
-                ?? Detail?.BackgroundImageUrl
-                ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "header")
-                ?? Game?.HeaderImageUrl
-                ?? string.Empty;
+            var heroOverride = await _nexaPlayOverride.GetCatalogOverrideAsync(appId);
+            HeroBackgroundUrl = DetailHeroSelector.Select(heroOverride, Detail, Game);
 
             var iconOverride = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId))?.Icon;
             GameIconUrl = iconOverride

@@ -69,3 +69,9 @@ NexaPlay/release/nexaplay.pfx
 .env
 agents/rules/antigravity-rtk-rules.md
 build
+
+
+# SQLite generated/runtime files
+NexaPlay/data/catalog/catalog_seed.sqlite
+NexaPlay/data/catalog/*.sqlite-shm
+NexaPlay/data/catalog/*.sqlite-wal

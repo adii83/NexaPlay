@@ -6,21 +6,42 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\NexaPlay\Core\Helpers\ListingCoverPriority.cs" Link="ListingCoverPriority.cs" />
-    <Compile Include="..\NexaPlay\Core\Helpers\CatalogCacheStamp.cs" Link="CatalogCacheStamp.cs" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.20" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\NexaPlay\Core\Helpers\ImageUriResolver.cs" Link="ImageUriResolver.cs" />
+    <Compile Include="..\NexaPlay\Core\Helpers\DetailHeroSelector.cs" Link="DetailHeroSelector.cs" />
     <Compile Include="..\NexaPlay\Core\Helpers\CatalogLoadCoordinator.cs" Link="CatalogLoadCoordinator.cs" />
-    <Compile Include="..\NexaPlay\Infrastructure\Services\GameCoverIndexFile.cs" Link="GameCoverIndexFile.cs" />
-    <Compile Include="..\NexaPlay\Infrastructure\Services\GameCoverIndexService.cs" Link="GameCoverIndexService.cs" />
-    <Compile Include="..\NexaPlay\Contracts\Services\IAppLogService.cs" Link="IAppLogService.cs" />
-    <Compile Include="..\NexaPlay\Contracts\Services\IGameCoverIndexService.cs" Link="IGameCoverIndexService.cs" />
-    <Compile Include="..\NexaPlay\Core\Constants\AppConstants.cs" Link="AppConstants.cs" />
-    <Compile Include="..\NexaPlay\Contracts\Services\ICatalogRefreshState.cs" Link="ICatalogRefreshState.cs" />
-    <Compile Include="..\NexaPlay\Infrastructure\Services\CatalogRefreshState.cs" Link="CatalogRefreshState.cs" />
-    <Compile Include="..\NexaPlay\Core\Models\NewGamesCatalogModels.cs" Link="NewGamesCatalogModels.cs" />
-    <Compile Include="..\NexaPlay\Core\Helpers\NewGamesCatalog.cs" Link="NewGamesCatalog.cs" />
-    <Compile Include="..\NexaPlay\Infrastructure\Services\NewGamesCatalogFile.cs" Link="NewGamesCatalogFile.cs" />
-    <Compile Include="..\NexaPlay\Core\Models\CatalogManifestModels.cs" Link="CatalogManifestModels.cs" />
     <Compile Include="..\NexaPlay\Core\Helpers\CatalogManifestRules.cs" Link="CatalogManifestRules.cs" />
-    <Compile Include="..\NexaPlay\Infrastructure\Services\CatalogSourceFile.cs" Link="CatalogSourceFile.cs" />
+    <Compile Include="..\NexaPlay\Core\Helpers\StringExtensions.cs" Link="StringExtensions.cs" />
+    <Compile Include="..\NexaPlay\Core\Helpers\CatalogProtectionResolver.cs" Link="CatalogProtectionResolver.cs" />
+    <Compile Include="..\NexaPlay\Core\Constants\AppConstants.cs" Link="AppConstants.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\CatalogManifestModels.cs" Link="CatalogManifestModels.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\CatalogModels.cs" Link="CatalogModels.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\DynamicFeedModels.cs" Link="DynamicFeedModels.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\GameEntry.cs" Link="GameEntry.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\GameDetailEntry.cs" Link="GameDetailEntry.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\MovieEntry.cs" Link="MovieEntry.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\ScreenshotEntry.cs" Link="ScreenshotEntry.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\NexaPlayOverrideModels.cs" Link="NexaPlayOverrideModels.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\IAppLogService.cs" Link="IAppLogService.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\IMetadataService.cs" Link="IMetadataService.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\ICatalogBootstrapService.cs" Link="ICatalogBootstrapService.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\ICatalogRefreshState.cs" Link="ICatalogRefreshState.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\ICatalogRepository.cs" Link="ICatalogRepository.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\ICatalogUpdateService.cs" Link="ICatalogUpdateService.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\ICoverImageCacheService.cs" Link="ICoverImageCacheService.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\IDynamicFeedRefreshService.cs" Link="IDynamicFeedRefreshService.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\INexaPlayOverrideService.cs" Link="INexaPlayOverrideService.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\ISteamStoreService.cs" Link="ISteamStoreService.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\CatalogBootstrapService.cs" Link="CatalogBootstrapService.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\CatalogRefreshState.cs" Link="CatalogRefreshState.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\SqliteCatalogRepository.cs" Link="SqliteCatalogRepository.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\CatalogUpdateService.cs" Link="CatalogUpdateService.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\CoverImageCacheService.cs" Link="CoverImageCacheService.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\DynamicFeedRefreshService.cs" Link="DynamicFeedRefreshService.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\MetadataService.cs" Link="MetadataService.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\SteamStoreService.cs" Link="SteamStoreService.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\MetadataWarmupProgress.cs" Link="MetadataWarmupProgress.cs" />
   </ItemGroup>
 </Project>

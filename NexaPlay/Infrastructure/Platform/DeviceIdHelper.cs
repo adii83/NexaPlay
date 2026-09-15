@@ -104,9 +104,7 @@ public static class DeviceIdHelper
 
     private static string GetCachePath()
     {
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppConstants.AppDataFolder);
+        var dir = AppConstants.AppDataPath;
         Directory.CreateDirectory(dir);
         return Path.Combine(dir, "device_id.cache");
     }

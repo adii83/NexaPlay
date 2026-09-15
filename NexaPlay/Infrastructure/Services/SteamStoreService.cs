@@ -1,6 +1,7 @@
 using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Constants;
 using NexaPlay.Core.Models;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -12,59 +13,119 @@ namespace NexaPlay.Infrastructure.Services;
 public sealed partial class SteamStoreService : ISteamStoreService
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromDays(7);
+    private const long HardCapBytes = 100L * 1024 * 1024;
+    private const long TrimTargetBytes = 90L * 1024 * 1024;
 
     private readonly IAppLogService _log;
     private readonly INexaPlayOverrideService _nexaPlayOverride;
     private readonly string _cacheDir;
     private readonly HttpClient _http;
+    private readonly ConcurrentDictionary<int, Lazy<Task<GameDetailEntry?>>> _inflight = new();
+    private long _cacheEpoch;
+    private int _writesSinceMaintenance;
+    private int _maintenanceRunning;
 
     public SteamStoreService(IAppLogService log, INexaPlayOverrideService nexaPlayOverride)
+        : this(log, nexaPlayOverride, CreateHttpClient(), Path.Combine(AppConstants.AppDataPath, "metadata_detail"))
+    {
+    }
+
+    internal SteamStoreService(
+        IAppLogService log,
+        INexaPlayOverrideService nexaPlayOverride,
+        HttpClient http,
+        string cacheDir)
     {
         _log = log;
         _nexaPlayOverride = nexaPlayOverride;
-        _cacheDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppConstants.AppDataFolder,
-            "metadata_detail");
+        _cacheDir = cacheDir;
         Directory.CreateDirectory(_cacheDir);
-
-        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("NexaPlay/1.0");
+        _http = http;
+        ScheduleMaintenance(force: true);
     }
 
-    public async Task<GameDetailEntry?> GetDetailAsync(int appId, CancellationToken ct = default)
+    private static HttpClient CreateHttpClient()
+    {
+        var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("NexaPlay/1.0");
+        return http;
+    }
+
+    public Task<GameDetailEntry?> GetDetailAsync(int appId, CancellationToken ct = default)
+    {
+        var shared = _inflight.GetOrAdd(
+            appId,
+            key => new Lazy<Task<GameDetailEntry?>>(
+                () => GetDetailAndReleaseAsync(key, Volatile.Read(ref _cacheEpoch)),
+                LazyThreadSafetyMode.ExecutionAndPublication));
+        return shared.Value.WaitAsync(ct);
+    }
+
+    private async Task<GameDetailEntry?> GetDetailAndReleaseAsync(int appId, long cacheEpoch)
+    {
+        try { return await GetDetailCoreAsync(appId, cacheEpoch); }
+        finally { _inflight.TryRemove(appId, out _); }
+    }
+
+    private async Task<GameDetailEntry?> GetDetailCoreAsync(int appId, long cacheEpoch)
     {
         var cacheFile = CacheFilePath(appId);
+        string? staleJson = null;
+        GameDetailEntry? staleDetail = null;
 
         if (File.Exists(cacheFile))
         {
             var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(cacheFile);
-            var cachedJson = await ReadRawCacheAsync(cacheFile, ct);
-            if (!string.IsNullOrWhiteSpace(cachedJson) && age < CacheTtl)
+            var cachedJson = await ReadRawCacheAsync(cacheFile, CancellationToken.None);
+            var parsed = string.IsNullOrWhiteSpace(cachedJson)
+                ? null
+                : ParseMergedDetail(appId, cachedJson, isFromCache: true);
+            if (parsed is not null && age < CacheTtl)
             {
                 _log.Log("StoreService", $"Detail cache hit appId={appId} age={age.TotalHours:F1}h");
-                return await ApplyDetailOverrideAsync(ParseMergedDetail(appId, cachedJson, isFromCache: true), appId, ct);
+                return await ApplyDetailOverrideAsync(parsed, appId, CancellationToken.None);
+            }
+
+            if (parsed is not null)
+            {
+                staleJson = cachedJson;
+                staleDetail = parsed;
+            }
+            else
+            {
+                try { File.Delete(cacheFile); } catch { }
+                _log.Log("StoreService", $"Corrupt detail cache discarded appId={appId}");
             }
         }
 
         try
         {
             _log.Log("StoreService", $"Resolving merged detail from R2 appId={appId}");
-            var result = await BuildMergedMetadataJsonAsync(appId, ct);
+            var result = await BuildMergedMetadataJsonAsync(appId, CancellationToken.None);
             if (!result.HasTransientError && !string.IsNullOrWhiteSpace(result.Json))
             {
-                await File.WriteAllTextAsync(cacheFile, result.Json, ct);
-                return await ApplyDetailOverrideAsync(ParseMergedDetail(appId, result.Json, isFromCache: false), appId, ct);
+                var parsed = ParseMergedDetail(appId, result.Json, isFromCache: false);
+                if (parsed is null)
+                    throw new JsonException("Detail response is not a valid metadata object.");
+
+                await WriteTextAtomicallyAsync(cacheFile, result.Json, cacheEpoch);
+                ScheduleMaintenance();
+                return await ApplyDetailOverrideAsync(parsed, appId, CancellationToken.None);
+            }
+
+            if (result.HasTransientError && staleDetail is not null)
+            {
+                _log.Log("StoreService", $"Using stale detail fallback appId={appId}");
+                return await ApplyDetailOverrideAsync(staleDetail, appId, CancellationToken.None);
             }
             return null;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _log.Log("StoreService", $"Detail resolve failed appId={appId}: {ex.Message}");
-            var stale = await ReadRawCacheAsync(cacheFile, ct);
-            return string.IsNullOrWhiteSpace(stale)
+            return staleJson is null
                 ? null
-                : await ApplyDetailOverrideAsync(ParseMergedDetail(appId, stale, isFromCache: true), appId, ct);
+                : await ApplyDetailOverrideAsync(staleDetail, appId, CancellationToken.None);
         }
     }
 
@@ -322,6 +383,8 @@ public sealed partial class SteamStoreService : ISteamStoreService
 
     public Task ClearCacheAsync()
     {
+        Interlocked.Increment(ref _cacheEpoch);
+        _inflight.Clear();
         try
         {
             if (Directory.Exists(_cacheDir))
@@ -334,10 +397,103 @@ public sealed partial class SteamStoreService : ISteamStoreService
         catch (Exception ex)
         {
             _log.Log("StoreService", $"Clear detail cache detach failed: {ex.Message}");
+            DeleteFilesBestEffort(_cacheDir);
         }
 
         Directory.CreateDirectory(_cacheDir);
         _log.Log("StoreService", "Detail cache cleared");
         return Task.CompletedTask;
+    }
+
+    private async Task WriteTextAtomicallyAsync(string path, string content, long cacheEpoch)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var temp = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await using (var stream = new FileStream(
+                temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096,
+                FileOptions.Asynchronous | FileOptions.WriteThrough))
+            await using (var writer = new StreamWriter(stream))
+            {
+                await writer.WriteAsync(content);
+                await writer.FlushAsync();
+                await stream.FlushAsync();
+            }
+            if (cacheEpoch != Volatile.Read(ref _cacheEpoch))
+                return;
+            File.Move(temp, path, overwrite: true);
+        }
+        finally
+        {
+            try { File.Delete(temp); } catch { }
+        }
+    }
+
+    private void ScheduleMaintenance(bool force = false)
+    {
+        if (!force && Interlocked.Increment(ref _writesSinceMaintenance) < 20)
+            return;
+        if (Interlocked.Exchange(ref _maintenanceRunning, 1) != 0)
+            return;
+
+        Interlocked.Exchange(ref _writesSinceMaintenance, 0);
+        _ = Task.Run(() =>
+        {
+            try { MaintainDirectory(_cacheDir, DateTime.UtcNow, CacheTtl, HardCapBytes, TrimTargetBytes); }
+            catch (Exception ex) { _log.Log("StoreService", $"Detail maintenance failed: {ex.Message}"); }
+            finally { Volatile.Write(ref _maintenanceRunning, 0); }
+        });
+    }
+
+    public static void MaintainDirectory(
+        string directory,
+        DateTime utcNow,
+        TimeSpan ttl,
+        long hardCapBytes,
+        long targetBytes)
+    {
+        if (!Directory.Exists(directory))
+            return;
+
+        var files = new DirectoryInfo(directory).EnumerateFiles("*.json")
+            .OrderBy(file => file.LastWriteTimeUtc)
+            .ToList();
+        foreach (var file in files.Where(file => utcNow - file.LastWriteTimeUtc >= ttl).ToList())
+        {
+            try { file.Delete(); } catch { }
+        }
+
+        files = new DirectoryInfo(directory).EnumerateFiles("*.json")
+            .OrderBy(file => file.LastWriteTimeUtc)
+            .ToList();
+        var total = files.Sum(file => file.Length);
+        if (total <= hardCapBytes)
+            return;
+
+        foreach (var file in files)
+        {
+            if (total <= targetBytes)
+                break;
+            try
+            {
+                var length = file.Length;
+                file.Delete();
+                total -= length;
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static void DeleteFilesBestEffort(string directory)
+    {
+        if (!Directory.Exists(directory))
+            return;
+        foreach (var file in Directory.EnumerateFiles(directory))
+        {
+            try { File.Delete(file); } catch { }
+        }
     }
 }

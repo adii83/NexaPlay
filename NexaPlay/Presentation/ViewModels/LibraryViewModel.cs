@@ -37,13 +37,12 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly IAppLogService _log;
     private readonly IMetadataService _metadata;
     private readonly INavigationService _nav;
-    private readonly INexaPlayOverrideService _nexaPlayOverride;
-    private readonly ISteamStoreService _steamStore;
 
     private int PageSize => 10;
     private int _currentPage = 1;
     private IReadOnlyList<InstalledGame> _allInstalledGames = Array.Empty<InstalledGame>();
     private List<InstalledGame> _filteredGames = new();
+    private IReadOnlyDictionary<int, GameEntry> _catalogByAppId = new Dictionary<int, GameEntry>();
     private CancellationTokenSource? _searchDebounceCts;
 
     [ObservableProperty] public partial ObservableCollection<LibraryGameCard> Games { get; set; }
@@ -78,9 +77,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         ISteamService steam,
         IAppLogService log,
         IMetadataService metadata,
-        INavigationService nav,
-        INexaPlayOverrideService nexaPlayOverride,
-        ISteamStoreService steamStore)
+        INavigationService nav)
     {
         _addGame = addGame;
         _onlineFix = onlineFix;
@@ -88,8 +85,6 @@ public sealed partial class LibraryViewModel : ObservableObject
         _log = log;
         _metadata = metadata;
         _nav = nav;
-        _nexaPlayOverride = nexaPlayOverride;
-        _steamStore = steamStore;
 
         Games = new ObservableCollection<LibraryGameCard>();
         SearchQuery = string.Empty;
@@ -103,13 +98,19 @@ public sealed partial class LibraryViewModel : ObservableObject
         try
         {
             var libraryAppIds = _addGame.ListLibraryGames();
+            var parsedAppIds = libraryAppIds
+                .Select(value => int.TryParse(value, out var appId) ? appId : 0)
+                .Where(appId => appId > 0)
+                .ToList();
+            _catalogByAppId = (await _metadata.GetMetadataBatchAsync(parsedAppIds))
+                .ToDictionary(game => game.AppId);
             var list = new List<InstalledGame>();
             
             foreach (var appIdStr in libraryAppIds)
             {
                 if (int.TryParse(appIdStr, out var appId))
                 {
-                    var meta = await _metadata.GetMetadataAsync(appId);
+                    _catalogByAppId.TryGetValue(appId, out var meta);
                     var steamName = _steam.GetGameName(appId);
                     
                     list.Add(new InstalledGame
@@ -132,7 +133,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             IsLoading = false;
         }
     }
-    private async Task ApplyFiltersAndPaginationAsync(bool resetPage = true)
+    private Task ApplyFiltersAndPaginationAsync(bool resetPage = true)
     {
         IEnumerable<InstalledGame> query = _allInstalledGames;
 
@@ -171,12 +172,10 @@ public sealed partial class LibraryViewModel : ObservableObject
         var targetCards = new List<LibraryGameCard>(pageItems.Count);
         foreach (var item in pageItems)
         {
-            var meta = await _metadata.GetMetadataAsync(item.AppId);
-            var overrideData = await _nexaPlayOverride.GetCatalogOverrideAsync(item.AppId, CancellationToken.None);
-            var detail = await _steamStore.GetDetailAsync(item.AppId, CancellationToken.None);
+            _catalogByAppId.TryGetValue(item.AppId, out var meta);
 
             var title = meta?.Name ?? item.Name;
-            var cover = overrideData?.LibraryCapsule ?? meta?.HeaderImageUrl ?? meta?.RawHeaderImageUrl ?? detail?.BackgroundImageUrl;
+            var cover = meta?.LibraryCapsuleUrl ?? meta?.RawHeaderImageUrl;
 
             if (string.IsNullOrWhiteSpace(cover))
                 cover = "NO CONTENT";
@@ -211,6 +210,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(IsPage2Selected));
         OnPropertyChanged(nameof(IsPage3Selected));
         OnPropertyChanged(nameof(IsEmpty));
+        return Task.CompletedTask;
     }
 
     private void SyncGames(IReadOnlyList<LibraryGameCard> targetItems)

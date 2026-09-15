@@ -2,39 +2,30 @@ using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Constants;
 using NexaPlay.Core.Enums;
 using NexaPlay.Core.Models;
-using System.Net.Http;
 using System.Text.Json;
 
 namespace NexaPlay.Infrastructure.Services;
 
-/// <summary>Downloads and caches fix_games.json catalog with 24h TTL.
-/// Also loads steam_games.json for the Steam Sharing tab.</summary>
+/// <summary>Parses locally persisted Bypass feeds. Network ownership belongs to DynamicFeedRefreshService.</summary>
 public sealed class BypassGamesDataService : IBypassGamesDataService
 {
     private readonly IAppLogService _log;
     private readonly string _cacheFile;
     private readonly string _newCacheFile;
     private readonly string _steamGamesFile;
-    private readonly HttpClient _http;
     private IReadOnlyList<FixEntry>? _cached;
     private IReadOnlyList<FixEntry>? _newCached;
     private IReadOnlyList<FixEntry>? _steamCached;
-    private DateTime _lastLoaded = DateTime.MinValue;
-    private DateTime _newLastLoaded = DateTime.MinValue;
-    private DateTime _steamLastLoaded = DateTime.MinValue;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     public BypassGamesDataService(IAppLogService log)
     {
         _log = log;
-        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppConstants.AppDataFolder,
-            "runtime_catalog_sources");
+        var dir = Path.Combine(AppConstants.AppDataPath, "runtime_catalog_sources");
         Directory.CreateDirectory(dir);
         _cacheFile = Path.Combine(dir, AppConstants.BypassGamesCacheFileName);
         _newCacheFile = Path.Combine(dir, AppConstants.NewFixGamesCacheFileName);
         _steamGamesFile = Path.Combine(dir, AppConstants.SteamGamesCacheFileName);
-        _http = new HttpClient { Timeout = AppConstants.HttpDefaultTimeout };
     }
 
     public async Task<IReadOnlyList<FixEntry>> GetAllFixesAsync(CancellationToken ct = default)
@@ -67,12 +58,7 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
         _cached = null;
         _newCached = null;
         _steamCached = null;
-        _lastLoaded = DateTime.MinValue;
-        _newLastLoaded = DateTime.MinValue;
-        _steamLastLoaded = DateTime.MinValue;
-        await EnsureLoadedAsync(ct);
-        await EnsureNewLoadedAsync(ct);
-        await EnsureSteamLoadedAsync(ct);
+        await Task.WhenAll(EnsureLoadedAsync(ct), EnsureNewLoadedAsync(ct), EnsureSteamLoadedAsync(ct));
     }
 
     public void UpdateCacheItem(FixEntry updatedEntry)
@@ -106,11 +92,11 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
 
     private async Task EnsureLoadedAsync(CancellationToken ct)
     {
-        if (_cached is not null && DateTime.UtcNow - _lastLoaded < AppConstants.SafetyNetTtl) return;
+        if (_cached is not null) return;
         await _lock.WaitAsync(ct);
         try
         {
-            if (_cached is not null && DateTime.UtcNow - _lastLoaded < AppConstants.SafetyNetTtl) return;
+            if (_cached is not null) return;
             await LoadFixGamesAsync(ct);
         }
         finally { _lock.Release(); }
@@ -118,44 +104,20 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
 
     private async Task LoadFixGamesAsync(CancellationToken ct)
     {
-        if (File.Exists(_cacheFile) && DateTime.UtcNow - File.GetLastWriteTimeUtc(_cacheFile) < AppConstants.SafetyNetTtl)
-        {
-            _cached = ParseFixGamesJson(File.ReadAllText(_cacheFile));
-            _lastLoaded = DateTime.UtcNow;
-            _log.Log("FixData", $"Loaded {_cached.Count} fixes from disk cache");
-            return;
-        }
-
-        _log.Log("FixData", "Downloading fix_games.json...");
-        try
-        {
-            using var req = new HttpRequestMessage(HttpMethod.Get, AppConstants.BypassGamesUrl);
-            req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-            resp.EnsureSuccessStatusCode();
-            var json = await resp.Content.ReadAsStringAsync(ct);
-            await File.WriteAllTextAsync(_cacheFile, json, ct);
-            _cached = ParseFixGamesJson(json);
-            _lastLoaded = DateTime.UtcNow;
-            _log.Log("FixData", $"Downloaded {_cached.Count} fixes");
-        }
-        catch (Exception ex)
-        {
-            _log.Log("FixData", $"Download failed: {ex.Message}. Using disk cache.");
-            _cached = File.Exists(_cacheFile) ? ParseFixGamesJson(File.ReadAllText(_cacheFile)) : Array.Empty<FixEntry>();
-            _lastLoaded = DateTime.UtcNow;
-        }
+        ct.ThrowIfCancellationRequested();
+        _cached = TryParseFile(_cacheFile, ParseFixGamesJson);
+        _log.Log("FixData", $"Loaded {_cached.Count} fixes from local snapshot");
     }
 
     // ─── new_fix_games.json ────────────────────────────────────────
 
     private async Task EnsureNewLoadedAsync(CancellationToken ct)
     {
-        if (_newCached is not null && DateTime.UtcNow - _newLastLoaded < AppConstants.SafetyNetTtl) return;
+        if (_newCached is not null) return;
         await _lock.WaitAsync(ct);
         try
         {
-            if (_newCached is not null && DateTime.UtcNow - _newLastLoaded < AppConstants.SafetyNetTtl) return;
+            if (_newCached is not null) return;
             await LoadNewAsync(ct);
         }
         finally { _lock.Release(); }
@@ -163,44 +125,20 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
 
     private async Task LoadNewAsync(CancellationToken ct)
     {
-        if (File.Exists(_newCacheFile) && DateTime.UtcNow - File.GetLastWriteTimeUtc(_newCacheFile) < AppConstants.SafetyNetTtl)
-        {
-            _newCached = ParseFixGamesJson(File.ReadAllText(_newCacheFile));
-            _newLastLoaded = DateTime.UtcNow;
-            _log.Log("FixData", $"Loaded {_newCached.Count} new fixes from disk cache");
-            return;
-        }
-
-        _log.Log("FixData", "Downloading new_fix_games.json...");
-        try
-        {
-            using var req = new HttpRequestMessage(HttpMethod.Get, AppConstants.NewFixGamesUrl);
-            req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-            resp.EnsureSuccessStatusCode();
-            var json = await resp.Content.ReadAsStringAsync(ct);
-            await File.WriteAllTextAsync(_newCacheFile, json, ct);
-            _newCached = ParseFixGamesJson(json);
-            _newLastLoaded = DateTime.UtcNow;
-            _log.Log("FixData", $"Downloaded {_newCached.Count} new fixes");
-        }
-        catch (Exception ex)
-        {
-            _log.Log("FixData", $"Download new_fix_games failed: {ex.Message}. Using disk cache.");
-            _newCached = File.Exists(_newCacheFile) ? ParseFixGamesJson(File.ReadAllText(_newCacheFile)) : Array.Empty<FixEntry>();
-            _newLastLoaded = DateTime.UtcNow;
-        }
+        ct.ThrowIfCancellationRequested();
+        _newCached = TryParseFile(_newCacheFile, ParseFixGamesJson);
+        _log.Log("FixData", $"Loaded {_newCached.Count} new fixes from local snapshot");
     }
 
     // ─── steam_games.json ────────────────────────────────────────
 
     private async Task EnsureSteamLoadedAsync(CancellationToken ct)
     {
-        if (_steamCached is not null && DateTime.UtcNow - _steamLastLoaded < AppConstants.SafetyNetTtl) return;
+        if (_steamCached is not null) return;
         await _lock.WaitAsync(ct);
         try
         {
-            if (_steamCached is not null && DateTime.UtcNow - _steamLastLoaded < AppConstants.SafetyNetTtl) return;
+            if (_steamCached is not null) return;
             await LoadSteamGamesAsync(ct);
         }
         finally { _lock.Release(); }
@@ -208,33 +146,17 @@ public sealed class BypassGamesDataService : IBypassGamesDataService
 
     private async Task LoadSteamGamesAsync(CancellationToken ct)
     {
-        if (File.Exists(_steamGamesFile) && DateTime.UtcNow - File.GetLastWriteTimeUtc(_steamGamesFile) < AppConstants.SafetyNetTtl)
-        {
-            _steamCached = ParseSteamGamesJson(File.ReadAllText(_steamGamesFile));
-            _steamLastLoaded = DateTime.UtcNow;
-            _log.Log("FixData", $"Loaded {_steamCached.Count} steam games from disk cache");
-            return;
-        }
+        ct.ThrowIfCancellationRequested();
+        _steamCached = TryParseFile(_steamGamesFile, ParseSteamGamesJson);
+        _log.Log("FixData", $"Loaded {_steamCached.Count} steam games from local snapshot");
+    }
 
-        _log.Log("FixData", "Downloading steam_games.json...");
-        try
-        {
-            using var req = new HttpRequestMessage(HttpMethod.Get, AppConstants.SteamGamesUrl);
-            req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-            resp.EnsureSuccessStatusCode();
-            var json = await resp.Content.ReadAsStringAsync(ct);
-            await File.WriteAllTextAsync(_steamGamesFile, json, ct);
-            _steamCached = ParseSteamGamesJson(json);
-            _steamLastLoaded = DateTime.UtcNow;
-            _log.Log("FixData", $"Downloaded {_steamCached.Count} steam games");
-        }
-        catch (Exception ex)
-        {
-            _log.Log("FixData", $"Download steam_games failed: {ex.Message}. Using disk cache.");
-            _steamCached = File.Exists(_steamGamesFile) ? ParseSteamGamesJson(File.ReadAllText(_steamGamesFile)) : Array.Empty<FixEntry>();
-            _steamLastLoaded = DateTime.UtcNow;
-        }
+    private static IReadOnlyList<FixEntry> TryParseFile(
+        string path,
+        Func<string, IReadOnlyList<FixEntry>> parser)
+    {
+        try { return File.Exists(path) ? parser(File.ReadAllText(path)) : Array.Empty<FixEntry>(); }
+        catch { return Array.Empty<FixEntry>(); }
     }
 
     // ─── Parsers ────────────────────────────────────────────────────

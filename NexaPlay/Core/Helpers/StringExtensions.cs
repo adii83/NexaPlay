@@ -1,4 +1,5 @@
-using System.Text.RegularExpressions;
+using System.Globalization;
+using System.Text;
 
 namespace NexaPlay.Core.Helpers;
 
@@ -6,21 +7,35 @@ public static class StringExtensions
 {
     public static string NormalizeForSearch(this string input)
     {
-        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+        if (string.IsNullOrWhiteSpace(input))
+            return string.Empty;
 
-        // Hapus karakter petik dan trademark agar Assassin's Creed™ menjadi Assassins Creed
-        var result = input.Replace("'", "")
-                          .Replace("’", "")
-                          .Replace("™", "")
-                          .Replace("®", "")
-                          .Replace(":", "");
-                          
-        // Ganti dash dengan spasi agar Spider-Man bisa dicari dengan Spider Man
-        result = result.Replace("-", " ");
+        var normalized = input.Normalize(NormalizationForm.FormD);
+        var result = new StringBuilder(normalized.Length);
+        var pendingSpace = false;
 
-        // Hapus spasi berlebih
-        result = Regex.Replace(result, @"\s+", " ");
-        
-        return result.Trim().ToLowerInvariant();
+        foreach (var rune in normalized.EnumerateRunes())
+        {
+            var category = Rune.GetUnicodeCategory(rune);
+            if (category is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark)
+                continue;
+
+            if (rune.Value is '\'' or 0x2018 or 0x2019 or '`' or 0x00B4)
+                continue;
+
+            if (Rune.IsLetterOrDigit(rune))
+            {
+                if (pendingSpace && result.Length > 0)
+                    result.Append(' ');
+                result.Append(Rune.ToLowerInvariant(rune));
+                pendingSpace = false;
+            }
+            else
+            {
+                pendingSpace = result.Length > 0;
+            }
+        }
+
+        return result.ToString();
     }
 }

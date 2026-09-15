@@ -156,12 +156,6 @@ public sealed partial class SettingsPage : Page
         await dialog.ShowAsync();
     }
 
-    private async void OnRefreshFixDataClicked(object sender, RoutedEventArgs e)
-    {
-        if (_vm is null) return;
-        await _vm.RefreshFixDataAsync();
-    }
-
     private async void OnCheckForUpdatesClicked(object sender, RoutedEventArgs e)
     {
         if (_vm is null) return;

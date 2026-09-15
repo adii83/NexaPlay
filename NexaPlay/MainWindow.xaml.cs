@@ -28,16 +28,15 @@ public sealed partial class MainWindow : Window
     private readonly INavigationService _nav;
     private readonly ILicenseService _licenseService;
     private readonly IMetadataService _metadataService;
-    private readonly IGameCoverIndexService _gameCoverIndexService;
+    private readonly ICatalogUpdateService _catalogUpdateService;
     private readonly IAppUpdateService _appUpdateService;
     private readonly ISteamService _steamService;
     private readonly IAppLogService _appLog;
     private readonly HomeViewModel _homeViewModel;
     private readonly GamesViewModel _gamesViewModel;
     private readonly ICatalogRefreshState _catalogRefreshState;
-    private readonly IListingCoverResolver _listingCoverResolver;
     private readonly IBypassGamesDataService _bypassGamesDataService;
-    private int _metadataReloadQueued;
+    private readonly BypassGamesViewModel _bypassGamesViewModel;
     private bool _hasShownStartupUpdatePrompt;
     private IntPtr _windowIconHandle;
     private readonly Storyboard _startupLoadingLogoStoryboard;
@@ -50,31 +49,30 @@ public sealed partial class MainWindow : Window
         INavigationService nav,
         ILicenseService licenseService,
         IMetadataService metadataService,
-        IGameCoverIndexService gameCoverIndexService,
+        ICatalogUpdateService catalogUpdateService,
         IAppUpdateService appUpdateService,
         ISteamService steamService,
         IAppLogService appLog,
         HomeViewModel homeViewModel,
         GamesViewModel gamesViewModel,
         ICatalogRefreshState catalogRefreshState,
-        IListingCoverResolver listingCoverResolver,
-        IBypassGamesDataService bypassGamesDataService)
+        IBypassGamesDataService bypassGamesDataService,
+        BypassGamesViewModel bypassGamesViewModel)
     {
         _vm             = vm;
         _nav            = nav;
         _licenseService = licenseService;
         _metadataService = metadataService;
-        _gameCoverIndexService = gameCoverIndexService;
+        _catalogUpdateService = catalogUpdateService;
         _appUpdateService = appUpdateService;
         _steamService = steamService;
         _appLog = appLog;
         _homeViewModel = homeViewModel;
         _gamesViewModel = gamesViewModel;
         _catalogRefreshState = catalogRefreshState;
-        _listingCoverResolver = listingCoverResolver;
         _bypassGamesDataService = bypassGamesDataService;
+        _bypassGamesViewModel = bypassGamesViewModel;
         InitializeComponent();
-        _metadataService.CatalogUpdated += OnMetadataCatalogUpdated;
         VersionText.Text = $"v{AppConstants.AppVersion}";
         UpdateLicenseBadge(LicensePlan.Standard);
         _startupLoadingLogoStoryboard = CreateLoadingLogoStoryboard(StartupLoadingLogoRotation);
@@ -100,36 +98,6 @@ public sealed partial class MainWindow : Window
         this.Activated += OnFirstActivated;
         SetBypassSubmenuActive("all");
         UpdateShellChrome();
-    }
-
-    private void OnMetadataCatalogUpdated(object? sender, EventArgs e)
-    {
-        if (Interlocked.Exchange(ref _metadataReloadQueued, 1) != 0)
-            return;
-
-        if (!DispatcherQueue.TryEnqueue(async () =>
-        {
-            try
-            {
-                await _bypassGamesDataService.RefreshAsync();
-                _catalogRefreshState.Advance();
-                _listingCoverResolver.ClearCache();
-                await _homeViewModel.ReloadCatalogAsync();
-                await _gamesViewModel.ReloadCatalogAsync();
-                _appLog.Log("Metadata", "Background catalog update reloaded Home and Games.");
-            }
-            catch (Exception ex)
-            {
-                _appLog.Log("Metadata", $"Background catalog reload failed: {ex.Message}");
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _metadataReloadQueued, 0);
-            }
-        }))
-        {
-            Interlocked.Exchange(ref _metadataReloadQueued, 0);
-        }
     }
 
     private void ApplyWindowIcon(Microsoft.UI.Windowing.AppWindow appWindow, IntPtr hWnd)
@@ -283,7 +251,6 @@ public sealed partial class MainWindow : Window
         {
             // Run startup sources in background while the overlay animates.
             var warmupTask = _metadataService.WarmupEssentialSourcesAsync(null);
-            var coverWarmupTask = _gameCoverIndexService.WarmupAsync();
 
             // Animate progress bar smoothly from 0 to 100 over 1200ms
             const int steps = 40;
@@ -296,7 +263,6 @@ public sealed partial class MainWindow : Window
             }
 
             await warmupTask;
-            await coverWarmupTask;
         }
         else
         {
@@ -312,8 +278,7 @@ public sealed partial class MainWindow : Window
                 {
                     string friendlyMessage = p.FileName switch
                     {
-                        "steam_data.json" or "steam_data.json.gz" => "Memuat basis data game...",
-                        "override_data.json" => "Memuat konfigurasi aplikasi...",
+                        "catalog.sqlite" => "Memuat basis data game...",
                         "fix_games.json" or "new_fix_games.json" => "Memuat data bypass games...",
                         "steam_games.json" => "Memverifikasi data Denuvo...",
                         _ => "Menyelesaikan proses inisialisasi..."
@@ -327,13 +292,6 @@ public sealed partial class MainWindow : Window
             try
             {
                 await _metadataService.WarmupEssentialSourcesAsync(progress);
-                dispatcher.TryEnqueue(() =>
-                {
-                    StartupStatusText.Text = "Menyiapkan cover katalog game...";
-                    StartupPercentText.Text = "92%";
-                    StartupProgressBar.Value = 92;
-                });
-                await _gameCoverIndexService.WarmupAsync();
                 dispatcher.TryEnqueue(() =>
                 {
                     StartupStatusText.Text = "Inisialisasi selesai.";
@@ -369,6 +327,82 @@ public sealed partial class MainWindow : Window
             hideOverlayTcs.TrySetResult();
         });
         await hideOverlayTcs.Task;
+        _ = CheckCatalogUpdatesInBackgroundAsync();
+    }
+
+    private async Task CheckCatalogUpdatesInBackgroundAsync()
+    {
+        CatalogUpdateResult catalogResult;
+        MetadataRefreshResult metadataResult;
+        try
+        {
+            catalogResult = await _catalogUpdateService.CheckAndApplyPatchesAsync(force: false);
+            metadataResult = await _metadataService.RefreshDynamicSourcesAsync(force: false);
+        }
+        catch (Exception ex)
+        {
+            _appLog.Log("DataRefresh", $"Background refresh failed non-fatally: {ex.Message}");
+            return;
+        }
+
+        var bypassChanged = (metadataResult.Feeds.Changes &
+            (DynamicFeedChanges.FixGames | DynamicFeedChanges.SteamGames)) != 0;
+        if (bypassChanged)
+            await _bypassGamesDataService.RefreshAsync();
+
+        var catalogChanged = catalogResult.Changed || metadataResult.OverlayChanged;
+        var popularChanged = (metadataResult.Feeds.Changes & DynamicFeedChanges.Popular) != 0;
+        var recentChanged = (metadataResult.Feeds.Changes & DynamicFeedChanges.NewFix) != 0;
+        if (!catalogChanged && !popularChanged && !recentChanged && !bypassChanged)
+            return;
+
+        if (!DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var currentPage = ContentFrame.CurrentSourcePageType;
+                if (catalogChanged)
+                {
+                    _catalogRefreshState.Advance();
+                    if (currentPage == typeof(HomePage))
+                        await _homeViewModel.ReloadCatalogAsync();
+                    else
+                        _homeViewModel.InvalidateDerivedCache();
+                    if (currentPage == typeof(GamesPage))
+                        await _gamesViewModel.ReloadCatalogAsync();
+                    else
+                        _gamesViewModel.InvalidateDerivedCache();
+                }
+                else if (currentPage == typeof(HomePage))
+                {
+                    if (recentChanged)
+                        await _homeViewModel.ReloadRecentAsync();
+                    if (popularChanged)
+                        await _homeViewModel.ReloadPopularAsync();
+                }
+                else if (popularChanged || recentChanged)
+                {
+                    _homeViewModel.InvalidateDerivedCache();
+                }
+
+                if (bypassChanged)
+                {
+                    if (currentPage == typeof(BypassGamesPage))
+                        await _bypassGamesViewModel.ReloadAsync();
+                    else
+                        _bypassGamesViewModel.InvalidateData();
+                }
+
+                _appLog.Log("DataRefresh", $"Targeted refresh complete. catalog={catalogChanged}, popular={popularChanged}, recent={recentChanged}, bypass={bypassChanged}");
+            }
+            catch (Exception ex)
+            {
+                _appLog.Log("DataRefresh", $"Background targeted refresh failed: {ex.Message}");
+            }
+        }))
+        {
+            _appLog.Log("DataRefresh", "Background refresh could not reach the UI dispatcher.");
+        }
     }
 
     private async Task PreloadStartupCardsAsync(bool isWarm)
@@ -392,9 +426,6 @@ public sealed partial class MainWindow : Window
 
         UpdateStartupState(isWarm ? 76 : 88, "Mempersiapkan konten beranda...");
         await _homeViewModel.LoadAsync();
-
-        UpdateStartupState(isWarm ? 88 : 94, "Mempersiapkan katalog game...");
-        await _gamesViewModel.LoadAsync();
 
         UpdateStartupState(100, "Halaman utama siap digunakan.");
     }

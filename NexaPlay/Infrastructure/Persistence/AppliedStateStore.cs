@@ -12,9 +12,7 @@ public sealed class AppliedStateStore
 
     public AppliedStateStore()
     {
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppConstants.AppDataFolder);
+        var dir = AppConstants.AppDataPath;
         Directory.CreateDirectory(dir);
         _filePath = Path.Combine(dir, AppConstants.AppliedStateFileName);
         LoadSync();

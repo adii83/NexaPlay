@@ -29,9 +29,7 @@ public sealed class BypassTutorialVideoService : IBypassTutorialVideoService
     public BypassTutorialVideoService(IAppLogService log)
     {
         _log = log;
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppConstants.AppDataFolder);
+        var dir = AppConstants.AppDataPath;
         Directory.CreateDirectory(dir);
 
         _cacheFile = Path.Combine(dir, AppConstants.YoutubeTutorialCacheFileName);

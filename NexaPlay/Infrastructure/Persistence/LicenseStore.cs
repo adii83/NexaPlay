@@ -20,9 +20,9 @@ public sealed class LicenseStore
 
     public LicenseStore()
     {
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var localAppData = AppConstants.LocalAppDataPath;
         
-        _nexaPlayDir = Path.Combine(localAppData, AppConstants.AppDataFolder);
+        _nexaPlayDir = AppConstants.AppDataPath;
         Directory.CreateDirectory(_nexaPlayDir);
         _nexaPlayFilePath = Path.Combine(_nexaPlayDir, AppConstants.LicenseFileName);
         _appLogPath = Path.Combine(_nexaPlayDir, AppConstants.LogFileName);

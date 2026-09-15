@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using NexaPlay.Contracts.Navigation;
 using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Enums;
+using NexaPlay.Core.Helpers;
 using NexaPlay.Core.Models;
 using NexaPlay.Presentation.Views.Pages;
 using System;
@@ -38,7 +39,7 @@ public sealed partial class GameDetailViewModel : ObservableObject
     private readonly INexaPlayOverrideService _nexaPlayOverride;
     private readonly INavigationService _nav;
 
-    // —— Base metadata (from steam_data.json.gz — always available) ———————————
+    // Base listing metadata from the local SQLite catalog.
     [ObservableProperty] public partial GameEntry? Game { get; set; }
 
     // —— Rich detail (from Steam Store API — loaded on-demand) ————————————————
@@ -309,18 +310,8 @@ public sealed partial class GameDetailViewModel : ObservableObject
 
 
             NotifyDisplayProperties();
-            var heroOverride = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId))?.LibraryHero2x;
-            HeroBackgroundUrl = heroOverride
-                ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "library_hero_2x")
-                ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "library_hero")
-                ?? Detail?.SgdbHeroUrl
-                ?? Game?.LibraryHero2xUrl
-                ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "background_raw")
-                ?? Game?.BackgroundRawImageUrl
-                ?? Detail?.BackgroundImageUrl
-                ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "header")
-                ?? Game?.HeaderImageUrl
-                ?? string.Empty;
+            var heroOverride = await _nexaPlayOverride.GetCatalogOverrideAsync(appId);
+            HeroBackgroundUrl = DetailHeroSelector.Select(heroOverride, Detail, Game);
             var iconOverride = (await _nexaPlayOverride.GetCatalogOverrideAsync(appId))?.Icon;
             GameIconUrl = iconOverride
                 ?? ReadFirstAssetUrl(Detail?.RawMetadataJson, "icon")

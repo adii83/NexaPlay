@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Navigation;
 using Microsoft.Web.WebView2.Core;
 using NexaPlay.Contracts.Navigation;
 using NexaPlay.Contracts.Services;
+using NexaPlay.Core.Helpers;
 using NexaPlay.Presentation.Helpers;
 using NexaPlay.Presentation.ViewModels;
 using System;
@@ -691,7 +692,7 @@ public sealed partial class BypassGameDetailPage : Page
 
     public static Uri SafeUri(string? raw)
     {
-        if (!string.IsNullOrWhiteSpace(raw) && Uri.TryCreate(raw, UriKind.Absolute, out var parsed))
+        if (ImageUriResolver.TryCreate(raw, out var parsed))
             return parsed;
 
         return new Uri("ms-appx:///Assets/StoreLogo.png");

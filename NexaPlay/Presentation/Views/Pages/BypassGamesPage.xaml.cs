@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml;
 using NexaPlay.Contracts.Services;
 using NexaPlay.Contracts.Navigation;
 using NexaPlay.Core.Enums;
+using NexaPlay.Core.Helpers;
 using NexaPlay.Presentation.Helpers;
 using NexaPlay.Presentation.ViewModels;
 using System.ComponentModel;
@@ -265,9 +266,7 @@ public sealed partial class BypassGamesPage : Page
 
     public static ImageSource? ToImageSource(string? raw)
     {
-        if (string.IsNullOrWhiteSpace(raw)) return null;
-        if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri)) return null;
-        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != "ms-appx") return null;
+        if (!ImageUriResolver.TryCreate(raw, out var uri)) return null;
         try { return new BitmapImage(uri); } catch { return null; }
     }
 

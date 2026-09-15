@@ -9,7 +9,7 @@ namespace NexaPlay.Contracts.Services;
 ///
 /// SOLID — Single Responsibility:
 ///   This service is only responsible for Steam Store API detail data.
-///   It does NOT handle steam_data.json.gz (that is IMetadataService).
+///   General listing metadata is handled by the local SQLite catalog.
 /// </summary>
 public interface ISteamStoreService
 {

@@ -31,9 +31,7 @@ public sealed class AppUpdateService : IAppUpdateService
             Timeout = AppConstants.HttpDefaultTimeout
         };
 
-        _appDataDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppConstants.AppDataFolder);
+        _appDataDir = AppConstants.AppDataPath;
         _updatesDir = Path.Combine(_appDataDir, AppConstants.AppUpdateDownloadsFolderName);
         _statePath = Path.Combine(_appDataDir, AppConstants.AppUpdateStateFileName);
 

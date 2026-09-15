@@ -7,6 +7,8 @@ public sealed class CatalogLoadCoordinator
 
     public long LoadedGeneration => Interlocked.Read(ref _loadedGeneration);
 
+    public void Invalidate() => Interlocked.Exchange(ref _loadedGeneration, -1);
+
     public async Task RunAsync(
         Func<long> getGeneration,
         bool forceReload,

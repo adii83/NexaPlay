@@ -5,7 +5,7 @@ namespace NexaPlay.Contracts.Services;
 /// <summary>
 /// Provides NexaPlay-specific metadata overrides fetched from a dedicated GitHub repo.
 /// Overrides are sparse: only fields present in the JSON will replace existing values.
-/// Priority: nexaplay_override > override_data > steam_data.
+/// Priority: runtime NexaPlay override > local SQLite catalog.
 /// </summary>
 public interface INexaPlayOverrideService
 {
@@ -17,6 +17,8 @@ public interface INexaPlayOverrideService
 
     /// <summary>Returns all appIds that have any override entry.</summary>
     Task<IReadOnlySet<int>> GetOverriddenAppIdsAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyDictionary<int, NexaPlayCatalogOverride>> GetCachedCatalogOverridesAsync(CancellationToken ct = default);
 
     /// <summary>Forces a re-download of the override file from GitHub.</summary>
     Task RefreshAsync(CancellationToken ct = default);

@@ -10,9 +10,7 @@ public sealed class ManagedManifestStore
 
     public ManagedManifestStore()
     {
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppConstants.AppDataFolder);
+        var dir = AppConstants.AppDataPath;
         Directory.CreateDirectory(dir);
         _filePath = Path.Combine(dir, "managed_appmanifests.json");
     }

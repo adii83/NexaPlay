@@ -1735,3 +1735,24 @@ Tanggal: 9 Juni 2026
 
 
 
+# Checkpoint 2026-09-14 - Local SQLite Catalog Migration
+
+- General listing memakai bundled `data/catalog/catalog_seed.sqlite` dan runtime `%LocalAppData%\NexaPlay\Data\catalog.sqlite`.
+- Games search/filter/count/paging berjalan sebagai query SQLite parameterized; full RAM filter index dan `games_filter_index_cache_v3.json` retired.
+- Home popular memakai `appid_populer.json` lalu batch lookup SQLite dengan urutan feed tetap; Library memakai `.lua` sebagai membership dan SQLite untuk card tanpa detail N+1.
+- Full detail R2, Bypass JSON, cover pipeline, license, app update, dan flow lain di luar catalog tetap.
+- Catalog update memakai R2 `catalog_manifest.json` format final dan patch JSON sequential dengan validasi size/SHA/version serta transaction per patch. Tidak ada remote full SQLite.
+- Build Debug x64 dan Release publish sukses; self-check SQLite lulus; launch Release menampilkan `MainWindow`, bootstrap runtime v2 163.262 row, dan Home merender popular games.
+- Audit aktual: `../DATA_FLOW_AUDIT.md` bagian `Migration Status - Local SQLite Catalog`.
+
+# Checkpoint 2026-09-14 - Final Data-Flow Optimization
+
+- `library_capsule.json(.gz)`, `GameCoverIndexService`, dan `ListingCoverResolver` retired dari runtime; nama legacy tersisa cleanup-only.
+- Home Popular memakai ordered-distinct feed + SQLite batch dan render local cards sebelum cover download. Home Recent maksimal 12 memakai local rows dulu lalu bounded `Metadata/{appid}.json` enrichment.
+- Bypass listing local-only + satu SQLite batch, zero full-detail request. Bypass Detail tetap lazy full metadata setelah click.
+- Games memakai Rp100K floor, price bands A-E, local-date deterministic 3-page candidate blocks, visible-page hydration, exact/normalized search, dan one-page-ahead prefetch.
+- Empat shared dynamic feed punya satu downloader (`DynamicFeedRefreshService`), validated ETag atomic writes, local-first background refresh, dan targeted invalidation.
+- Cover cache cap 250 MB trim ~200 MB. Detail TTL 7 hari, cap 100 MB trim ~90 MB, atomic write, in-flight dedup, corrupt repair, stale fallback, dan clear epoch.
+- SelfCheck lulus. Final bundled-seed median: default 17.870 ms; Premium 98.426 ms; Standard 90.102 ms; Denuvo 87.701 ms; Genre Action 172.891 ms; combined 164.238 ms.
+- Clean Debug x64 build dan self-contained Release publish lulus. Debug/Release process smoke responsif tetapi license gate menampilkan network error; page-level GUI dan live request-count tetap unverified.
+- Audit authority aktual: `../DATA_FLOW_AUDIT.md` bagian `Final Data-Flow Optimization - Actual Result`.

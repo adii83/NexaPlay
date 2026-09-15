@@ -14,9 +14,7 @@ public sealed class AppLogService : IAppLogService
 
     public AppLogService()
     {
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            Core.Constants.AppConstants.AppDataFolder);
+        var dir = Core.Constants.AppConstants.AppDataPath;
         Directory.CreateDirectory(dir);
         _logPath = Path.Combine(dir, Core.Constants.AppConstants.LogFileName);
     }

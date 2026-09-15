@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using NexaPlay.Contracts.Navigation;
 using NexaPlay.Contracts.Services;
+using NexaPlay.Core.Helpers;
 using NexaPlay.Core.Models;
 using NexaPlay.Presentation.Helpers;
 using NexaPlay.Presentation.ViewModels;
@@ -218,32 +219,12 @@ public sealed partial class HomePage : Page
     public static ImageSource SafeImageSource(string? raw)
     {
         if (!string.IsNullOrWhiteSpace(raw) &&
-            TryBuildImageUri(raw, out var parsed))
+            ImageUriResolver.TryCreate(raw, out var parsed))
         {
-            return new BitmapImage(parsed);
+            try { return new BitmapImage(parsed); } catch { }
         }
 
         return new BitmapImage(new Uri("ms-appx:///Assets/StoreLogo.png"));
-    }
-
-    private static bool TryBuildImageUri(string raw, out Uri uri)
-    {
-        if (Uri.TryCreate(raw, UriKind.Absolute, out uri!) &&
-            (uri.Scheme == Uri.UriSchemeHttp ||
-             uri.Scheme == Uri.UriSchemeHttps ||
-             uri.Scheme == Uri.UriSchemeFile ||
-             uri.Scheme == "ms-appx"))
-        {
-            return true;
-        }
-
-        if (Path.IsPathRooted(raw))
-        {
-            uri = new Uri(raw, UriKind.Absolute);
-            return true;
-        }
-
-        return false;
     }
 
     private void DenuvoBadge_Loaded(object sender, RoutedEventArgs e)

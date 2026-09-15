@@ -1,24 +1,24 @@
 {
-  "generated_at": "2026-09-10T21:36:43.210524+00:00",
+  "generated_at": "2026-09-15T13:09:13.017332+00:00",
   "nodes": {
-    "nexaplay_core_helpers_newgamescatalog_nexaplay_core_helpers_newgamescatalog": {
-      "code_fingerprint": "f95036c75a7b40052c0b6881a5c177446b0f23e85ccb6cb6f0450645012b4356",
-      "label": "NewGamesCatalog",
-      "last": "2026-09-10T21:14:57.205121+00:00",
+    "nexaplay_core_models_fixentry_nexaplay_core_models_fixentry": {
+      "code_fingerprint": "5845244e3e25af5ae48982da31df2a5e03ded56c952386dd0c1816b816841540",
+      "label": "FixEntry",
+      "last": "2026-09-15T12:35:39.530813+00:00",
       "provenance": [
         {
-          "date": "2026-09-10T21:14:57.205121+00:00",
+          "date": "2026-09-15T12:35:39.530813+00:00",
           "outcome": "useful",
-          "q": "pas ngunduh data apakah dia mengunduh juga file data ini new_games.json atau file tersebut hanya diunduh saat load game saja yang berada di setting?"
+          "q": "NEXAPLAY Games Browse artwork eligibility filter"
         }
       ],
-      "score": 0.999650812,
-      "source_file": "NexaPlay/Core/Helpers/NewGamesCatalog.cs",
+      "score": 0.999461703,
+      "source_file": "NexaPlay/Core/Models/FixEntry.cs",
       "status": "tentative",
       "uses": 1
     },
     "nexaplay_infrastructure_platform_deviceidhelper_nexaplay_infrastructure_platform_deviceidhelper": {
-      "code_fingerprint": "c6d63c78b763edf43d9ef6048a40755900242aa1d57782cf28c0ecbefe423525",
+      "code_fingerprint": "ee3fd6802ab6d34a67032ada221bfda7716ef70690e63e5975ffaffdacafd1ce",
       "label": "DeviceIdHelper",
       "last": "2026-09-10T19:46:57.696388+00:00",
       "provenance": [
@@ -28,7 +28,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.998240465,
+      "score": 0.896602474,
       "source_file": "NexaPlay/Infrastructure/Platform/DeviceIdHelper.cs",
       "status": "tentative",
       "uses": 1
@@ -44,7 +44,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.998240465,
+      "score": 0.896602474,
       "source_file": "NexaPlay/Infrastructure/Platform/SteamPlatformService.cs",
       "status": "tentative",
       "uses": 1
@@ -60,13 +60,13 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.998240465,
+      "score": 0.896602474,
       "source_file": "NexaPlay/Infrastructure/Platform/WindowsDefenderService.cs",
       "status": "tentative",
       "uses": 1
     },
     "nexaplay_infrastructure_services_addgameservice_nexaplay_infrastructure_services_addgameservice": {
-      "code_fingerprint": "4cfc447e7fefee9bdd8b2bade6cfcf11e3fe93a9087ee7e3c78690b4b786c46a",
+      "code_fingerprint": "34cf67a43f5713a5d80cbd5d1b6716f2548ffc916b6a22ee66aca6b225d2c5df",
       "label": "AddGameService",
       "last": "2026-09-10T19:46:57.696388+00:00",
       "provenance": [
@@ -76,13 +76,13 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.998240465,
+      "score": 0.896602474,
       "source_file": "NexaPlay/Infrastructure/Services/AddGameService.cs",
       "status": "tentative",
       "uses": 1
     },
     "nexaplay_infrastructure_services_appupdateservice_nexaplay_infrastructure_services_appupdateservice": {
-      "code_fingerprint": "1b468771ab85a494a86209e5d83dabb7fdba1bc0dffbbdd3f5c7c82467c70d6e",
+      "code_fingerprint": "9baa15855751c88f22f62f8837034f566c7c0dc480c4ea62836fcabbce99b195",
       "label": "AppUpdateService",
       "last": "2026-09-10T19:46:57.696388+00:00",
       "provenance": [
@@ -92,13 +92,13 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.998240465,
+      "score": 0.896602474,
       "source_file": "NexaPlay/Infrastructure/Services/AppUpdateService.cs",
       "status": "tentative",
       "uses": 1
     },
     "nexaplay_infrastructure_services_bypassgamesdataservice_nexaplay_infrastructure_services_bypassgamesdataservice": {
-      "code_fingerprint": "a457be4a8645273e95da3a07d8fe71f448afb318d4b4007151a63233ddd25b4f",
+      "code_fingerprint": "231c5793e60135be47c1461a3c5330bfbd595eb57a165c6cf44240be90b0914c",
       "label": "BypassGamesDataService",
       "last": "2026-09-10T21:29:10.717565+00:00",
       "provenance": [
@@ -118,7 +118,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 2.997888305,
+      "score": 2.692651886,
       "source_file": "NexaPlay/Infrastructure/Services/BypassGamesDataService.cs",
       "status": "preferred",
       "uses": 3
@@ -134,31 +134,10 @@
           "q": "file ini harus terbaru apakah memakai etag seperti new games dan bagaimana penerapan terbaik agar tidak lama"
         }
       ],
-      "score": 0.999879003,
+      "score": 0.89807418,
       "source_file": "NexaPlay/Infrastructure/Services/CatalogRefreshState.cs",
       "status": "tentative",
       "uses": 1
-    },
-    "nexaplay_infrastructure_services_gamecoverindexservice_nexaplay_infrastructure_services_gamecoverindexservice": {
-      "code_fingerprint": "2d43fdb8d1bc8d3eb492de56054f8890d0cde987928f2b3d66b30704b3a28b5e",
-      "label": "GameCoverIndexService",
-      "last": "2026-09-10T21:29:10.717565+00:00",
-      "provenance": [
-        {
-          "date": "2026-09-10T21:29:10.717565+00:00",
-          "outcome": "useful",
-          "q": "file ini harus terbaru apakah memakai etag seperti new games dan bagaimana penerapan terbaik agar tidak lama"
-        },
-        {
-          "date": "2026-09-10T21:22:18.685633+00:00",
-          "outcome": "useful",
-          "q": "tombol load games ini mengunduh apa saja karena sangat lama dan kenapa mengunduh itu cari tau direadme atau di doc project apakah ada yang memberikan info tersebut"
-        }
-      ],
-      "score": 1.99964784,
-      "source_file": "NexaPlay/Infrastructure/Services/GameCoverIndexService.cs",
-      "status": "preferred",
-      "uses": 2
     },
     "nexaplay_infrastructure_services_licenseservice_nexaplay_infrastructure_services_licenseservice": {
       "code_fingerprint": "b8440cd5156a82a6ead71a03bdbabebedf1c923e44f984ce64d4fd7149a43fe7",
@@ -171,13 +150,13 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.998240465,
+      "score": 0.896602474,
       "source_file": "NexaPlay/Infrastructure/Services/LicenseService.cs",
       "status": "tentative",
       "uses": 1
     },
     "nexaplay_infrastructure_services_metadataservice_nexaplay_infrastructure_services_metadataservice": {
-      "code_fingerprint": "ff62893195aca469bd50b1cca83cd07e7a790557d90f7a7f7149eb5c060f2b0d",
+      "code_fingerprint": "8ba12a39cd84f5f8c2c19eae1b88f2d071d40eabf651cde5a81670493e982ed0",
       "label": "MetadataService",
       "last": "2026-09-10T21:29:10.717565+00:00",
       "provenance": [
@@ -202,13 +181,13 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 3.997539117,
+      "score": 3.590521108,
       "source_file": "NexaPlay/Infrastructure/Services/MetadataService.cs",
       "status": "preferred",
       "uses": 4
     },
     "nexaplay_infrastructure_services_nexaplayoverrideservice_nexaplay_infrastructure_services_nexaplayoverrideservice": {
-      "code_fingerprint": "80dd635f599baec79c2637694dd5f3afc5ba0682391a013acb3e4bc3369b54c4",
+      "code_fingerprint": "044296a4e9069116f59e8c904ca48f0f6e7d2272438ba73fb9d3d74e8a0d586d",
       "label": "NexaPlayOverrideService",
       "last": "2026-09-10T21:22:18.685633+00:00",
       "provenance": [
@@ -218,13 +197,29 @@
           "q": "tombol load games ini mengunduh apa saja karena sangat lama dan kenapa mengunduh itu cari tau direadme atau di doc project apakah ada yang memberikan info tersebut"
         }
       ],
-      "score": 0.999768837,
+      "score": 0.897975231,
       "source_file": "NexaPlay/Infrastructure/Services/NexaPlayOverrideService.cs",
       "status": "tentative",
       "uses": 1
     },
+    "nexaplay_infrastructure_services_sqlitecatalogrepository_nexaplay_infrastructure_services_sqlitecatalogrepository": {
+      "code_fingerprint": "76b2fbbaa0ffff2237aa1542950213436f9e1012ce52eab4846b5a23d572a477",
+      "label": "SqliteCatalogRepository",
+      "last": "2026-09-15T12:35:39.530813+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-15T12:35:39.530813+00:00",
+          "outcome": "useful",
+          "q": "NEXAPLAY Games Browse artwork eligibility filter"
+        }
+      ],
+      "score": 0.999461703,
+      "source_file": "NexaPlay/Infrastructure/Services/SqliteCatalogRepository.cs",
+      "status": "tentative",
+      "uses": 1
+    },
     "nexaplay_infrastructure_services_steamstoreservice_nexaplay_infrastructure_services_steamstoreservice": {
-      "code_fingerprint": "43278d864140ab9cbc3403001e38c639459f1864b155b37718371f0ffc26b806",
+      "code_fingerprint": "6b9457cb382dfa369b8b277208ad506da87f28cc9fea4ed579dfaef5c3a1ac12",
       "label": "SteamStoreService",
       "last": "2026-09-10T19:46:57.696388+00:00",
       "provenance": [
@@ -234,7 +229,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.998240465,
+      "score": 0.896602474,
       "source_file": "NexaPlay/Infrastructure/Services/SteamStoreService.cs",
       "status": "tentative",
       "uses": 1
@@ -250,13 +245,29 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.998240465,
+      "score": 0.896602474,
       "source_file": "NexaPlay/Infrastructure/Services/TelegramAccountReportService.cs",
       "status": "tentative",
       "uses": 1
     },
+    "nexaplay_presentation_viewmodels_gamesviewmodel_nexaplay_presentation_viewmodels_gamesviewmodel": {
+      "code_fingerprint": "6993ed90468d69a68a2cc1c38e3bb176f782865b59d25698a6af70499884ddca",
+      "label": "GamesViewModel",
+      "last": "2026-09-15T12:35:39.530813+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-15T12:35:39.530813+00:00",
+          "outcome": "useful",
+          "q": "NEXAPLAY Games Browse artwork eligibility filter"
+        }
+      ],
+      "score": 0.999461703,
+      "source_file": "NexaPlay/Presentation/ViewModels/GamesViewModel.cs",
+      "status": "tentative",
+      "uses": 1
+    },
     "nexaplay_presentation_viewmodels_settingsviewmodel_nexaplay_presentation_viewmodels_settingsviewmodel": {
-      "code_fingerprint": "7fb4a6b95883cd1da6e8eb71d35fc4ada4ca8621249c514985f4e30d47feb9ae",
+      "code_fingerprint": "797b2130cf9693a4508556adf0829b8a8d447c4e083b8a47955053aa8b01df45",
       "label": "SettingsViewModel",
       "last": "2026-09-10T21:29:10.717565+00:00",
       "provenance": [
@@ -276,7 +287,7 @@
           "q": "pas ngunduh data apakah dia mengunduh juga file data ini new_games.json atau file tersebut hanya diunduh saat load game saja yang berada di setting?"
         }
       ],
-      "score": 2.999298652,
+      "score": 2.693918634,
       "source_file": "NexaPlay/Presentation/ViewModels/SettingsViewModel.cs",
       "status": "preferred",
       "uses": 3

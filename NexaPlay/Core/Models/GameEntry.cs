@@ -20,8 +20,10 @@ public sealed class GameEntry
     public int PriceNormalized { get; set; }
     public string? PriceDisplay { get; set; }
     public bool Protection { get; set; }
+    public string? CatalogTier { get; set; }
 
-    public bool IsPremium => PriceNormalized >= 130_000;
+    public bool IsPremium => string.Equals(CatalogTier, "premium", StringComparison.OrdinalIgnoreCase) ||
+                             (string.IsNullOrWhiteSpace(CatalogTier) && PriceNormalized >= 135_000);
     public bool HasDenuvo => Protection;
 
     public string DeveloperDisplay =>

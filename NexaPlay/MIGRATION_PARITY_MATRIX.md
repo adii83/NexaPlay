@@ -30,27 +30,35 @@ Update status setiap selesai implementasi/validasi.
 
 | Area | GameHub (lama) | NexaPlay (baru) | Status |
 |---|---|---|---|
-| Popular games feed | `HomeDataService` raw json cache | `HomeViewModel` ada, feed perlu wiring penuh | Partial |
-| New fix games feed | `HomeDataService` | Belum wiring penuh UI | Missing |
-| Cache TTL logic | Ada | Catalog source revision + schema-1 envelope validation + generation-based invalidation | **Done** |
+| Popular games feed | `HomeDataService` raw json cache | `appid_populer.json` order + SQLite batch hydration | **Done** |
+| New fix games feed | `HomeDataService` | Ordered-distinct max 12, SQLite local render, bounded background full-detail enrichment | **Done** |
+| Cache TTL logic | Ada | SQLite runtime canonical + generation-based invalidation; side-feed ETag tetap aktif | **Done** |
 
 ## D. Games Catalog
 
+> Current 2026-09-14: general listing runtime migrated to local SQLite. Rows below describe current authority and supersede older JSON-catalog checkpoints.
+
 | Area | GameHub (lama) | NexaPlay (baru) | Status |
 |---|---|---|---|
-| Metadata source | steam metadata archive + override | Semua source runtime dan `manifest/<appid>.zip` memakai `adii83/Nexaplay-Metadata-Override`; cache source bersama di `runtime_catalog_sources` | **Done** |
-| Catalog synchronization | N/A | ETag `catalog_manifest.json` + SHA-256/size/revision; fallback HEAD ETag + conditional GET per-file saat manifest belum dipublikasikan; download berubah saja, concurrency 3, validasi dan publikasi batch dengan rollback | **Done** |
-| Additive new-games source | N/A | `new_games.json` direvalidasi pada first startup, startup background update, restart setelah Clear Data, dan Load Games; metadata R2 memakai ETag per AppID, concurrency 4, snapshot last-known-good atomik | **Done** |
+| Current metadata authority | steam metadata archive + override | Bundled `catalog_seed.sqlite` -> `%LocalAppData%\NexaPlay\Data\catalog.sqlite` | **Done** |
+| Current catalog update | N/A | R2 manifest + sequential JSON patches; size/SHA/version validation and one transaction per patch | **Done** |
+| Current search/filter | Web JS | Parameterized SQLite count/page/search/tier/protection/genre queries | **Done** |
+| Current Denuvo final value | fix/new-fix/steam membership + override | SQLite base + same membership overlay + final NexaPlay override | **Done** |
+| Current premium rule | harga katalog | Stored SQLite `tier`; fallback threshold `135000` | **Done** |
+| Legacy full JSON listing | Runtime parser/index | `steam_data*`, `override_data`, `new_games*`, and filter-index generation retired from client general listing | **Done** |
+| Metadata source | steam metadata archive + override | SQLite lokal untuk listing; R2 `Metadata/{appid}.json` tetap untuk full detail | **Done** |
+| Catalog synchronization | N/A | R2 `catalog_manifest.json` + patch JSON berurutan; validasi size/SHA/schema/from/to dan transaction per patch | **Done** |
+| Additive new-games source | N/A | [RETIRED] general listing; penambahan game masuk melalui patch SQLite | **Done** |
 | Override data pipeline | `OverrideDataService` global + user | `ApplyOverrideDataAsync` (global + user, semua field) | **Done** |
 | Denuvo auto-flag | fix_games + steam_games list | `ApplyAutoDenuvoFromListsAsync` + override dapat reset | **Done** |
-| PREMIUM threshold | `price_normalized >= 130000` | `GameEntry.IsPremium` — parity exact | **Done** |
+| PREMIUM threshold | `price_normalized >= 130000` | Stored SQLite `tier`; fallback `GameEntry.IsPremium` memakai `>= 135000` | **Done** |
 | Search/filter | Web JS | `GamesViewModel` search + `IsEmpty` state | **Done** |
 | Virtualized grid/list | Web rendering | `GridView` + `ItemsWrapGrid` virtualized | **Done** |
 | Game detail page | Modal popup web | `GameDetailPage` native — hero, screenshot strip, sidebar, aksi | **Done** |
 | Rich detail on-demand | Steam API via JS | `ISteamStoreService` + `SteamStoreService` — cache 7 hari per-appid | **Done** |
-| Cover priority pipeline | Steam CDN images | `IListingCoverResolver`: override → cover index → runtime capsule → lazy R2 → header (Games + Home Popular only) | **Done** |
-| Load Games hot-reload | Page reload | Satu sinkronisasi → satu rebuild/generation advance → serialized Home/Games reload; file dan cover unchanged berhenti di ETag 304 | **Done** |
-| Clear Cache vs Clear Data | N/A | Clear Cache: rename-to-tombstone (instant), sources retained. Clear Data: factory reset | **Done** |
+| Cover priority pipeline | Steam CDN images | SQLite effective capsule/header -> byte cache -> placeholder; `library_capsule.json(.gz)`, cover index, dan full-detail listing fallback retired | **Done** |
+| Load Games hot-reload | Page reload | Conditional override/feed/catalog check; overlay/generation/ViewModel hanya berubah saat source relevan berubah | **Done** |
+| Clear Cache vs Clear Data | N/A | Clear Cache: epoch + detach/delete cover/detail/transient state, SQLite/source retained dan no generation bump. Clear Data tetap factory reset | **Done** |
 | Pagination/infinite strategy | Web-side logic | Load more via `LoadMorePopularGamesCommand` | Partial |
 
 ## E. Library
@@ -58,7 +66,7 @@ Update status setiap selesai implementasi/validasi.
 | Area | GameHub (lama) | NexaPlay (baru) | Status |
 |---|---|---|---|
 | Scan installed Steam games | `SteamService` | `ISteamService` + `SteamPlatformService` | Partial |
-| Show applied fixes | Applied state + UI | `LibraryViewModel` ada | Partial |
+| Show applied fixes | Applied state + UI | `.lua` membership + SQLite card hydration tanpa detail R2 | **Done** |
 | Add/Remove game flow | `AddGameService` | `IAddGameService` + implementation | Partial |
 
 ## F. Bypass Games Core (Formerly Fix Games)
@@ -73,6 +81,7 @@ Update status setiap selesai implementasi/validasi.
 | Add-Game action | `AddGameService` | `GameDetailViewModel.AddGameCommand` | **Done** |
 | Online-Fix action | `OnlineFixService` | `GameDetailViewModel.ApplyFixCommand` | Done |
 | Restart Steam action | `SteamService.RestartSteam` | `GameDetailViewModel.RestartSteamCommand` | **Done** |
+| Listing metadata requests | Web listing payload | Local JSON + one SQLite batch; zero `GetDetailAsync`, detail baru saat clicked row | **Done** |
 
 Catatan nomenklatur UI Bypass:
 - Untuk tampilan UI, istilah `Steam Sharing` sudah diganti menjadi `Akun Steam`.

@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml;
 using NexaPlay.Contracts.Navigation;
+using NexaPlay.Core.Helpers;
 using NexaPlay.Core.Models;
 using NexaPlay.Presentation.ViewModels;
 using System;
@@ -214,9 +215,7 @@ public sealed partial class LibraryPage : Page
 
     public static ImageSource? ToImageSource(string? raw)
     {
-        if (string.IsNullOrWhiteSpace(raw)) return null;
-        if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri)) return null;
-        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) return null;
+        if (!ImageUriResolver.TryCreate(raw, out var uri)) return null;
         try { return new BitmapImage(uri); } catch { return null; }
     }
 

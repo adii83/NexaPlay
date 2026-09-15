@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using NexaPlay.Contracts.Navigation;
 using NexaPlay.Contracts.Services;
+using NexaPlay.Core.Constants;
 using NexaPlay.Infrastructure.Logging;
 using NexaPlay.Infrastructure.Persistence;
 using NexaPlay.Infrastructure.Platform;
@@ -18,7 +19,7 @@ namespace NexaPlay;
 public partial class App : Application
 {
     private static readonly object CrashLogLock = new();
-    private static string CrashLogPath => @"D:\My Project\NexaPlay\crash.txt";
+    private static string CrashLogPath => Path.Combine(AppConstants.AppDataPath, "crash.txt");
 
     private IServiceProvider? _serviceProvider;
     private Window? _window;
@@ -56,8 +57,12 @@ public partial class App : Application
         services.AddSingleton<INexaPlayOverrideService, NexaPlayOverrideService>();
         services.AddSingleton<IBypassTutorialVideoService, BypassTutorialVideoService>();
         services.AddSingleton<IAppUpdateService, AppUpdateService>();
+        services.AddSingleton<ICatalogBootstrapService, CatalogBootstrapService>();
+        services.AddSingleton<ICatalogRepository, SqliteCatalogRepository>();
+        services.AddSingleton<ICatalogUpdateService, CatalogUpdateService>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IDynamicFeedRefreshService, DynamicFeedRefreshService>();
         services.AddSingleton<IMetadataService, MetadataService>();
-        services.AddSingleton<IGameCoverIndexService, GameCoverIndexService>();
         services.AddSingleton<ICatalogRefreshState, CatalogRefreshState>();
         services.AddSingleton<ICoverImageCacheService, CoverImageCacheService>();
         services.AddSingleton<IBypassGamesDataService, BypassGamesDataService>();
@@ -65,7 +70,6 @@ public partial class App : Application
         services.AddSingleton<IAddGameService, AddGameService>();
         services.AddSingleton<ILicenseService, LicenseService>();
         services.AddSingleton<ISteamStoreService, SteamStoreService>();
-        services.AddSingleton<IListingCoverResolver, ListingCoverResolver>();
         services.AddSingleton<IAccountReportService, TelegramAccountReportService>();
 
         // ── Navigation ──────────────────────────────────────────────
@@ -125,6 +129,7 @@ public partial class App : Application
         {
             lock (CrashLogLock)
             {
+                Directory.CreateDirectory(AppConstants.AppDataPath);
                 var sb = new StringBuilder();
                 sb.AppendLine("==================================================");
                 sb.AppendLine($"Timestamp : {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");

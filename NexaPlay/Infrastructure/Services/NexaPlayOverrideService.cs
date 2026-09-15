@@ -28,10 +28,7 @@ public sealed class NexaPlayOverrideService : INexaPlayOverrideService
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("NexaPlay/1.0");
 
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppConstants.AppDataFolder,
-            "runtime_catalog_sources");
+        var dir = Path.Combine(AppConstants.AppDataPath, "runtime_catalog_sources");
         Directory.CreateDirectory(dir);
         _cacheFile = Path.Combine(dir, AppConstants.NexaPlayOverrideCacheFileName);
         _etagFile = Path.Combine(dir, "nexaplay_override.etag");
@@ -55,6 +52,24 @@ public sealed class NexaPlayOverrideService : INexaPlayOverrideService
     {
         await EnsureLoadedAsync(ct);
         return _index!.Keys.ToHashSet();
+    }
+
+    public async Task<IReadOnlyDictionary<int, NexaPlayCatalogOverride>> GetCachedCatalogOverridesAsync(CancellationToken ct = default)
+    {
+        await _lock.WaitAsync(ct);
+        try
+        {
+            if (_index is null)
+                LoadFromDiskCache();
+
+            return _index!
+                .Where(pair => pair.Value.Catalog is not null)
+                .ToDictionary(pair => pair.Key, pair => pair.Value.Catalog!);
+        }
+        finally
+        {
+            _lock.Release();
+        }
     }
 
     public async Task RefreshAsync(CancellationToken ct = default)
@@ -352,7 +367,15 @@ public sealed class NexaPlayOverrideService : INexaPlayOverrideService
         var tempPath = $"{path}.{Guid.NewGuid():N}.tmp";
         try
         {
-            await File.WriteAllTextAsync(tempPath, text, ct);
+            await using (var stream = new FileStream(
+                tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096,
+                FileOptions.Asynchronous | FileOptions.WriteThrough))
+            await using (var writer = new StreamWriter(stream))
+            {
+                await writer.WriteAsync(text.AsMemory(), ct);
+                await writer.FlushAsync(ct);
+                await stream.FlushAsync(ct);
+            }
             File.Move(tempPath, path, overwrite: true);
         }
         finally

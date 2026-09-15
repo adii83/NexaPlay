@@ -92,7 +92,23 @@ di:
 
 `NexaPlay/release/NexaPlaySetup.iss`
 
-### 3. Clean dan publish app
+### 3. Perbarui bundled catalog seed
+
+Sebelum membuat installer baru, salin master catalog terbaru dari Catalog Builder:
+
+```powershell
+Copy-Item `
+  "E:\NexaPlay-Catalog-Builder\NexaPlay-Catalog-Builder-v1\NexaPlay-Catalog-Builder\output\catalog.sqlite" `
+  ".\data\catalog\catalog_seed.sqlite" `
+  -Force
+```
+
+Verifikasi `catalog_meta.catalog_version` sesuai `output\publish\catalog_manifest.json -> latest_version`.
+Seed hanya disalin saat membuat release. Runtime user tetap berada di
+`%LocalAppData%\NexaPlay\Data\catalog.sqlite` dan tidak boleh ditimpa installer.
+Jangan memakai snapshot R2 atau menambahkan download full SQLite.
+
+### 4. Clean dan publish app
 
 Jalankan dari folder `NexaPlay`. Script dalam folder `release` menyelesaikan path dari lokasi file script, sehingga checkout dapat dipindahkan tanpa mengubah path internal. Clean `bin` dan `obj` memastikan apphost dibentuk ulang dengan icon terbaru:
 
@@ -107,7 +123,7 @@ Output publish default:
 bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\
 ```
 
-### 4. Verifikasi output publish
+### 5. Verifikasi output publish
 
 Cek minimal file penting ini ada:
 
@@ -115,6 +131,7 @@ Cek minimal file penting ini ada:
 Get-ChildItem ".\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish"
 Get-ChildItem ".\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\Assets"
 Get-ChildItem ".\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\data"
+Get-Item ".\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\data\catalog\catalog_seed.sqlite"
 ```
 
 Minimal harus ada:
@@ -125,6 +142,7 @@ Minimal harus ada:
 - `Assets\logo_text.svg`
 - `Assets\Web\youtube-player.html`
 - `data\api.json`
+- `data\catalog\catalog_seed.sqlite`
 
 Verifikasi juga icon yang benar-benar tertanam di `NexaPlay.exe`, karena taskbar memakai embedded icon tersebut, bukan icon shortcut:
 
@@ -138,7 +156,7 @@ Invoke-Item (Join-Path $env:TEMP "NexaPlay-embedded-icon.png")
 
 Pastikan preview menampilkan logo terbaru. Jika masih logo lama, jangan lanjut signing; clean `bin`/`obj` lalu publish ulang.
 
-### 5. Sign hasil publish
+### 6. Sign hasil publish
 
 Jalankan setelah publish dan verifikasi file, tetapi sebelum compile Inno Setup:
 
@@ -157,7 +175,7 @@ Prasyarat signing:
 
 `nexaplay.pfx` dan password-nya tidak boleh di-commit ke repository.
 
-### 6. Build installer Inno Setup
+### 7. Build installer Inno Setup
 
 Compile file:
 
@@ -175,7 +193,7 @@ Output installer default:
 release\output\NexaPlay-Setup.exe
 ```
 
-### 7. Sign installer final
+### 8. Sign installer final
 
 Jalankan hanya setelah `NexaPlay-Setup.exe` selesai dibuat:
 
@@ -185,7 +203,7 @@ Jalankan hanya setelah `NexaPlay-Setup.exe` selesai dibuat:
 
 Jangan compile ulang Inno Setup setelah tahap ini. Compile ulang akan mengganti installer yang sudah ditandatangani dan signing harus diulang.
 
-### 8. Verifikasi signature
+### 9. Verifikasi signature
 
 Kedua script signing sudah menjalankan `signtool verify`. Pemeriksaan tambahan dapat dilakukan dengan:
 
@@ -201,7 +219,7 @@ Get-AuthenticodeSignature `
 
 Pastikan status signature valid sebelum upload.
 
-### 9. Upload installer ke GitHub Release
+### 10. Upload installer ke GitHub Release
 
 Buat release/tag:
 
@@ -221,7 +239,7 @@ Contoh URL asset final:
 https://github.com/adii83/NexaPlay/releases/download/v1.0.1/NexaPlay-Setup.exe
 ```
 
-### 10. Generate manifest final
+### 11. Generate manifest final
 
 Setelah installer final yang sudah ditandatangani di-upload, baru generate manifest:
 
@@ -238,7 +256,7 @@ Script ini akan:
 - generate file:
   `release\update-stable.generated.json`
 
-### 11. Commit manifest ke repo
+### 12. Commit manifest ke repo
 
 Salin isi `update-stable.generated.json` ke:
 
@@ -252,7 +270,7 @@ Manifest yang aktif dibaca app adalah:
 https://raw.githubusercontent.com/adii83/NexaPlay/main/NexaPlay/release/update-stable.json
 ```
 
-### 12. Efek ke user
+### 13. Efek ke user
 
 Karena ini rilis publik pertama, app yang baru di-install pada versi `1.0.1` tidak akan melihat update selama manifest juga masih `1.0.1`.
 

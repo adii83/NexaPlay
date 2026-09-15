@@ -1,4 +1,5 @@
 using Microsoft.Web.WebView2.Core;
+using NexaPlay.Core.Constants;
 
 namespace NexaPlay.Presentation.Helpers;
 
@@ -11,10 +12,7 @@ internal static class WebView2EnvironmentHelper
 
     private static async Task<CoreWebView2Environment> CreateEnvironmentAsync()
     {
-        var userDataFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "NexaPlay",
-            "WebView2");
+        var userDataFolder = Path.Combine(AppConstants.AppDataPath, "WebView2");
         Directory.CreateDirectory(userDataFolder);
         return await CoreWebView2Environment.CreateWithOptionsAsync(null, userDataFolder, null);
     }

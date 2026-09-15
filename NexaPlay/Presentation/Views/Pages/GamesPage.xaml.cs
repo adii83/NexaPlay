@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml;
 using NexaPlay.Contracts.Navigation;
+using NexaPlay.Core.Helpers;
 using NexaPlay.Presentation.ViewModels;
 using System.ComponentModel;
 using System.Collections.Generic;
@@ -35,7 +36,8 @@ public sealed partial class GamesPage : Page
     {
         base.OnNavigatedTo(e);
         
-        if (e.NavigationMode != NavigationMode.Back && ViewModel.Games.Count == 0)
+        var dailySessionChanged = ViewModel.BeginBrowseSession();
+        if (dailySessionChanged || (e.NavigationMode != NavigationMode.Back && ViewModel.Games.Count == 0))
         {
             await ViewModel.LoadAsync();
         }
@@ -44,6 +46,12 @@ public sealed partial class GamesPage : Page
         {
             ViewModel.UpdateGridColumns(_lastColumns);
         }
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        ViewModel.CancelPendingWork();
+        base.OnNavigatedFrom(e);
     }
 
     private void GamesGrid_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -281,29 +289,8 @@ public sealed partial class GamesPage : Page
 
     public static ImageSource? ToImageSource(string? raw)
     {
-        if (string.IsNullOrWhiteSpace(raw)) return null;
-        if (!TryBuildImageUri(raw, out var uri)) return null;
+        if (!ImageUriResolver.TryCreate(raw, out var uri)) return null;
         try { return new BitmapImage(uri); } catch { return null; }
-    }
-
-    private static bool TryBuildImageUri(string raw, out Uri uri)
-    {
-        if (Uri.TryCreate(raw, UriKind.Absolute, out uri!) &&
-            (uri.Scheme == Uri.UriSchemeHttp ||
-             uri.Scheme == Uri.UriSchemeHttps ||
-             uri.Scheme == Uri.UriSchemeFile ||
-             uri.Scheme == "ms-appx"))
-        {
-            return true;
-        }
-
-        if (Path.IsPathRooted(raw))
-        {
-            uri = new Uri(raw, UriKind.Absolute);
-            return true;
-        }
-
-        return false;
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
