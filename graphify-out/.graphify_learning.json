@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-15T13:09:13.017332+00:00",
+  "generated_at": "2026-09-16T15:24:08.276944+00:00",
   "nodes": {
     "nexaplay_core_models_fixentry_nexaplay_core_models_fixentry": {
       "code_fingerprint": "5845244e3e25af5ae48982da31df2a5e03ded56c952386dd0c1816b816841540",
@@ -12,7 +12,7 @@
           "q": "NEXAPLAY Games Browse artwork eligibility filter"
         }
       ],
-      "score": 0.999461703,
+      "score": 0.974522019,
       "source_file": "NexaPlay/Core/Models/FixEntry.cs",
       "status": "tentative",
       "uses": 1
@@ -28,7 +28,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.896602474,
+      "score": 0.874229448,
       "source_file": "NexaPlay/Infrastructure/Platform/DeviceIdHelper.cs",
       "status": "tentative",
       "uses": 1
@@ -44,7 +44,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.896602474,
+      "score": 0.874229448,
       "source_file": "NexaPlay/Infrastructure/Platform/SteamPlatformService.cs",
       "status": "tentative",
       "uses": 1
@@ -60,7 +60,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.896602474,
+      "score": 0.874229448,
       "source_file": "NexaPlay/Infrastructure/Platform/WindowsDefenderService.cs",
       "status": "tentative",
       "uses": 1
@@ -76,7 +76,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.896602474,
+      "score": 0.874229448,
       "source_file": "NexaPlay/Infrastructure/Services/AddGameService.cs",
       "status": "tentative",
       "uses": 1
@@ -92,7 +92,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.896602474,
+      "score": 0.874229448,
       "source_file": "NexaPlay/Infrastructure/Services/AppUpdateService.cs",
       "status": "tentative",
       "uses": 1
@@ -118,7 +118,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 2.692651886,
+      "score": 2.62546183,
       "source_file": "NexaPlay/Infrastructure/Services/BypassGamesDataService.cs",
       "status": "preferred",
       "uses": 3
@@ -134,8 +134,24 @@
           "q": "file ini harus terbaru apakah memakai etag seperti new games dan bagaimana penerapan terbaik agar tidak lama"
         }
       ],
-      "score": 0.89807418,
+      "score": 0.875664431,
       "source_file": "NexaPlay/Infrastructure/Services/CatalogRefreshState.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "nexaplay_infrastructure_services_dynamicfeedrefreshservice_nexaplay_infrastructure_services_dynamicfeedrefreshservice": {
+      "code_fingerprint": "e51e679e291c6d7668482f63f48910cbb6b2815606712408c1aa24060ddbc0e5",
+      "label": "DynamicFeedRefreshService",
+      "last": "2026-09-15T13:45:07.573460+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-15T13:45:07.573460+00:00",
+          "outcome": "useful",
+          "q": "Fix new_fix_games missing after Clear Data and prefer LibraryHero for clicked detail hero"
+        }
+      ],
+      "score": 0.975608835,
+      "source_file": "NexaPlay/Infrastructure/Services/DynamicFeedRefreshService.cs",
       "status": "tentative",
       "uses": 1
     },
@@ -150,7 +166,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.896602474,
+      "score": 0.874229448,
       "source_file": "NexaPlay/Infrastructure/Services/LicenseService.cs",
       "status": "tentative",
       "uses": 1
@@ -181,7 +197,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 3.590521108,
+      "score": 3.500926418,
       "source_file": "NexaPlay/Infrastructure/Services/MetadataService.cs",
       "status": "preferred",
       "uses": 4
@@ -197,7 +213,7 @@
           "q": "tombol load games ini mengunduh apa saja karena sangat lama dan kenapa mengunduh itu cari tau direadme atau di doc project apakah ada yang memberikan info tersebut"
         }
       ],
-      "score": 0.897975231,
+      "score": 0.875567951,
       "source_file": "NexaPlay/Infrastructure/Services/NexaPlayOverrideService.cs",
       "status": "tentative",
       "uses": 1
@@ -213,7 +229,7 @@
           "q": "NEXAPLAY Games Browse artwork eligibility filter"
         }
       ],
-      "score": 0.999461703,
+      "score": 0.974522019,
       "source_file": "NexaPlay/Infrastructure/Services/SqliteCatalogRepository.cs",
       "status": "tentative",
       "uses": 1
@@ -229,7 +245,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.896602474,
+      "score": 0.874229448,
       "source_file": "NexaPlay/Infrastructure/Services/SteamStoreService.cs",
       "status": "tentative",
       "uses": 1
@@ -245,8 +261,40 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.896602474,
+      "score": 0.874229448,
       "source_file": "NexaPlay/Infrastructure/Services/TelegramAccountReportService.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "nexaplay_presentation_viewmodels_bypassgamedetailviewmodel_nexaplay_presentation_viewmodels_bypassgamedetailviewmodel": {
+      "code_fingerprint": "06a124fd90088d18bb38c1a380e5007c1395e712dbd88b00a47522d017670834",
+      "label": "BypassGameDetailViewModel",
+      "last": "2026-09-15T13:45:07.573460+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-15T13:45:07.573460+00:00",
+          "outcome": "useful",
+          "q": "Fix new_fix_games missing after Clear Data and prefer LibraryHero for clicked detail hero"
+        }
+      ],
+      "score": 0.975608835,
+      "source_file": "NexaPlay/Presentation/ViewModels/BypassGameDetailViewModel.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "nexaplay_presentation_viewmodels_gamedetailviewmodel_nexaplay_presentation_viewmodels_gamedetailviewmodel": {
+      "code_fingerprint": "db217866c9f6cde3292b5cabdd389afabf870f129cc76185ce7c893ac8850066",
+      "label": "GameDetailViewModel",
+      "last": "2026-09-15T13:45:07.573460+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-15T13:45:07.573460+00:00",
+          "outcome": "useful",
+          "q": "Fix new_fix_games missing after Clear Data and prefer LibraryHero for clicked detail hero"
+        }
+      ],
+      "score": 0.975608835,
+      "source_file": "NexaPlay/Presentation/ViewModels/GameDetailViewModel.cs",
       "status": "tentative",
       "uses": 1
     },
@@ -261,8 +309,24 @@
           "q": "NEXAPLAY Games Browse artwork eligibility filter"
         }
       ],
-      "score": 0.999461703,
+      "score": 0.974522019,
       "source_file": "NexaPlay/Presentation/ViewModels/GamesViewModel.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "nexaplay_presentation_viewmodels_homeviewmodel_nexaplay_presentation_viewmodels_homeviewmodel": {
+      "code_fingerprint": "97e73a9076cede9d64739b6e5a0b44364881dd03d4969a95973bfb31f9294fb8",
+      "label": "HomeViewModel",
+      "last": "2026-09-15T13:45:07.573460+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-15T13:45:07.573460+00:00",
+          "outcome": "useful",
+          "q": "Fix new_fix_games missing after Clear Data and prefer LibraryHero for clicked detail hero"
+        }
+      ],
+      "score": 0.975608835,
+      "source_file": "NexaPlay/Presentation/ViewModels/HomeViewModel.cs",
       "status": "tentative",
       "uses": 1
     },
@@ -287,7 +351,7 @@
           "q": "pas ngunduh data apakah dia mengunduh juga file data ini new_games.json atau file tersebut hanya diunduh saat load game saja yang berada di setting?"
         }
       ],
-      "score": 2.693918634,
+      "score": 2.626696969,
       "source_file": "NexaPlay/Presentation/ViewModels/SettingsViewModel.cs",
       "status": "preferred",
       "uses": 3

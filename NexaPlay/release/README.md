@@ -245,9 +245,9 @@ Setelah installer final yang sudah ditandatangani di-upload, baru generate manif
 
 ```powershell
 .\release\Generate-UpdateManifest.ps1 `
-  -Version 1.0.3 `
+  -Version 1.0.5 `
   -InstallerPath "output\NexaPlay-Setup.exe" `
-  -InstallerUrl "https://github.com/adii83/NexaPlay/releases/download/v1.0.3/NexaPlay-Setup.exe"
+  -InstallerUrl "https://github.com/adii83/NexaPlay/releases/download/v1.0.5/NexaPlay-Setup.exe"
 ```
 
 Script ini akan:
