@@ -9,6 +9,15 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.20" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\NexaPlay\Infrastructure\Services\AddGameService.cs" Link="AddGameService.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\AddGamePayloadBuilder.cs" Link="AddGamePayloadBuilder.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\IAddGameService.cs" Link="IAddGameService.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\ISteamService.cs" Link="ISteamService.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\BypassProgressState.cs" Link="BypassProgressState.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\SteamFinalizeResult.cs" Link="SteamFinalizeResult.cs" />
+    <Compile Include="..\NexaPlay\Core\Models\RemoveGameResult.cs" Link="RemoveGameResult.cs" />
+    <Compile Include="..\NexaPlay\Core\Enums\BypassStatus.cs" Link="BypassStatus.cs" />
+    <Compile Include="..\NexaPlay\Core\Enums\AntivirusVendor.cs" Link="AntivirusVendor.cs" />
     <Compile Include="..\NexaPlay\Core\Helpers\ImageUriResolver.cs" Link="ImageUriResolver.cs" />
     <Compile Include="..\NexaPlay\Core\Helpers\DetailHeroSelector.cs" Link="DetailHeroSelector.cs" />
     <Compile Include="..\NexaPlay\Core\Helpers\CatalogLoadCoordinator.cs" Link="CatalogLoadCoordinator.cs" />

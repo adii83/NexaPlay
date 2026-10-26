@@ -11,6 +11,16 @@
       "input_tokens": 0,
       "output_tokens": 0,
       "files": 94
+    },
+    {
+      "date": "2026-10-26T15:32:40.480814+00:00",
+      "input_tokens": null,
+      "output_tokens": null,
+      "token_usage_available": false,
+      "external_api_calls": 0,
+      "files": 18,
+      "mode": "incremental_ast_config_host_semantic",
+      "run_key": "645a21056133aa9bfc24330015cb5b3025245e37988abb341bcf0acb02fa234a"
     }
   ],
   "total_input_tokens": 11486,

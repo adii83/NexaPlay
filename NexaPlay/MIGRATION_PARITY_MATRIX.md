@@ -69,6 +69,12 @@ Update status setiap selesai implementasi/validasi.
 | Show applied fixes | Applied state + UI | `.lua` membership + SQLite card hydration tanpa detail R2 | **Done** |
 | Add/Remove game flow | `AddGameService` | `IAddGameService` + implementation | Partial |
 
+Update Add Game 2026-10-26: enam sumber baru diprioritaskan sebelum GameHub.
+Lima arsip GitHub disiapkan menjadi ZIP datar mengikuti aturan Lightning;
+pemasangan Lua mempertahankan byte ZIP final tanpa mengomentari `setManifestid`.
+Fallback juga berlaku untuk payload rusak/tanpa Lua. Detail dan validasi ada di
+[ADD_GAME_PAYLOAD.md](ADD_GAME_PAYLOAD.md).
+
 ## F. Bypass Games Core (Formerly Fix Games)
 
 | Area | GameHub (lama) | NexaPlay (baru) | Status |

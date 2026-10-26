@@ -1,6 +1,53 @@
 {
   "api_list": [
     {
+      "name": "NexaPlay R2",
+      "url": "https://meta.nexaplaymetadata.online/manifest/<appid>.zip",
+      "success_code": 200,
+      "unavailable_code": 404,
+      "enabled": true
+    },
+    {
+      "name": "ProjectLightningManifests",
+      "url": "https://github.com/LightnigFast/ProjectLightningManifests/archive/refs/heads/<appid>.zip",
+      "success_code": "2xx",
+      "unavailable_code": 404,
+      "enabled": true,
+      "lua_processing": "auto"
+    },
+    {
+      "name": "SPIN0ZAi",
+      "url": "https://github.com/SPIN0ZAi/SB_manifest_DB/archive/refs/heads/<appid>.zip",
+      "success_code": "2xx",
+      "unavailable_code": 404,
+      "enabled": true,
+      "lua_processing": "auto"
+    },
+    {
+      "name": "sojogamesdatabase1",
+      "url": "https://github.com/dvahana2424-web/sojogamesdatabase1/archive/refs/heads/<appid>.zip",
+      "success_code": "2xx",
+      "unavailable_code": 404,
+      "enabled": true,
+      "lua_processing": "auto"
+    },
+    {
+      "name": "sojogames2",
+      "url": "https://github.com/hammerwebsite12/sojogames2/archive/refs/heads/<appid>.zip",
+      "success_code": "2xx",
+      "unavailable_code": 404,
+      "enabled": true,
+      "lua_processing": "auto"
+    },
+    {
+      "name": "ManifestHub",
+      "url": "https://github.com/SteamAutoCracks/ManifestHub/archive/refs/heads/<appid>.zip",
+      "success_code": "2xx",
+      "unavailable_code": 404,
+      "enabled": true,
+      "lua_processing": "auto"
+    },
+    {
       "name": "GameHub",
       "url": "https://raw.githubusercontent.com/adii83/Nexaplay-Metadata-Override/refs/heads/main/manifest/<appid>.zip",
       "success_code": 200,

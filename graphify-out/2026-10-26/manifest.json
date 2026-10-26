@@ -1,0 +1,1022 @@
+{
+  "NexaPlay.SelfCheck/NexaPlay.SelfCheck.csproj": {
+    "mtime": 1793025664.3930428,
+    "seen": 1793026290.0575407,
+    "ast_hash": "42775c4c186a41c0f15ccd26dcd071d2",
+    "semantic_hash": ""
+  },
+  "NexaPlay.SelfCheck/Program.cs": {
+    "mtime": 1793025995.7707026,
+    "seen": 1793026290.0575407,
+    "ast_hash": "c9014e4d1f9723c343c73a324a913f6f",
+    "semantic_hash": ""
+  },
+  "NexaPlay.slnx": {
+    "mtime": 1778841013.6354196,
+    "seen": 1793026290.0575407,
+    "ast_hash": "c1d52d88117302e10a3ba7f526967422",
+    "semantic_hash": "c1d52d88117302e10a3ba7f526967422"
+  },
+  "NexaPlay/App.xaml": {
+    "mtime": 1781021168.8293698,
+    "seen": 1793026290.0575407,
+    "ast_hash": "09297f4caeb17b0c467f5613f3dd3afd",
+    "semantic_hash": "09297f4caeb17b0c467f5613f3dd3afd"
+  },
+  "NexaPlay/App.xaml.cs": {
+    "mtime": 1789383964.0248146,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3cd4d9953414ca19814025d204a10939",
+    "semantic_hash": "3cd4d9953414ca19814025d204a10939"
+  },
+  "NexaPlay/Contracts/Navigation/INavigationService.cs": {
+    "mtime": 1778862686.370995,
+    "seen": 1793026290.0575407,
+    "ast_hash": "19205570626714df7723954cbbfadb9d",
+    "semantic_hash": "19205570626714df7723954cbbfadb9d"
+  },
+  "NexaPlay/Contracts/Services/IAccountReportService.cs": {
+    "mtime": 1786877207.3278024,
+    "seen": 1793026290.0575407,
+    "ast_hash": "6eba082f3dce0980baf3a2ddf0bc343e",
+    "semantic_hash": "6eba082f3dce0980baf3a2ddf0bc343e"
+  },
+  "NexaPlay/Contracts/Services/IAddGameService.cs": {
+    "mtime": 1780271040.4296384,
+    "seen": 1793026290.0575407,
+    "ast_hash": "f09895b5bc7235bb270f97b6e951bc95",
+    "semantic_hash": "f09895b5bc7235bb270f97b6e951bc95"
+  },
+  "NexaPlay/Contracts/Services/IAppLogService.cs": {
+    "mtime": 1778862163.12033,
+    "seen": 1793026290.0575407,
+    "ast_hash": "bad4dd7e00d231b7e1cf41759d4600dd",
+    "semantic_hash": "bad4dd7e00d231b7e1cf41759d4600dd"
+  },
+  "NexaPlay/Contracts/Services/IAppUpdateService.cs": {
+    "mtime": 1781020023.0792859,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3b4e2c734830ab5afd8900cb97ba857c",
+    "semantic_hash": "3b4e2c734830ab5afd8900cb97ba857c"
+  },
+  "NexaPlay/Contracts/Services/IBypassGamesDataService.cs": {
+    "mtime": 1779752014.715067,
+    "seen": 1793026290.0575407,
+    "ast_hash": "90504a2a402461283fba329bed45fac4",
+    "semantic_hash": "90504a2a402461283fba329bed45fac4"
+  },
+  "NexaPlay/Contracts/Services/IBypassTutorialVideoService.cs": {
+    "mtime": 1780309715.0000799,
+    "seen": 1793026290.0575407,
+    "ast_hash": "5474f338273cbd5842801d066d341dc2",
+    "semantic_hash": "5474f338273cbd5842801d066d341dc2"
+  },
+  "NexaPlay/Contracts/Services/ICatalogRefreshState.cs": {
+    "mtime": 1786981554.7817297,
+    "seen": 1793026290.0575407,
+    "ast_hash": "49ab99d235c3a4e34da2951ae0a20be5",
+    "semantic_hash": "49ab99d235c3a4e34da2951ae0a20be5"
+  },
+  "NexaPlay/Contracts/Services/ICoverImageCacheService.cs": {
+    "mtime": 1781185403.9400692,
+    "seen": 1793026290.0575407,
+    "ast_hash": "1cc9b4030818c2230699b1d4f434977e",
+    "semantic_hash": "1cc9b4030818c2230699b1d4f434977e"
+  },
+  "NexaPlay/Contracts/Services/ILicenseService.cs": {
+    "mtime": 1780831956.8654482,
+    "seen": 1793026290.0575407,
+    "ast_hash": "a6d85706c74ff06d31cfef5a63373a4b",
+    "semantic_hash": "a6d85706c74ff06d31cfef5a63373a4b"
+  },
+  "NexaPlay/Contracts/Services/IMetadataService.cs": {
+    "mtime": 1789383847.3564243,
+    "seen": 1793026290.0575407,
+    "ast_hash": "89e9da41100866f30f5a1d8d610ca46f",
+    "semantic_hash": "89e9da41100866f30f5a1d8d610ca46f"
+  },
+  "NexaPlay/Contracts/Services/INexaPlayOverrideService.cs": {
+    "mtime": 1789359413.0034192,
+    "seen": 1793026290.0575407,
+    "ast_hash": "8f90440f51e44345a74b9ef60d641678",
+    "semantic_hash": "8f90440f51e44345a74b9ef60d641678"
+  },
+  "NexaPlay/Contracts/Services/IOnlineFixService.cs": {
+    "mtime": 1778873085.762287,
+    "seen": 1793026290.0575407,
+    "ast_hash": "86db49fabc55636deb8ace8c6959abd7",
+    "semantic_hash": "86db49fabc55636deb8ace8c6959abd7"
+  },
+  "NexaPlay/Contracts/Services/ISteamService.cs": {
+    "mtime": 1786888701.4405143,
+    "seen": 1793026290.0575407,
+    "ast_hash": "888fea7295af05b302a19331b198a812",
+    "semantic_hash": "888fea7295af05b302a19331b198a812"
+  },
+  "NexaPlay/Contracts/Services/ISteamStoreService.cs": {
+    "mtime": 1789359408.2873056,
+    "seen": 1793026290.0575407,
+    "ast_hash": "312662105515ad695a585d9a6b748b07",
+    "semantic_hash": "312662105515ad695a585d9a6b748b07"
+  },
+  "NexaPlay/Contracts/Services/IWindowsDefenderService.cs": {
+    "mtime": 1780303736.3835552,
+    "seen": 1793026290.0575407,
+    "ast_hash": "6237ebaae1168bee9eabf84205ec2c3e",
+    "semantic_hash": "6237ebaae1168bee9eabf84205ec2c3e"
+  },
+  "NexaPlay/Core/Constants/AppConstants.cs": {
+    "mtime": 1792252650.6849172,
+    "seen": 1793026290.0575407,
+    "ast_hash": "92441cbe47f7c92e1af210ed3c89fddf",
+    "semantic_hash": ""
+  },
+  "NexaPlay/Core/Enums/AntivirusVendor.cs": {
+    "mtime": 1778862092.278698,
+    "seen": 1793026290.0575407,
+    "ast_hash": "753d380d7901bd72604b4b31a1a17b2a",
+    "semantic_hash": "753d380d7901bd72604b4b31a1a17b2a"
+  },
+  "NexaPlay/Core/Enums/BypassStatus.cs": {
+    "mtime": 1778873085.7654035,
+    "seen": 1793026290.0575407,
+    "ast_hash": "1e7491b12f12c2e5b18773bbc8f28a28",
+    "semantic_hash": "1e7491b12f12c2e5b18773bbc8f28a28"
+  },
+  "NexaPlay/Core/Enums/GameCategory.cs": {
+    "mtime": 1779749576.0758922,
+    "seen": 1793026290.0575407,
+    "ast_hash": "c3b02ff91105c1b0629b0ffb65b56913",
+    "semantic_hash": "c3b02ff91105c1b0629b0ffb65b56913"
+  },
+  "NexaPlay/Core/Enums/LicensePlan.cs": {
+    "mtime": 1780831874.8422105,
+    "seen": 1793026290.0575407,
+    "ast_hash": "0383163be605d36425a3860c29f89fd7",
+    "semantic_hash": "0383163be605d36425a3860c29f89fd7"
+  },
+  "NexaPlay/Core/Helpers/CatalogLoadCoordinator.cs": {
+    "mtime": 1789383434.6705697,
+    "seen": 1793026290.0575407,
+    "ast_hash": "05a5b5882b2988507c623465d29cd33d",
+    "semantic_hash": "05a5b5882b2988507c623465d29cd33d"
+  },
+  "NexaPlay/Core/Helpers/StringExtensions.cs": {
+    "mtime": 1789358571.8328474,
+    "seen": 1793026290.0575407,
+    "ast_hash": "63fd0fe608b7cea5112b7263a004e567",
+    "semantic_hash": "63fd0fe608b7cea5112b7263a004e567"
+  },
+  "NexaPlay/Core/Models/AccountReportResult.cs": {
+    "mtime": 1786877207.443069,
+    "seen": 1793026290.0575407,
+    "ast_hash": "19a32aee17dc6fabf17b5bcf22198627",
+    "semantic_hash": "19a32aee17dc6fabf17b5bcf22198627"
+  },
+  "NexaPlay/Core/Models/AppUpdateCheckResult.cs": {
+    "mtime": 1781020039.266057,
+    "seen": 1793026290.0575407,
+    "ast_hash": "e9e6ee769417de76b5c7f6cb993c3708",
+    "semantic_hash": "e9e6ee769417de76b5c7f6cb993c3708"
+  },
+  "NexaPlay/Core/Models/AppUpdateManifest.cs": {
+    "mtime": 1781020031.0410318,
+    "seen": 1793026290.0575407,
+    "ast_hash": "0aa480df39aee88b52da946bd7c2326b",
+    "semantic_hash": "0aa480df39aee88b52da946bd7c2326b"
+  },
+  "NexaPlay/Core/Models/AppUpdateState.cs": {
+    "mtime": 1781020051.3075407,
+    "seen": 1793026290.0575407,
+    "ast_hash": "a00f5c5ab93c4711e878e5f7c67a7cde",
+    "semantic_hash": "a00f5c5ab93c4711e878e5f7c67a7cde"
+  },
+  "NexaPlay/Core/Models/BypassProgressState.cs": {
+    "mtime": 1778873085.7654035,
+    "seen": 1793026290.0575407,
+    "ast_hash": "dd5ce2c4ce7dcf268df89958a1097d0c",
+    "semantic_hash": "dd5ce2c4ce7dcf268df89958a1097d0c"
+  },
+  "NexaPlay/Core/Models/BypassTutorialVideo.cs": {
+    "mtime": 1780309707.3141623,
+    "seen": 1793026290.0575407,
+    "ast_hash": "b0c6c139ad8332bad035732b51de130b",
+    "semantic_hash": "b0c6c139ad8332bad035732b51de130b"
+  },
+  "NexaPlay/Core/Models/DefenderExclusionResult.cs": {
+    "mtime": 1780303731.050672,
+    "seen": 1793026290.0575407,
+    "ast_hash": "8ab180e6e5f838332851c33f3a80ee65",
+    "semantic_hash": "8ab180e6e5f838332851c33f3a80ee65"
+  },
+  "NexaPlay/Core/Models/FixEntry.cs": {
+    "mtime": 1789474096.9831915,
+    "seen": 1793026290.0575407,
+    "ast_hash": "99944f361c20fae14019376da8a6a610",
+    "semantic_hash": "99944f361c20fae14019376da8a6a610"
+  },
+  "NexaPlay/Core/Models/GameDetailEntry.cs": {
+    "mtime": 1779502193.2026098,
+    "seen": 1793026290.0575407,
+    "ast_hash": "b55282bbc690bf40a17232c50456acbe",
+    "semantic_hash": "b55282bbc690bf40a17232c50456acbe"
+  },
+  "NexaPlay/Core/Models/GameEntry.cs": {
+    "mtime": 1789358538.2623131,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3378d3e52f62be3c495f39644568528a",
+    "semantic_hash": "3378d3e52f62be3c495f39644568528a"
+  },
+  "NexaPlay/Core/Models/LicenseInfo.cs": {
+    "mtime": 1778862116.1531205,
+    "seen": 1793026290.0575407,
+    "ast_hash": "d72aa7610cb3a588128743ac82eb85be",
+    "semantic_hash": "d72aa7610cb3a588128743ac82eb85be"
+  },
+  "NexaPlay/Core/Models/MetadataWarmupProgress.cs": {
+    "mtime": 1779248841.6482484,
+    "seen": 1793026290.0575407,
+    "ast_hash": "825032c9604cb4e33bea7d6e329f731f",
+    "semantic_hash": "825032c9604cb4e33bea7d6e329f731f"
+  },
+  "NexaPlay/Core/Models/MovieEntry.cs": {
+    "mtime": 1778954691.829134,
+    "seen": 1793026290.0575407,
+    "ast_hash": "9f3a57b460ff23e5c00a077ec9ced3c7",
+    "semantic_hash": "9f3a57b460ff23e5c00a077ec9ced3c7"
+  },
+  "NexaPlay/Core/Models/NavigationItem.cs": {
+    "mtime": 1778841662.70249,
+    "seen": 1793026290.0575407,
+    "ast_hash": "fbd6cfd2908e99b7f00d4e85d2c491e5",
+    "semantic_hash": "fbd6cfd2908e99b7f00d4e85d2c491e5"
+  },
+  "NexaPlay/Core/Models/NexaPlayOverrideModels.cs": {
+    "mtime": 1779500412.5689008,
+    "seen": 1793026290.0575407,
+    "ast_hash": "41ad812756f77ecb7f55cff459de9ced",
+    "semantic_hash": "41ad812756f77ecb7f55cff459de9ced"
+  },
+  "NexaPlay/Core/Models/RemoveGameResult.cs": {
+    "mtime": 1780271032.7173114,
+    "seen": 1793026290.0575407,
+    "ast_hash": "2e226ddbfab5e096ed39af4b159bf642",
+    "semantic_hash": "2e226ddbfab5e096ed39af4b159bf642"
+  },
+  "NexaPlay/Core/Models/ScreenshotEntry.cs": {
+    "mtime": 1779146524.7412426,
+    "seen": 1793026290.0575407,
+    "ast_hash": "289850686c9b76cd7138e7dbe57a22b8",
+    "semantic_hash": "289850686c9b76cd7138e7dbe57a22b8"
+  },
+  "NexaPlay/Core/Models/SteamFinalizeResult.cs": {
+    "mtime": 1786886391.3726885,
+    "seen": 1793026290.0575407,
+    "ast_hash": "d970e5a91668669cd87ded4b4c9fe6a5",
+    "semantic_hash": "d970e5a91668669cd87ded4b4c9fe6a5"
+  },
+  "NexaPlay/Infrastructure/Logging/AppLogService.cs": {
+    "mtime": 1789368624.293775,
+    "seen": 1793026290.0575407,
+    "ast_hash": "8f45532db6d21afb102b092a25c8b308",
+    "semantic_hash": "8f45532db6d21afb102b092a25c8b308"
+  },
+  "NexaPlay/Infrastructure/Persistence/AccountReportLimitStore.cs": {
+    "mtime": 1789368624.29528,
+    "seen": 1793026290.0575407,
+    "ast_hash": "26b696f8a91f997548a9312111ebd25a",
+    "semantic_hash": "26b696f8a91f997548a9312111ebd25a"
+  },
+  "NexaPlay/Infrastructure/Persistence/AppliedStateStore.cs": {
+    "mtime": 1789368624.29528,
+    "seen": 1793026290.0575407,
+    "ast_hash": "281df6d7e6c2c5a82dee1585f427fbc9",
+    "semantic_hash": "281df6d7e6c2c5a82dee1585f427fbc9"
+  },
+  "NexaPlay/Infrastructure/Persistence/LicenseStore.cs": {
+    "mtime": 1789368624.29528,
+    "seen": 1793026290.0575407,
+    "ast_hash": "444aff1b1efe3456b776127156d0b90b",
+    "semantic_hash": "444aff1b1efe3456b776127156d0b90b"
+  },
+  "NexaPlay/Infrastructure/Persistence/ManagedManifestStore.cs": {
+    "mtime": 1789368624.29528,
+    "seen": 1793026290.0575407,
+    "ast_hash": "24fbb19e580e6f82bf4129c45f7f5772",
+    "semantic_hash": "24fbb19e580e6f82bf4129c45f7f5772"
+  },
+  "NexaPlay/Infrastructure/Platform/DeviceIdHelper.cs": {
+    "mtime": 1789368624.29528,
+    "seen": 1793026290.0575407,
+    "ast_hash": "4ac871e6a227ea3ce1628edd074c2e8a",
+    "semantic_hash": "4ac871e6a227ea3ce1628edd074c2e8a"
+  },
+  "NexaPlay/Infrastructure/Platform/SteamPlatformService.cs": {
+    "mtime": 1786889607.1167958,
+    "seen": 1793026290.0575407,
+    "ast_hash": "02bb8e3e93f252aa35d03da221e5995b",
+    "semantic_hash": "02bb8e3e93f252aa35d03da221e5995b"
+  },
+  "NexaPlay/Infrastructure/Platform/WindowsDefenderService.cs": {
+    "mtime": 1786887434.4273896,
+    "seen": 1793026290.0575407,
+    "ast_hash": "353fb13065f7a624678607ed08b1ce06",
+    "semantic_hash": "353fb13065f7a624678607ed08b1ce06"
+  },
+  "NexaPlay/Infrastructure/Services/AddGameService.cs": {
+    "mtime": 1793025799.1907158,
+    "seen": 1793026290.0575407,
+    "ast_hash": "0c29b41cd71563f28cc1114f6af31c03",
+    "semantic_hash": ""
+  },
+  "NexaPlay/Infrastructure/Services/AppUpdateService.cs": {
+    "mtime": 1789368624.29528,
+    "seen": 1793026290.0575407,
+    "ast_hash": "1cd3a071dca1da3651621b08675a9cd9",
+    "semantic_hash": "1cd3a071dca1da3651621b08675a9cd9"
+  },
+  "NexaPlay/Infrastructure/Services/BypassGamesDataService.cs": {
+    "mtime": 1789385161.0319965,
+    "seen": 1793026290.0575407,
+    "ast_hash": "b835a8e3cdb529993f576d1eab75da6c",
+    "semantic_hash": "b835a8e3cdb529993f576d1eab75da6c"
+  },
+  "NexaPlay/Infrastructure/Services/BypassTutorialVideoService.cs": {
+    "mtime": 1789368624.2999675,
+    "seen": 1793026290.0575407,
+    "ast_hash": "4e0113da71e39908fec1a3cf0475ff15",
+    "semantic_hash": "4e0113da71e39908fec1a3cf0475ff15"
+  },
+  "NexaPlay/Infrastructure/Services/CatalogRefreshState.cs": {
+    "mtime": 1786981554.7879736,
+    "seen": 1793026290.0575407,
+    "ast_hash": "d780375d2e3d6f3146e5d4d10ef505a3",
+    "semantic_hash": "d780375d2e3d6f3146e5d4d10ef505a3"
+  },
+  "NexaPlay/Infrastructure/Services/CoverImageCacheService.cs": {
+    "mtime": 1789384336.4098785,
+    "seen": 1793026290.0575407,
+    "ast_hash": "4b2932b0b6d2589d78be73a0c04dfaa9",
+    "semantic_hash": "4b2932b0b6d2589d78be73a0c04dfaa9"
+  },
+  "NexaPlay/Infrastructure/Services/LicenseService.cs": {
+    "mtime": 1780850035.6779451,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3536a29b2a98ad9ae4e66d360b0631e8",
+    "semantic_hash": "3536a29b2a98ad9ae4e66d360b0631e8"
+  },
+  "NexaPlay/Infrastructure/Services/MetadataService.cs": {
+    "mtime": 1789384176.0878987,
+    "seen": 1793026290.0575407,
+    "ast_hash": "37b59acd212ba35e8ac1b0a140d71109",
+    "semantic_hash": "37b59acd212ba35e8ac1b0a140d71109"
+  },
+  "NexaPlay/Infrastructure/Services/NexaPlayOverrideService.cs": {
+    "mtime": 1789385607.0512624,
+    "seen": 1793026290.0575407,
+    "ast_hash": "bdef4efcba849b6f513473d39a811552",
+    "semantic_hash": "bdef4efcba849b6f513473d39a811552"
+  },
+  "NexaPlay/Infrastructure/Services/OnlineFixService.cs": {
+    "mtime": 1780277991.0800543,
+    "seen": 1793026290.0575407,
+    "ast_hash": "d8cc0213aa540eced83bb10c01f90c35",
+    "semantic_hash": "d8cc0213aa540eced83bb10c01f90c35"
+  },
+  "NexaPlay/Infrastructure/Services/SteamGuardService.cs": {
+    "mtime": 1779831493.4376633,
+    "seen": 1793026290.0575407,
+    "ast_hash": "36d1b85506bd2c409ae42a6d2512d7b1",
+    "semantic_hash": "36d1b85506bd2c409ae42a6d2512d7b1"
+  },
+  "NexaPlay/Infrastructure/Services/SteamStoreService.cs": {
+    "mtime": 1789384336.410874,
+    "seen": 1793026290.0575407,
+    "ast_hash": "22426320128ae62f75ce81afd2a2ffbf",
+    "semantic_hash": "22426320128ae62f75ce81afd2a2ffbf"
+  },
+  "NexaPlay/Infrastructure/Services/TelegramAccountReportService.cs": {
+    "mtime": 1786877589.913688,
+    "seen": 1793026290.0575407,
+    "ast_hash": "2065732e1300b23526abb0bca60e767b",
+    "semantic_hash": "2065732e1300b23526abb0bca60e767b"
+  },
+  "NexaPlay/MainWindow.xaml": {
+    "mtime": 1786879261.470933,
+    "seen": 1793026290.0575407,
+    "ast_hash": "80e3a76f7a270019b73ae43caba03869",
+    "semantic_hash": "80e3a76f7a270019b73ae43caba03869"
+  },
+  "NexaPlay/MainWindow.xaml.cs": {
+    "mtime": 1789384093.814634,
+    "seen": 1793026290.0575407,
+    "ast_hash": "b4b9dc7f10f94287835dc4941507c815",
+    "semantic_hash": "b4b9dc7f10f94287835dc4941507c815"
+  },
+  "NexaPlay/NexaPlay.csproj": {
+    "mtime": 1789358363.282869,
+    "seen": 1793026290.0575407,
+    "ast_hash": "5729d3c175c9ac0c6b92cff283abc52a",
+    "semantic_hash": "5729d3c175c9ac0c6b92cff283abc52a"
+  },
+  "NexaPlay/Presentation/Converters/BoolToVisibilityConverter.cs": {
+    "mtime": 1778862867.3285096,
+    "seen": 1793026290.0575407,
+    "ast_hash": "ad8fdced9edc96e492d0fccfed7da9a7",
+    "semantic_hash": "ad8fdced9edc96e492d0fccfed7da9a7"
+  },
+  "NexaPlay/Presentation/Helpers/LicenseAccessDialogHelper.cs": {
+    "mtime": 1780851205.5513833,
+    "seen": 1793026290.0575407,
+    "ast_hash": "8f1923d8d3ab5a4f7a01fd2ed2c4334f",
+    "semantic_hash": "8f1923d8d3ab5a4f7a01fd2ed2c4334f"
+  },
+  "NexaPlay/Presentation/Helpers/WebView2EnvironmentHelper.cs": {
+    "mtime": 1789368624.293775,
+    "seen": 1793026290.0575407,
+    "ast_hash": "1ffd48a6c0ce5b37c42f3a91524f167b",
+    "semantic_hash": "1ffd48a6c0ce5b37c42f3a91524f167b"
+  },
+  "NexaPlay/Presentation/Navigation/NavigationService.cs": {
+    "mtime": 1778862671.1571853,
+    "seen": 1793026290.0575407,
+    "ast_hash": "21a66848e871821994705e7d4c6849f6",
+    "semantic_hash": "21a66848e871821994705e7d4c6849f6"
+  },
+  "NexaPlay/Presentation/ViewModels/BypassGameDetailViewModel.cs": {
+    "mtime": 1789478327.0929306,
+    "seen": 1793026290.0575407,
+    "ast_hash": "ac8c372ee6116b4852e3a1225ba79bb9",
+    "semantic_hash": "ac8c372ee6116b4852e3a1225ba79bb9"
+  },
+  "NexaPlay/Presentation/ViewModels/BypassGamesViewModel.cs": {
+    "mtime": 1789384036.4201186,
+    "seen": 1793026290.0575407,
+    "ast_hash": "0c3684a11477c7d2829f20195a25d441",
+    "semantic_hash": "0c3684a11477c7d2829f20195a25d441"
+  },
+  "NexaPlay/Presentation/ViewModels/GameDetailViewModel.cs": {
+    "mtime": 1789478327.0929306,
+    "seen": 1793026290.0575407,
+    "ast_hash": "e7aec598749389c43eab193ce0c69ada",
+    "semantic_hash": "e7aec598749389c43eab193ce0c69ada"
+  },
+  "NexaPlay/Presentation/ViewModels/GamesViewModel.cs": {
+    "mtime": 1789384158.5993023,
+    "seen": 1793026290.0575407,
+    "ast_hash": "2ded6ea6654b0613439ba50a457e1260",
+    "semantic_hash": "2ded6ea6654b0613439ba50a457e1260"
+  },
+  "NexaPlay/Presentation/ViewModels/HomeViewModel.cs": {
+    "mtime": 1789385607.0482607,
+    "seen": 1793026290.0575407,
+    "ast_hash": "b2bc37f2a629f61a9101462dff7da60f",
+    "semantic_hash": "b2bc37f2a629f61a9101462dff7da60f"
+  },
+  "NexaPlay/Presentation/ViewModels/LibraryViewModel.cs": {
+    "mtime": 1789358914.4208114,
+    "seen": 1793026290.0575407,
+    "ast_hash": "75504cf9ae4a19275e6f36189293c34f",
+    "semantic_hash": "75504cf9ae4a19275e6f36189293c34f"
+  },
+  "NexaPlay/Presentation/ViewModels/MainViewModel.cs": {
+    "mtime": 1778841990.0799708,
+    "seen": 1793026290.0575407,
+    "ast_hash": "0f3c74808f69699f0e07e169eaa72a91",
+    "semantic_hash": "0f3c74808f69699f0e07e169eaa72a91"
+  },
+  "NexaPlay/Presentation/ViewModels/SettingsViewModel.cs": {
+    "mtime": 1789385607.0502868,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3869eb6f0e7896c65d09b9457e952688",
+    "semantic_hash": "3869eb6f0e7896c65d09b9457e952688"
+  },
+  "NexaPlay/Presentation/Views/Pages/BypassGameDetailPage.xaml": {
+    "mtime": 1786877299.2764776,
+    "seen": 1793026290.0575407,
+    "ast_hash": "1d6244fb7e904eeadc276252ac825cfa",
+    "semantic_hash": "1d6244fb7e904eeadc276252ac825cfa"
+  },
+  "NexaPlay/Presentation/Views/Pages/BypassGameDetailPage.xaml.cs": {
+    "mtime": 1789373206.8950632,
+    "seen": 1793026290.0575407,
+    "ast_hash": "09d9e2e56c457493bfcba7e62d1edf06",
+    "semantic_hash": "09d9e2e56c457493bfcba7e62d1edf06"
+  },
+  "NexaPlay/Presentation/Views/Pages/BypassGamesPage.xaml": {
+    "mtime": 1779775599.547355,
+    "seen": 1793026290.0575407,
+    "ast_hash": "38ad957f0ba86a756096698ac3af7621",
+    "semantic_hash": "38ad957f0ba86a756096698ac3af7621"
+  },
+  "NexaPlay/Presentation/Views/Pages/BypassGamesPage.xaml.cs": {
+    "mtime": 1789373206.8883212,
+    "seen": 1793026290.0575407,
+    "ast_hash": "e41d4cd316c9c0aed433b91e87815042",
+    "semantic_hash": "e41d4cd316c9c0aed433b91e87815042"
+  },
+  "NexaPlay/Presentation/Views/Pages/GameDetailPage.xaml": {
+    "mtime": 1780282366.0512304,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3bb3fe3171ffdf955f448f0e459b32d9",
+    "semantic_hash": "3bb3fe3171ffdf955f448f0e459b32d9"
+  },
+  "NexaPlay/Presentation/Views/Pages/GameDetailPage.xaml.cs": {
+    "mtime": 1789373206.8950632,
+    "seen": 1793026290.0575407,
+    "ast_hash": "05decbe8fd6f4cd01fa987adcea21535",
+    "semantic_hash": "05decbe8fd6f4cd01fa987adcea21535"
+  },
+  "NexaPlay/Presentation/Views/Pages/GamesPage.xaml": {
+    "mtime": 1781191524.873114,
+    "seen": 1793026290.0575407,
+    "ast_hash": "36a9304c43d32b0015d7fbbc5044d4ae",
+    "semantic_hash": "36a9304c43d32b0015d7fbbc5044d4ae"
+  },
+  "NexaPlay/Presentation/Views/Pages/GamesPage.xaml.cs": {
+    "mtime": 1789383464.293859,
+    "seen": 1793026290.0575407,
+    "ast_hash": "de3c31ca2e996cafdb1286ab1874aad0",
+    "semantic_hash": "de3c31ca2e996cafdb1286ab1874aad0"
+  },
+  "NexaPlay/Presentation/Views/Pages/HomePage.xaml": {
+    "mtime": 1780864043.577598,
+    "seen": 1793026290.0575407,
+    "ast_hash": "eb037ab1eb5883b1cf3111235fe8c82f",
+    "semantic_hash": "eb037ab1eb5883b1cf3111235fe8c82f"
+  },
+  "NexaPlay/Presentation/Views/Pages/HomePage.xaml.cs": {
+    "mtime": 1789372202.484364,
+    "seen": 1793026290.0575407,
+    "ast_hash": "0ef58e20d79293653acba4b9e89c9863",
+    "semantic_hash": "0ef58e20d79293653acba4b9e89c9863"
+  },
+  "NexaPlay/Presentation/Views/Pages/LibraryPage.xaml": {
+    "mtime": 1780279801.5837007,
+    "seen": 1793026290.0575407,
+    "ast_hash": "87a223edd3726d5ef9c197d2cb721925",
+    "semantic_hash": "87a223edd3726d5ef9c197d2cb721925"
+  },
+  "NexaPlay/Presentation/Views/Pages/LibraryPage.xaml.cs": {
+    "mtime": 1789373206.8883212,
+    "seen": 1793026290.0575407,
+    "ast_hash": "6f753f2a23ae55d4b6aa9cd12bcbd16f",
+    "semantic_hash": "6f753f2a23ae55d4b6aa9cd12bcbd16f"
+  },
+  "NexaPlay/Presentation/Views/Pages/SettingsPage.xaml": {
+    "mtime": 1781021168.8293698,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3a822fab356d19e20b797dd22a3d3f37",
+    "semantic_hash": "3a822fab356d19e20b797dd22a3d3f37"
+  },
+  "NexaPlay/Presentation/Views/Pages/SettingsPage.xaml.cs": {
+    "mtime": 1789385161.035502,
+    "seen": 1793026290.0575407,
+    "ast_hash": "f98c8b05c2989dde1473d41b7fe4dc62",
+    "semantic_hash": "f98c8b05c2989dde1473d41b7fe4dc62"
+  },
+  "NexaPlay/Properties/launchSettings.json": {
+    "mtime": 1778841011.6789804,
+    "seen": 1789569701.6449044,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "NexaPlay/data/api.json": {
+    "mtime": 1789076618.3675013,
+    "seen": 1789569701.6449044,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "NexaPlay/release/Generate-AppIcon.ps1": {
+    "mtime": 1788296301.0509787,
+    "seen": 1793026290.0575407,
+    "ast_hash": "0a39ddf49d163d42fdee6369a7b0bdd8",
+    "semantic_hash": "0a39ddf49d163d42fdee6369a7b0bdd8"
+  },
+  "NexaPlay/release/Generate-UpdateManifest.ps1": {
+    "mtime": 1788296301.0755632,
+    "seen": 1793026290.0575407,
+    "ast_hash": "305eb8b2cbdd9ea0be5860ec0d878a3b",
+    "semantic_hash": "305eb8b2cbdd9ea0be5860ec0d878a3b"
+  },
+  "NexaPlay/release/sign-build.ps1": {
+    "mtime": 1788296327.5822492,
+    "seen": 1793026290.0575407,
+    "ast_hash": "eacaff4077abda7bcbf7a44d0a2f59bd",
+    "semantic_hash": "eacaff4077abda7bcbf7a44d0a2f59bd"
+  },
+  "NexaPlay/release/sign-installer.ps1": {
+    "mtime": 1788296327.6986475,
+    "seen": 1793026290.0575407,
+    "ast_hash": "468ff8c331f3db627b78f4a7d9356668",
+    "semantic_hash": "468ff8c331f3db627b78f4a7d9356668"
+  },
+  "NexaPlay/release/update-stable.json": {
+    "mtime": 1788300087.2846808,
+    "seen": 1789569701.6449044,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "NexaPlay/verify-manifest-recovery.ps1": {
+    "mtime": 1786889703.5024328,
+    "seen": 1793026290.0575407,
+    "ast_hash": "4b5e81d7c4466c817580b1599ad4c997",
+    "semantic_hash": "4b5e81d7c4466c817580b1599ad4c997"
+  },
+  ".agents/rules/antigravity-rtk-rules.md": {
+    "mtime": 1779825391.8621151,
+    "seen": 1793026290.0575407,
+    "ast_hash": "f35bc5f83b89536ea1788c5c86377968",
+    "semantic_hash": "f35bc5f83b89536ea1788c5c86377968"
+  },
+  "CLAUDE.md": {
+    "mtime": 1788287220.899401,
+    "seen": 1793026290.0575407,
+    "ast_hash": "a54be815b68e7456effa6765cf013e9f",
+    "semantic_hash": "a54be815b68e7456effa6765cf013e9f"
+  },
+  "NexaPlay/AGENTS.md": {
+    "mtime": 1779128669.7586496,
+    "seen": 1793026290.0575407,
+    "ast_hash": "6c3756ca695d9f1818638ae33984a71c",
+    "semantic_hash": "6c3756ca695d9f1818638ae33984a71c"
+  },
+  "NexaPlay/AI_HANDOFF_HOME_HISTORY.md": {
+    "mtime": 1780834944.762181,
+    "seen": 1793026290.0575407,
+    "ast_hash": "d4104e23c338c8db46db822648d1851e",
+    "semantic_hash": "d4104e23c338c8db46db822648d1851e"
+  },
+  "NexaPlay/AI_HANDOFF_PROMPT.md": {
+    "mtime": 1793026246.225457,
+    "seen": 1793026290.0575407,
+    "ast_hash": "059e00cd10ff44ca06da42bd43b30d1a",
+    "semantic_hash": ""
+  },
+  "NexaPlay/Assets/Web/youtube-player.html": {
+    "mtime": 1780311562.588216,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3b32d60ef7ac70e8b05ecf19d83d983c",
+    "semantic_hash": "3b32d60ef7ac70e8b05ecf19d83d983c"
+  },
+  "NexaPlay/MIGRATION_PARITY_MATRIX.md": {
+    "mtime": 1793025995.773206,
+    "seen": 1793026290.0575407,
+    "ast_hash": "686fed83d53f594d246bb2efcb3fcb2a",
+    "semantic_hash": ""
+  },
+  "NexaPlay/ONBOARDING_ZERO_TO_PARITY.md": {
+    "mtime": 1779124114.6629505,
+    "seen": 1793026290.0575407,
+    "ast_hash": "30391c4bc18310444b5e10271a3405ee",
+    "semantic_hash": "30391c4bc18310444b5e10271a3405ee"
+  },
+  "NexaPlay/README.md": {
+    "mtime": 1779124105.4341965,
+    "seen": 1793026290.0575407,
+    "ast_hash": "9b35b9234060f164acc1797cd715169e",
+    "semantic_hash": "9b35b9234060f164acc1797cd715169e"
+  },
+  "NexaPlay/release/README.md": {
+    "mtime": 1792340618.1805701,
+    "seen": 1793026290.0575407,
+    "ast_hash": "d86e6577bdc82a572462bf1808747e5e",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-17-fast-catalog-refresh.md": {
+    "mtime": 1786981554.7939198,
+    "seen": 1793026290.0575407,
+    "ast_hash": "64d4bc9a0f278d5bf9c957103f63d0ca",
+    "semantic_hash": "64d4bc9a0f278d5bf9c957103f63d0ca"
+  },
+  "docs/superpowers/plans/2026-08-17-new-games-catalog.md": {
+    "mtime": 1786981554.7949193,
+    "seen": 1793026290.0575407,
+    "ast_hash": "e2f42cb0bc6482130c2c1290bffdd029",
+    "semantic_hash": "e2f42cb0bc6482130c2c1290bffdd029"
+  },
+  "docs/superpowers/specs/2026-08-17-fast-catalog-refresh-design.md": {
+    "mtime": 1786981554.7949193,
+    "seen": 1793026290.0575407,
+    "ast_hash": "2dddff825688b580a82f1a1ac3d466ae",
+    "semantic_hash": "2dddff825688b580a82f1a1ac3d466ae"
+  },
+  "docs/superpowers/specs/2026-08-17-new-games-catalog-design.md": {
+    "mtime": 1786981554.7949193,
+    "seen": 1793026290.0575407,
+    "ast_hash": "fb99c0a82f248210ebba13edefbc1479",
+    "semantic_hash": "fb99c0a82f248210ebba13edefbc1479"
+  },
+  "recovered_edits.md": {
+    "mtime": 1779145880.5817437,
+    "seen": 1793026290.0575407,
+    "ast_hash": "de5d057f4115a5bd05921f61ddb7f4af",
+    "semantic_hash": "de5d057f4115a5bd05921f61ddb7f4af"
+  },
+  "NexaPlay/Assets/Icons/logo.png": {
+    "mtime": 1788290214.5866501,
+    "seen": 1793026290.0575407,
+    "ast_hash": "93bc7ba03d7bf8fd0d72ebeaf111c292",
+    "semantic_hash": "93bc7ba03d7bf8fd0d72ebeaf111c292"
+  },
+  "NexaPlay/Assets/LockScreenLogo.scale-200.png": {
+    "mtime": 1788290214.6831229,
+    "seen": 1793026290.0575407,
+    "ast_hash": "fe13bd1af109693ffb3b3411126d04a3",
+    "semantic_hash": "fe13bd1af109693ffb3b3411126d04a3"
+  },
+  "NexaPlay/Assets/SplashScreen.scale-200.png": {
+    "mtime": 1788290214.7638404,
+    "seen": 1793026290.0575407,
+    "ast_hash": "e72db5a66acd2b783e57b80a68ad9cb2",
+    "semantic_hash": "e72db5a66acd2b783e57b80a68ad9cb2"
+  },
+  "NexaPlay/Assets/Square150x150Logo.scale-200.png": {
+    "mtime": 1788290214.6804638,
+    "seen": 1793026290.0575407,
+    "ast_hash": "cb1c5801f2661acaa74317303ca59474",
+    "semantic_hash": "cb1c5801f2661acaa74317303ca59474"
+  },
+  "NexaPlay/Assets/Square44x44Logo.scale-200.png": {
+    "mtime": 1788290214.6567955,
+    "seen": 1793026290.0575407,
+    "ast_hash": "fdfa19711b412781cb5d8e750ff588e8",
+    "semantic_hash": "fdfa19711b412781cb5d8e750ff588e8"
+  },
+  "NexaPlay/Assets/Square44x44Logo.targetsize-24_altform-unplated.png": {
+    "mtime": 1788290214.6578114,
+    "seen": 1793026290.0575407,
+    "ast_hash": "a8409ea4826d87e0c79a3a63f26fa331",
+    "semantic_hash": "a8409ea4826d87e0c79a3a63f26fa331"
+  },
+  "NexaPlay/Assets/StoreLogo.png": {
+    "mtime": 1788290214.6814692,
+    "seen": 1793026290.0575407,
+    "ast_hash": "7d00601b05f1d96c44b97a6a3cbf0e57",
+    "semantic_hash": "7d00601b05f1d96c44b97a6a3cbf0e57"
+  },
+  "NexaPlay/Assets/Wide310x150Logo.scale-200.png": {
+    "mtime": 1788290214.6998415,
+    "seen": 1793026290.0575407,
+    "ast_hash": "f2ab67f9f47515773fd59f96e3b38510",
+    "semantic_hash": "f2ab67f9f47515773fd59f96e3b38510"
+  },
+  "NexaPlay/Assets/logo_terbaru.png": {
+    "mtime": 1782573352.6776526,
+    "seen": 1793026290.0575407,
+    "ast_hash": "4223f9c9a47c9d61ad262bde835f0e80",
+    "semantic_hash": "4223f9c9a47c9d61ad262bde835f0e80"
+  },
+  "NexaPlay/Assets/logo_text.svg": {
+    "mtime": 1778877507.3396246,
+    "seen": 1793026290.0575407,
+    "ast_hash": "9ab053ee83f5ab4762cd64f817effa5b",
+    "semantic_hash": "9ab053ee83f5ab4762cd64f817effa5b"
+  },
+  "NexaPlay/Assets/nexaplay.svg": {
+    "mtime": 1778877340.150323,
+    "seen": 1793026290.0575407,
+    "ast_hash": "fb535f00b818b3548b70e4b0d607e7f0",
+    "semantic_hash": "fb535f00b818b3548b70e4b0d607e7f0"
+  },
+  "NexaPlay/Assets/logo.svg": {
+    "mtime": 1788290215.0591717,
+    "seen": 1793026290.0575407,
+    "ast_hash": "bbdfe5fa3b4e287502676438dbc8177b",
+    "semantic_hash": "bbdfe5fa3b4e287502676438dbc8177b"
+  },
+  "NexaPlay/Core/Helpers/CatalogManifestRules.cs": {
+    "mtime": 1789076618.3675013,
+    "seen": 1793026290.0575407,
+    "ast_hash": "ea0810d157c1abd72f6d5b630e207545",
+    "semantic_hash": "ea0810d157c1abd72f6d5b630e207545"
+  },
+  "NexaPlay/Core/Models/CatalogManifestModels.cs": {
+    "mtime": 1789076618.3675013,
+    "seen": 1793026290.0575407,
+    "ast_hash": "6b65cd97359740191adaad94c1b4ce0a",
+    "semantic_hash": "6b65cd97359740191adaad94c1b4ce0a"
+  },
+  ".codex/skills/graphify/SKILL.md": {
+    "mtime": 1789068044.1280215,
+    "seen": 1793026290.0575407,
+    "ast_hash": "212b55d95333d84e14262f8ec83faa2b",
+    "semantic_hash": "212b55d95333d84e14262f8ec83faa2b"
+  },
+  ".codex/skills/graphify/references/add-watch.md": {
+    "mtime": 1787145229.7801876,
+    "seen": 1793026290.0575407,
+    "ast_hash": "d59d027fe449f06aa03905a01184e779",
+    "semantic_hash": "d59d027fe449f06aa03905a01184e779"
+  },
+  ".codex/skills/graphify/references/exports.md": {
+    "mtime": 1787145229.7816904,
+    "seen": 1793026290.0575407,
+    "ast_hash": "9da2a2152e60a22f07f05fed5158f287",
+    "semantic_hash": "9da2a2152e60a22f07f05fed5158f287"
+  },
+  ".codex/skills/graphify/references/extraction-spec.md": {
+    "mtime": 1787145229.782695,
+    "seen": 1793026290.0575407,
+    "ast_hash": "bf895ec4d4e40f5f66f7d31c2a9bd4a7",
+    "semantic_hash": "bf895ec4d4e40f5f66f7d31c2a9bd4a7"
+  },
+  ".codex/skills/graphify/references/github-and-merge.md": {
+    "mtime": 1787145229.7836962,
+    "seen": 1793026290.0575407,
+    "ast_hash": "cde13df085e4c492aeb7ba298a996d0d",
+    "semantic_hash": "cde13df085e4c492aeb7ba298a996d0d"
+  },
+  ".codex/skills/graphify/references/hooks.md": {
+    "mtime": 1787145229.7836962,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3f545db6ce646650bb9de588f5512a27",
+    "semantic_hash": "3f545db6ce646650bb9de588f5512a27"
+  },
+  ".codex/skills/graphify/references/query.md": {
+    "mtime": 1787145229.7836962,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3c46f8ad006874260614ed8657d02307",
+    "semantic_hash": "3c46f8ad006874260614ed8657d02307"
+  },
+  ".codex/skills/graphify/references/transcribe.md": {
+    "mtime": 1787145229.7846954,
+    "seen": 1793026290.0575407,
+    "ast_hash": "67b6a5fa6c0974e18f60db9f8932fbd8",
+    "semantic_hash": "67b6a5fa6c0974e18f60db9f8932fbd8"
+  },
+  ".codex/skills/graphify/references/update.md": {
+    "mtime": 1787145231.0436485,
+    "seen": 1793026290.0575407,
+    "ast_hash": "9378bd03d56baaf78bd738ab3848f142",
+    "semantic_hash": "9378bd03d56baaf78bd738ab3848f142"
+  },
+  "AGENTS.md": {
+    "mtime": 1789068044.1334205,
+    "seen": 1793026290.0575407,
+    "ast_hash": "21ceb6533048be51308e69e7b74a35cf",
+    "semantic_hash": "21ceb6533048be51308e69e7b74a35cf"
+  },
+  "graphify-out/memory/query_20260910_194657_saya_ingin_anda_mengumpulkan_semua_metadata_atau_d.md": {
+    "mtime": 1789069617.6963887,
+    "seen": 1793026290.0575407,
+    "ast_hash": "4944e754c49f6a5809e83a7c5dcbab5e",
+    "semantic_hash": "4944e754c49f6a5809e83a7c5dcbab5e"
+  },
+  "graphify-out/memory/query_20260910_211457_pas_ngunduh_data_apakah_dia_mengunduh_juga_file_da.md": {
+    "mtime": 1789074897.2051213,
+    "seen": 1793026290.0575407,
+    "ast_hash": "addf670d514acae4c6b2f423173b901a",
+    "semantic_hash": "addf670d514acae4c6b2f423173b901a"
+  },
+  "graphify-out/memory/query_20260910_212218_tombol_load_games_ini_mengunduh_apa_saja_karena_sa.md": {
+    "mtime": 1789075338.6856332,
+    "seen": 1793026290.0575407,
+    "ast_hash": "c2bfc6772473dc81141aa40714e68c1b",
+    "semantic_hash": "c2bfc6772473dc81141aa40714e68c1b"
+  },
+  "graphify-out/memory/query_20260910_212910_file_ini_harus_terbaru_apakah_memakai_etag_seperti.md": {
+    "mtime": 1789075750.7175653,
+    "seen": 1793026290.0575407,
+    "ast_hash": "80c03fdf1351a445a19782104e7936e4",
+    "semantic_hash": "80c03fdf1351a445a19782104e7936e4"
+  },
+  "NexaPlay/Contracts/Services/ICatalogBootstrapService.cs": {
+    "mtime": 1789358363.282869,
+    "seen": 1793026290.0575407,
+    "ast_hash": "2f1ddc27a23bd53fd307947ec659d2ad",
+    "semantic_hash": "2f1ddc27a23bd53fd307947ec659d2ad"
+  },
+  "NexaPlay/Contracts/Services/ICatalogRepository.cs": {
+    "mtime": 1789358363.282869,
+    "seen": 1793026290.0575407,
+    "ast_hash": "77e43ba931d0b5a17997311cba22207d",
+    "semantic_hash": "77e43ba931d0b5a17997311cba22207d"
+  },
+  "NexaPlay/Contracts/Services/ICatalogUpdateService.cs": {
+    "mtime": 1789358363.282869,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3c20d2dfe2138a9c14ed07b5f4d24639",
+    "semantic_hash": "3c20d2dfe2138a9c14ed07b5f4d24639"
+  },
+  "NexaPlay/Core/Helpers/CatalogProtectionResolver.cs": {
+    "mtime": 1789358650.9654229,
+    "seen": 1793026290.0575407,
+    "ast_hash": "9ffed0ecbd6932a4efc55882ef3d0064",
+    "semantic_hash": "9ffed0ecbd6932a4efc55882ef3d0064"
+  },
+  "NexaPlay/Core/Models/CatalogModels.cs": {
+    "mtime": 1789359433.9242532,
+    "seen": 1793026290.0575407,
+    "ast_hash": "1a8f79e08704a47a98a531d8f465caa1",
+    "semantic_hash": "1a8f79e08704a47a98a531d8f465caa1"
+  },
+  "NexaPlay/Infrastructure/Services/CatalogBootstrapService.cs": {
+    "mtime": 1789358966.383185,
+    "seen": 1793026290.0575407,
+    "ast_hash": "2f0aa45c1371ce61754b8987ee52ca50",
+    "semantic_hash": "2f0aa45c1371ce61754b8987ee52ca50"
+  },
+  "NexaPlay/Infrastructure/Services/CatalogUpdateService.cs": {
+    "mtime": 1789359433.9242532,
+    "seen": 1793026290.0575407,
+    "ast_hash": "fcc5d893c8562cd2a774c121965cbae6",
+    "semantic_hash": "fcc5d893c8562cd2a774c121965cbae6"
+  },
+  "NexaPlay/Infrastructure/Services/SqliteCatalogRepository.cs": {
+    "mtime": 1789473166.8209403,
+    "seen": 1793026290.0575407,
+    "ast_hash": "dff7fa177fd3d24862f3e8475bd21b7a",
+    "semantic_hash": "dff7fa177fd3d24862f3e8475bd21b7a"
+  },
+  "DATA_FLOW_AUDIT.md": {
+    "mtime": 1789479867.0333142,
+    "seen": 1793026290.0575407,
+    "ast_hash": "b7ddb4520f4fed7cffd604682663b745",
+    "semantic_hash": "b7ddb4520f4fed7cffd604682663b745"
+  },
+  "NexaPlay/Core/Helpers/ImageUriResolver.cs": {
+    "mtime": 1789373253.0891688,
+    "seen": 1793026290.0575407,
+    "ast_hash": "e5d2742d0b9c3d4f8ab82ba0e4174c7e",
+    "semantic_hash": "e5d2742d0b9c3d4f8ab82ba0e4174c7e"
+  },
+  "NexaPlay/Contracts/Services/IDynamicFeedRefreshService.cs": {
+    "mtime": 1789383727.8646317,
+    "seen": 1793026290.0575407,
+    "ast_hash": "156b20f8d77ae6e4c2bba4786bd97ad6",
+    "semantic_hash": "156b20f8d77ae6e4c2bba4786bd97ad6"
+  },
+  "NexaPlay/Core/Models/DynamicFeedModels.cs": {
+    "mtime": 1789383727.8626077,
+    "seen": 1793026290.0575407,
+    "ast_hash": "4dc791e158d1fa9750647f847d27611f",
+    "semantic_hash": "4dc791e158d1fa9750647f847d27611f"
+  },
+  "NexaPlay/Infrastructure/Services/DynamicFeedRefreshService.cs": {
+    "mtime": 1789479496.522923,
+    "seen": 1793026290.0575407,
+    "ast_hash": "b101a7c224db97722223a4c708ae7cd8",
+    "semantic_hash": "b101a7c224db97722223a4c708ae7cd8"
+  },
+  "NexaPlay/Core/Helpers/DetailHeroSelector.cs": {
+    "mtime": 1789478166.8309975,
+    "seen": 1793026290.0575407,
+    "ast_hash": "7d05fe601482df853b4fd2c330d7a66b",
+    "semantic_hash": "7d05fe601482df853b4fd2c330d7a66b"
+  },
+  "graphify-out/memory/query_20260915_123539_nexaplay_games_browse_artwork_eligibility_filter.md": {
+    "mtime": 1789475739.530813,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3131efeaf440e4c6f0923045459f6c65",
+    "semantic_hash": "3131efeaf440e4c6f0923045459f6c65"
+  },
+  ".codex/hooks.json": {
+    "mtime": 1789068044.1373873,
+    "seen": 1789569701.6449044,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20260915_134507_fix_new_fix_games_missing_after_clear_data_and_pre.md": {
+    "mtime": 1789479907.5734603,
+    "seen": 1793026290.0575407,
+    "ast_hash": "adbb943d549944b693cffe616608b2c4",
+    "semantic_hash": "adbb943d549944b693cffe616608b2c4"
+  },
+  "NexaPlay.SelfCheck/AddGameChecks.cs": {
+    "mtime": 1793026168.6696107,
+    "seen": 1793026290.0575407,
+    "ast_hash": "3d48536343aeb7ccc6ad63a168a1d235",
+    "semantic_hash": ""
+  },
+  "NexaPlay/Infrastructure/Services/AddGamePayloadBuilder.cs": {
+    "mtime": 1793026117.0772407,
+    "seen": 1793026290.0575407,
+    "ast_hash": "6d896fa96313258d41c45cae2b81860c",
+    "semantic_hash": ""
+  },
+  "NexaPlay/ADD_GAME_PAYLOAD.md": {
+    "mtime": 1793025995.7717032,
+    "seen": 1793026290.0575407,
+    "ast_hash": "adf5bbbe35a4a8138a59ac36d2a8e52e",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20260916_154302_analisis_pemetaan_frontend_gamepagedetail_dan_get.md": {
+    "mtime": 1789573382.8220043,
+    "seen": 1793026290.0575407,
+    "ast_hash": "eea0e1e58dd239502ef605677c2f1cbc",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261026_141417_analisa_alur_masing_masing_api_di_api_json_mendapa.md": {
+    "mtime": 1793024057.3568375,
+    "seen": 1793026290.0575407,
+    "ast_hash": "ccb3b778f6ca43b835063ec4ef175822",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20261026_142454_apa_tujuan_mengomentari_setmanifestid_dan_apakah_a.md": {
+    "mtime": 1793024694.307838,
+    "seen": 1793026290.0575407,
+    "ast_hash": "34b437f3733836b12e3f25726c7fa252",
+    "semantic_hash": ""
+  }
+}

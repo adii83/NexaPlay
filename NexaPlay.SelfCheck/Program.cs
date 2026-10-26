@@ -10,6 +10,13 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
+if (args.Contains("--add-game-only", StringComparer.Ordinal))
+{
+    await AddGameChecks.RunAsync();
+    Console.WriteLine("Add Game self-check passed.");
+    return;
+}
+
 if (args.Contains("--dynamic-feed-only", StringComparer.Ordinal))
 {
     await AssertDynamicFeedsAsync();
@@ -18,6 +25,7 @@ if (args.Contains("--dynamic-feed-only", StringComparer.Ordinal))
 }
 
 AssertPhysicalAppDataPath();
+await AddGameChecks.RunAsync();
 AssertImageUris();
 AssertDetailHeroSelection();
 await AssertLoadCoordinatorAsync();
@@ -32,7 +40,7 @@ AssertBundledSeed();
 if (Environment.GetEnvironmentVariable("NEXAPLAY_BENCHMARK") == "1")
     await BenchmarkBundledCatalogAsync();
 
-Console.WriteLine("Self-check passed: SQLite ordering/search/filter/patch, Home Recent, detail hero selection, cache safety, detail dedup/fallback, and dynamic feeds.");
+Console.WriteLine("Self-check passed: Add Game payloads/fallback/cancellation, SQLite ordering/search/filter/patch, Home Recent, detail hero selection, cache safety, detail dedup/fallback, and dynamic feeds.");
 
 static void AssertPhysicalAppDataPath()
 {

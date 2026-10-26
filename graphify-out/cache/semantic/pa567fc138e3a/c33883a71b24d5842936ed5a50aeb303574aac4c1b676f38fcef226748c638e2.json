@@ -1,0 +1,1 @@
+{"nodes": [{"id": "_codex_hooks_configuration", "label": "hooks.json", "file_type": "document", "source_file": ".codex/hooks.json", "source_location": "L1", "configuration_keys": ["hooks"], "extraction_method": "local_configuration", "_origin": "semantic"}], "edges": [], "hyperedges": []}

@@ -737,6 +737,26 @@ Tanggal: 11 September 2026
 - Build: Self-check manifest/SHA/ETag/new-games lulus; Debug x64 `Build succeeded` (`0 Warning(s), 0 Error(s)`); smoke launch 12 detik tetap hidup dan proses uji ditutup normal.
 - Next: Publikasikan `catalog_manifest.json` di repo metadata agar startup cukup satu conditional request; fallback per-file ETag tetap aktif sampai file tersedia.
 
+### 2026-10-26 (Add Game: enam API baru dan persiapan payload Lightning)
+- Fokus: prioritas sumber dan pemasangan Lua tanpa pengeditan installer.
+- Perubahan: `data/api.json` menambah NexaPlay R2, ProjectLightningManifests,
+  SPIN0ZAi, sojogamesdatabase1, sojogames2, ManifestHub sebelum GameHub.
+  Lima GitHub memakai `lua_processing=auto`, status `2xx`, dan persiapan C#
+  dari skrip Python pengguna menjadi `<appid>.zip` berisi Lua/manifest di root.
+  Standard mempertahankan baris Lua; SPIN0ZAi memakai whitelist skrip asli;
+  kedua mode menambahkan footer `-- Made with love by NexaPlay ID 🖤🤍`
+  sesuai revisi branding pengguna. Installer menyalin byte final
+  apa adanya, termasuk `setManifestid` aktif. Validasi gagal mencoba sumber
+  berikutnya; cancellation menghentikan rantai dan staging dibersihkan.
+- Validasi: self-check Add Game dan seluruh self-check lulus; 16 payload C#
+  cocok byte-per-byte dengan referensi Python sebelum revisi footer NexaPlay ID.
+  Setelah revisi, perbedaan footer disengaja. MSBuild Debug x64 berhasil;
+  smoke aplikasi build: Home, Games, dan Library terbuka tanpa crash.
+- Revisi footer: self-check Add Game lulus dengan footer NexaPlay ID;
+  build ulang Debug x64 dan Release x64 berhasil. Paket publish/installer
+  dan versi rilis belum diubah oleh revisi footer ini.
+- Detail: `ADD_GAME_PAYLOAD.md`. Tidak ada game yang dipasang ke Steam pengguna.
+
 ## 10. Update Log Ringkas
 
 ```text

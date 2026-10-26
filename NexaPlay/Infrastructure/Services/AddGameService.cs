@@ -4,7 +4,6 @@ using NexaPlay.Core.Enums;
 using NexaPlay.Core.Models;
 using System.Collections.Concurrent;
 using System.IO.Compression;
-using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -18,12 +17,23 @@ public sealed class AddGameService : IAddGameService
 {
     private readonly IAppLogService _log;
     private readonly ISteamService _steam;
+    private readonly HttpClient? _http;
+    private readonly string? _apiJsonPath;
+    private readonly string? _downloadsRoot;
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _running = new(StringComparer.Ordinal);
 
     public AddGameService(IAppLogService log, ISteamService steam)
     {
         _log = log;
         _steam = steam;
+    }
+
+    internal AddGameService(IAppLogService log, ISteamService steam, HttpClient http, string apiJsonPath, string downloadsRoot)
+        : this(log, steam)
+    {
+        _http = http;
+        _apiJsonPath = apiJsonPath;
+        _downloadsRoot = downloadsRoot;
     }
 
     public bool IsGameInstalled(string appId)
@@ -82,10 +92,9 @@ public sealed class AddGameService : IAddGameService
     {
         if (string.IsNullOrWhiteSpace(appId)) return;
 
-        if (_running.TryRemove(appId, out var cts))
+        if (_running.TryGetValue(appId, out var cts))
         {
             try { cts.Cancel(); } catch { }
-            try { cts.Dispose(); } catch { }
             LogInfo($"Pembatalan Add-Game diminta appid={appId}");
         }
     }
@@ -94,11 +103,10 @@ public sealed class AddGameService : IAddGameService
     {
         string? downloadedZipPath = null;
         string? downloadedProviderDir = null;
-        string? partialPath = null;
 
-        if (string.IsNullOrWhiteSpace(appId))
+        if (string.IsNullOrWhiteSpace(appId) || !Regex.IsMatch(appId, "^[0-9]+$"))
         {
-            progress.Report(FailedState("start", "AppID kosong"));
+            progress.Report(FailedState("start", "AppID harus berupa angka"));
             return;
         }
 
@@ -150,10 +158,11 @@ public sealed class AddGameService : IAddGameService
                 return;
             }
 
-            var downloadsRoot = Path.Combine(AppConstants.LocalAppDataPath, "GameHub", "downloads");
+            var downloadsRoot = _downloadsRoot ?? Path.Combine(AppConstants.LocalAppDataPath, "GameHub", "downloads");
             Directory.CreateDirectory(downloadsRoot);
 
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            using var ownedHttp = _http is null ? new HttpClient { Timeout = TimeSpan.FromSeconds(45) } : null;
+            var http = _http ?? ownedHttp!;
             var sourceIndex = 0;
             foreach (var entry in apiList.EnumerateArray())
             {
@@ -165,46 +174,57 @@ public sealed class AddGameService : IAddGameService
 
                 var name = entry.TryGetProperty("name", out var nm) ? nm.GetString() ?? "unknown" : "unknown";
                 var urlTemplate = entry.TryGetProperty("url", out var ut) ? ut.GetString() ?? string.Empty : string.Empty;
-                var successCode = entry.TryGetProperty("success_code", out var sc) && sc.TryGetInt32(out var sci) ? sci : 200;
+                var successCode = entry.TryGetProperty("success_code", out var sc) ? sc : default;
                 var unavailableCode = entry.TryGetProperty("unavailable_code", out var uc) && uc.TryGetInt32(out var uci) ? uci : 404;
                 var sourceLabel = $"sumber #{sourceIndex}";
                 var url = urlTemplate.Replace("<appid>", appId, StringComparison.Ordinal);
+                var preparePayload = entry.TryGetProperty("lua_processing", out var processing);
+                string? attemptDir = null;
 
                 LogInfo($"Coba unduh dari {sourceLabel} ({name}) url={RedactUrl(url)}");
                 try
                 {
+                    var mode = preparePayload
+                        ? AddGamePayloadBuilder.ResolveMode(processing.GetString() ?? "auto", url)
+                        : null;
+                    using var downloadCts = CancellationTokenSource.CreateLinkedTokenSource(localCts.Token);
+                    downloadCts.CancelAfter(TimeSpan.FromSeconds(preparePayload ? 135 : 30));
                     using var req = new HttpRequestMessage(HttpMethod.Get, url);
-                    req.Headers.UserAgent.ParseAdd("luatools-v61-stplugin-hoe");
-                    using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, localCts.Token);
+                    req.Headers.UserAgent.ParseAdd(preparePayload ? "Project-Lightning" : "luatools-v61-stplugin-hoe");
+                    req.Headers.TryAddWithoutValidation("Accept", "application/zip,application/octet-stream,*/*");
+                    using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, downloadCts.Token);
                     LogInfo($"Respon {sourceLabel} status={(int)resp.StatusCode}");
 
-                    if ((int)resp.StatusCode != successCode)
+                    if (!IsSuccessStatus((int)resp.StatusCode, successCode))
                     {
                         if ((int)resp.StatusCode == unavailableCode)
                             LogInfo($"{sourceLabel} melaporkan tidak tersedia");
                         continue;
                     }
 
-                    var targetDir = Path.Combine(downloadsRoot, SafeName(name));
-                    Directory.CreateDirectory(targetDir);
+                    if (resp.Content.Headers.ContentLength > AddGamePayloadBuilder.MaxZipBytes)
+                        throw new InvalidDataException("Unduhan melebihi 128 MiB.");
+                    attemptDir = Path.Combine(downloadsRoot, SafeName(name), appId + "-" + Guid.NewGuid().ToString("N"));
+                    Directory.CreateDirectory(attemptDir);
+                    var finalPath = Path.Combine(attemptDir, appId + ".zip");
+                    var outPath = preparePayload ? Path.Combine(attemptDir, "source.zip") : finalPath;
 
-                    var ext = GuessExtension(resp, url);
-                    var outPath = Path.Combine(targetDir, appId + ext);
-                    partialPath = outPath;
-
-                    await using var body = await resp.Content.ReadAsStreamAsync(localCts.Token);
+                    await using var body = await resp.Content.ReadAsStreamAsync(downloadCts.Token);
                     await using (var outFs = File.Create(outPath))
                     {
                         var total = resp.Content.Headers.ContentLength ?? 0L;
                         var read = 0L;
                         var buffer = new byte[81920];
                         var lastPct = -1;
+                        var lastReport = Environment.TickCount64 - 250;
 
                         int n;
-                        while ((n = await body.ReadAsync(buffer.AsMemory(0, buffer.Length), localCts.Token)) > 0)
+                        while ((n = await body.ReadAsync(buffer.AsMemory(0, buffer.Length), downloadCts.Token)) > 0)
                         {
-                            await outFs.WriteAsync(buffer.AsMemory(0, n), localCts.Token);
                             read += n;
+                            if (read > AddGamePayloadBuilder.MaxZipBytes)
+                                throw new InvalidDataException("Unduhan melebihi 128 MiB.");
+                            await outFs.WriteAsync(buffer.AsMemory(0, n), downloadCts.Token);
 
                             if (total > 0)
                             {
@@ -224,8 +244,9 @@ public sealed class AddGameService : IAddGameService
                                     });
                                 }
                             }
-                            else
+                            else if (Environment.TickCount64 - lastReport >= 250)
                             {
+                                lastReport = Environment.TickCount64;
                                 progress.Report(new BypassProgressState
                                 {
                                     AppId = ParseAppId(appId),
@@ -240,14 +261,37 @@ public sealed class AddGameService : IAddGameService
                         }
                     }
 
-                    downloadedZipPath = outPath;
-                    downloadedProviderDir = targetDir;
+                    progress.Report(new BypassProgressState
+                    {
+                        AppId = ParseAppId(appId), Status = BypassStatus.Applying,
+                        Phase = "validate", Percent = -1,
+                        Message = preparePayload ? "Preparing files..." : "Validating..."
+                    });
+                    await Task.Run(() =>
+                    {
+                        if (preparePayload)
+                            AddGamePayloadBuilder.Build(outPath, finalPath, mode!, localCts.Token);
+                        AddGamePayloadBuilder.ValidateInstallable(finalPath, appId, localCts.Token);
+                    }, localCts.Token);
+                    if (preparePayload)
+                        File.Delete(outPath);
+                    downloadedZipPath = finalPath;
+                    downloadedProviderDir = attemptDir;
+                    attemptDir = null; // The outer finally owns the accepted payload.
                     LogInfo($"Unduhan selesai dari {sourceLabel} file={RedactPath(downloadedZipPath)}");
                     break;
+                }
+                catch (OperationCanceledException) when (localCts.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
                     LogInfo($"Gagal unduh dari {sourceLabel}: {ex.Message}");
+                }
+                finally
+                {
+                    TryCleanupDownloaded(null, attemptDir);
                 }
             }
 
@@ -267,18 +311,6 @@ public sealed class AddGameService : IAddGameService
                 Message = "Validating..."
             });
 
-            await using (var fh = File.OpenRead(downloadedZipPath))
-            {
-                var magic = new byte[4];
-                await fh.ReadAsync(magic.AsMemory(0, 4), localCts.Token);
-                if (!(magic[0] == (byte)'P' && magic[1] == (byte)'K'))
-                {
-                    LogInfo("File unduhan bukan ZIP valid");
-                    progress.Report(FailedState("validate", "File unduhan bukan ZIP"));
-                    return;
-                }
-            }
-
             var steamPath = _steam.GetSteamBasePath();
             if (string.IsNullOrWhiteSpace(steamPath))
             {
@@ -296,7 +328,7 @@ public sealed class AddGameService : IAddGameService
                 Message = "Installing..."
             });
 
-            var installedPath = InstallLuaFromZip(appId, downloadedZipPath, steamPath);
+            var installedPath = await Task.Run(() => InstallLuaFromZip(appId, downloadedZipPath, steamPath, localCts.Token), localCts.Token);
             LogInfo($"Instalasi selesai file={RedactPath(installedPath)}");
 
             progress.Report(new BypassProgressState
@@ -320,7 +352,6 @@ public sealed class AddGameService : IAddGameService
                 Error = "Dibatalkan",
                 Message = "Cancelled."
             });
-            TryCleanupPartial(partialPath, downloadedProviderDir);
         }
         catch (Exception ex)
         {
@@ -420,6 +451,8 @@ public sealed class AddGameService : IAddGameService
 
     private string? ResolveApiJsonPath()
     {
+        if (_apiJsonPath is not null)
+            return _apiJsonPath;
         var candidates = new[]
         {
             Path.Combine(AppConstants.AppDataPath, "api.json"),
@@ -436,7 +469,7 @@ public sealed class AddGameService : IAddGameService
         return null;
     }
 
-    private static string InstallLuaFromZip(string appId, string zipPath, string steamPath)
+    internal static string InstallLuaFromZip(string appId, string zipPath, string steamPath, CancellationToken ct = default)
     {
         if (!File.Exists(zipPath)) throw new FileNotFoundException(zipPath);
         if (string.IsNullOrWhiteSpace(steamPath)) throw new InvalidOperationException("Steam path kosong");
@@ -448,64 +481,41 @@ public sealed class AddGameService : IAddGameService
         Directory.CreateDirectory(depotcacheDir);
 
         using var zf = ZipFile.OpenRead(zipPath);
+        var chosen = AddGamePayloadBuilder.SelectLua(zf, appId);
         foreach (var entry in zf.Entries.Where(e => e.FullName.EndsWith(".manifest", StringComparison.OrdinalIgnoreCase)))
-            entry.ExtractToFile(Path.Combine(depotcacheDir, Path.GetFileName(entry.FullName)), overwrite: true);
-
-        var preferred = appId + ".lua";
-        var chosen = zf.Entries.FirstOrDefault(e => Path.GetFileName(e.FullName) == preferred)
-            ?? zf.Entries.FirstOrDefault(e => Regex.IsMatch(Path.GetFileName(e.FullName) ?? string.Empty, "^\\d+\\.lua$"));
-
-        if (chosen is null)
-            throw new InvalidOperationException("Tidak ada file .lua numerik dalam ZIP");
-
-        string text;
-        using (var ms = new MemoryStream())
         {
-            using (var stream = chosen.Open())
-                stream.CopyTo(ms);
-            ms.Position = 0;
-            using var reader = new StreamReader(ms, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
-            text = reader.ReadToEnd();
+            WriteEntryAtomically(entry, Path.Combine(depotcacheDir, Path.GetFileName(entry.FullName.Replace('\\', '/'))), ct);
         }
 
-        var sb = new StringBuilder(text.Length + 64);
-        using (var reader = new StringReader(text))
-        {
-            string? line;
-            while ((line = reader.ReadLine()) != null)
-            {
-                if (Regex.IsMatch(line, "^\\s*setManifestid\\(") && !Regex.IsMatch(line, "^\\s*--"))
-                    sb.Append("--").AppendLine(line);
-                else
-                    sb.AppendLine(line);
-            }
-        }
-
-        var processed = sb.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Replace("\n", "\r\n", StringComparison.Ordinal);
         var destFile = Path.Combine(targetDir, appId + ".lua");
-        File.WriteAllText(destFile, processed, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        WriteEntryAtomically(chosen, destFile, ct);
         return destFile;
     }
 
-    private static string GuessExtension(HttpResponseMessage response, string url)
+    private static void WriteEntryAtomically(ZipArchiveEntry entry, string destination, CancellationToken ct)
     {
-        var fileNameStar = response.Content.Headers.ContentDisposition?.FileNameStar;
-        if (!string.IsNullOrWhiteSpace(fileNameStar))
-            return Path.GetExtension(fileNameStar);
+        var staged = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+            using (var input = entry.Open())
+            using (var output = File.Create(staged))
+                AddGamePayloadBuilder.CopyBounded(input, output, entry.Length, ct);
+            ct.ThrowIfCancellationRequested();
+            File.Move(staged, destination, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(staged))
+                File.Delete(staged);
+        }
+    }
 
-        var fileName = response.Content.Headers.ContentDisposition?.FileName;
-        if (!string.IsNullOrWhiteSpace(fileName))
-            return Path.GetExtension(fileName);
-
-        var contentType = response.Content.Headers.ContentType?.MediaType;
-        if (string.Equals(contentType, "application/zip", StringComparison.OrdinalIgnoreCase))
-            return ".zip";
-
-        var ext = Path.GetExtension(url);
-        if (!string.IsNullOrWhiteSpace(ext))
-            return ext;
-
-        return ".bin";
+    internal static bool IsSuccessStatus(int status, JsonElement configured)
+    {
+        if (configured.ValueKind == JsonValueKind.String && configured.GetString() == "2xx")
+            return status is >= 200 and < 300;
+        return status == (configured.ValueKind == JsonValueKind.Number && configured.TryGetInt32(out var code) ? code : 200);
     }
 
     private static string SafeName(string name)
@@ -536,23 +546,11 @@ public sealed class AddGameService : IAddGameService
         {
             if (!string.IsNullOrWhiteSpace(providerDir) && Directory.Exists(providerDir))
             {
-                if (Directory.GetFiles(providerDir).Length == 0 && Directory.GetDirectories(providerDir).Length == 0)
-                    Directory.Delete(providerDir, false);
+                // providerDir is a private GUID directory created for this attempt.
+                Directory.Delete(providerDir, recursive: true);
             }
         }
         catch { }
-    }
-
-    private static void TryCleanupPartial(string? partialPath, string? providerDir)
-    {
-        try
-        {
-            if (!string.IsNullOrWhiteSpace(partialPath) && File.Exists(partialPath))
-                File.Delete(partialPath);
-        }
-        catch { }
-
-        TryCleanupDownloaded(null, providerDir);
     }
 
     private static string RedactUrl(string url)

@@ -1,6 +1,22 @@
 {
-  "generated_at": "2026-09-16T15:24:08.276944+00:00",
+  "generated_at": "2026-10-26T15:33:51.339793+00:00",
   "nodes": {
+    "nexaplay_core_helpers_detailheroselector_nexaplay_core_helpers_detailheroselector": {
+      "code_fingerprint": "70d4d5c3e362537bba0def3b27a157e1fdf03d805ecb8245d973e61f2c396681",
+      "label": "DetailHeroSelector",
+      "last": "2026-09-16T15:43:02.821015+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-16T15:43:02.821015+00:00",
+          "outcome": "useful",
+          "q": "Analisis pemetaan frontend GamePageDetail dan GET keseluruhan metadata untuk implementasi HTML, JavaScript, dan CSS responsif, tanpa Add Game, Online-Fix, dan Restart Steam."
+        }
+      ],
+      "score": 0.396908793,
+      "source_file": "NexaPlay/Core/Helpers/DetailHeroSelector.cs",
+      "status": "tentative",
+      "uses": 1
+    },
     "nexaplay_core_models_fixentry_nexaplay_core_models_fixentry": {
       "code_fingerprint": "5845244e3e25af5ae48982da31df2a5e03ded56c952386dd0c1816b816841540",
       "label": "FixEntry",
@@ -12,8 +28,24 @@
           "q": "NEXAPLAY Games Browse artwork eligibility filter"
         }
       ],
-      "score": 0.974522019,
+      "score": 0.386679023,
       "source_file": "NexaPlay/Core/Models/FixEntry.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "nexaplay_core_models_gamedetailentry_nexaplay_core_models_gamedetailentry": {
+      "code_fingerprint": "ce0e62bb0760b42a936c69493ab07c5ffcd0caed2ffc0a108a07b11f10e3b09c",
+      "label": "GameDetailEntry",
+      "last": "2026-09-16T15:43:02.821015+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-16T15:43:02.821015+00:00",
+          "outcome": "useful",
+          "q": "Analisis pemetaan frontend GamePageDetail dan GET keseluruhan metadata untuk implementasi HTML, JavaScript, dan CSS responsif, tanpa Add Game, Online-Fix, dan Restart Steam."
+        }
+      ],
+      "score": 0.396908793,
+      "source_file": "NexaPlay/Core/Models/GameDetailEntry.cs",
       "status": "tentative",
       "uses": 1
     },
@@ -28,7 +60,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.874229448,
+      "score": 0.346884096,
       "source_file": "NexaPlay/Infrastructure/Platform/DeviceIdHelper.cs",
       "status": "tentative",
       "uses": 1
@@ -44,7 +76,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.874229448,
+      "score": 0.346884096,
       "source_file": "NexaPlay/Infrastructure/Platform/SteamPlatformService.cs",
       "status": "tentative",
       "uses": 1
@@ -60,26 +92,52 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.874229448,
+      "score": 0.346884096,
       "source_file": "NexaPlay/Infrastructure/Platform/WindowsDefenderService.cs",
       "status": "tentative",
       "uses": 1
     },
-    "nexaplay_infrastructure_services_addgameservice_nexaplay_infrastructure_services_addgameservice": {
-      "code_fingerprint": "34cf67a43f5713a5d80cbd5d1b6716f2548ffc916b6a22ee66aca6b225d2c5df",
-      "label": "AddGameService",
-      "last": "2026-09-10T19:46:57.696388+00:00",
+    "nexaplay_infrastructure_services_addgamepayloadbuilder_nexaplay_infrastructure_services_addgamepayloadbuilder": {
+      "code_fingerprint": "5cabb0587c39df2d9b1d33cf14d9569a8454e945cd23b7ee2ee797c849d64597",
+      "label": "AddGamePayloadBuilder",
+      "last": "2026-10-26T14:53:43.249525+00:00",
       "provenance": [
+        {
+          "date": "2026-10-26T14:53:43.249525+00:00",
+          "outcome": "useful",
+          "q": "Apakah perilaku lima API terutama SPIN0ZAi identik dengan lampiran Lightning terbaru?"
+        }
+      ],
+      "score": 0.999356241,
+      "source_file": "NexaPlay/Infrastructure/Services/AddGamePayloadBuilder.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "nexaplay_infrastructure_services_addgameservice_nexaplay_infrastructure_services_addgameservice": {
+      "code_fingerprint": "8c069f66f5f6ba7832b8f4f5a6e71a81e965413600c0f6405e1344e75c139987",
+      "label": "AddGameService",
+      "last": "2026-10-26T14:24:54.306835+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-26T14:24:54.306835+00:00",
+          "outcome": "useful",
+          "q": "Apa tujuan mengomentari setManifestid dan apakah ada dokumentasinya?"
+        },
+        {
+          "date": "2026-10-26T14:14:17.355837+00:00",
+          "outcome": "useful",
+          "q": "Analisa alur masing-masing API di api.json mendapatkan appid.zip dan pemrosesan manifest serta Lua sebelum dipindahkan"
+        },
         {
           "date": "2026-09-10T19:46:57.696388+00:00",
           "outcome": "useful",
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.874229448,
+      "score": 2.344502557,
       "source_file": "NexaPlay/Infrastructure/Services/AddGameService.cs",
-      "status": "tentative",
-      "uses": 1
+      "status": "preferred",
+      "uses": 3
     },
     "nexaplay_infrastructure_services_appupdateservice_nexaplay_infrastructure_services_appupdateservice": {
       "code_fingerprint": "9baa15855751c88f22f62f8837034f566c7c0dc480c4ea62836fcabbce99b195",
@@ -92,7 +150,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.874229448,
+      "score": 0.346884096,
       "source_file": "NexaPlay/Infrastructure/Services/AppUpdateService.cs",
       "status": "tentative",
       "uses": 1
@@ -118,7 +176,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 2.62546183,
+      "score": 1.041752773,
       "source_file": "NexaPlay/Infrastructure/Services/BypassGamesDataService.cs",
       "status": "preferred",
       "uses": 3
@@ -134,7 +192,7 @@
           "q": "file ini harus terbaru apakah memakai etag seperti new games dan bagaimana penerapan terbaik agar tidak lama"
         }
       ],
-      "score": 0.875664431,
+      "score": 0.34745348,
       "source_file": "NexaPlay/Infrastructure/Services/CatalogRefreshState.cs",
       "status": "tentative",
       "uses": 1
@@ -150,7 +208,7 @@
           "q": "Fix new_fix_games missing after Clear Data and prefer LibraryHero for clicked detail hero"
         }
       ],
-      "score": 0.975608835,
+      "score": 0.387110259,
       "source_file": "NexaPlay/Infrastructure/Services/DynamicFeedRefreshService.cs",
       "status": "tentative",
       "uses": 1
@@ -166,7 +224,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.874229448,
+      "score": 0.346884096,
       "source_file": "NexaPlay/Infrastructure/Services/LicenseService.cs",
       "status": "tentative",
       "uses": 1
@@ -197,7 +255,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 3.500926418,
+      "score": 1.389126958,
       "source_file": "NexaPlay/Infrastructure/Services/MetadataService.cs",
       "status": "preferred",
       "uses": 4
@@ -213,7 +271,7 @@
           "q": "tombol load games ini mengunduh apa saja karena sangat lama dan kenapa mengunduh itu cari tau direadme atau di doc project apakah ada yang memberikan info tersebut"
         }
       ],
-      "score": 0.875567951,
+      "score": 0.347415198,
       "source_file": "NexaPlay/Infrastructure/Services/NexaPlayOverrideService.cs",
       "status": "tentative",
       "uses": 1
@@ -229,7 +287,7 @@
           "q": "NEXAPLAY Games Browse artwork eligibility filter"
         }
       ],
-      "score": 0.974522019,
+      "score": 0.386679023,
       "source_file": "NexaPlay/Infrastructure/Services/SqliteCatalogRepository.cs",
       "status": "tentative",
       "uses": 1
@@ -237,18 +295,23 @@
     "nexaplay_infrastructure_services_steamstoreservice_nexaplay_infrastructure_services_steamstoreservice": {
       "code_fingerprint": "6b9457cb382dfa369b8b277208ad506da87f28cc9fea4ed579dfaef5c3a1ac12",
       "label": "SteamStoreService",
-      "last": "2026-09-10T19:46:57.696388+00:00",
+      "last": "2026-09-16T15:43:02.821015+00:00",
       "provenance": [
+        {
+          "date": "2026-09-16T15:43:02.821015+00:00",
+          "outcome": "useful",
+          "q": "Analisis pemetaan frontend GamePageDetail dan GET keseluruhan metadata untuk implementasi HTML, JavaScript, dan CSS responsif, tanpa Add Game, Online-Fix, dan Restart Steam."
+        },
         {
           "date": "2026-09-10T19:46:57.696388+00:00",
           "outcome": "useful",
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.874229448,
+      "score": 0.743792889,
       "source_file": "NexaPlay/Infrastructure/Services/SteamStoreService.cs",
-      "status": "tentative",
-      "uses": 1
+      "status": "preferred",
+      "uses": 2
     },
     "nexaplay_infrastructure_services_telegramaccountreportservice_nexaplay_infrastructure_services_telegramaccountreportservice": {
       "code_fingerprint": "125d9d7c85b610ac60a71a4ea842b61de5a382365bdb28379e3615e4501c370e",
@@ -261,7 +324,7 @@
           "q": "saya ingin anda mengumpulkan semua metadata atau data dari apps nexapkay ini asalnya dari mana dan kelompokkan dengan baik secara jelas dan keseluruhan"
         }
       ],
-      "score": 0.874229448,
+      "score": 0.346884096,
       "source_file": "NexaPlay/Infrastructure/Services/TelegramAccountReportService.cs",
       "status": "tentative",
       "uses": 1
@@ -277,7 +340,7 @@
           "q": "Fix new_fix_games missing after Clear Data and prefer LibraryHero for clicked detail hero"
         }
       ],
-      "score": 0.975608835,
+      "score": 0.387110259,
       "source_file": "NexaPlay/Presentation/ViewModels/BypassGameDetailViewModel.cs",
       "status": "tentative",
       "uses": 1
@@ -285,18 +348,23 @@
     "nexaplay_presentation_viewmodels_gamedetailviewmodel_nexaplay_presentation_viewmodels_gamedetailviewmodel": {
       "code_fingerprint": "db217866c9f6cde3292b5cabdd389afabf870f129cc76185ce7c893ac8850066",
       "label": "GameDetailViewModel",
-      "last": "2026-09-15T13:45:07.573460+00:00",
+      "last": "2026-09-16T15:43:02.821015+00:00",
       "provenance": [
+        {
+          "date": "2026-09-16T15:43:02.821015+00:00",
+          "outcome": "useful",
+          "q": "Analisis pemetaan frontend GamePageDetail dan GET keseluruhan metadata untuk implementasi HTML, JavaScript, dan CSS responsif, tanpa Add Game, Online-Fix, dan Restart Steam."
+        },
         {
           "date": "2026-09-15T13:45:07.573460+00:00",
           "outcome": "useful",
           "q": "Fix new_fix_games missing after Clear Data and prefer LibraryHero for clicked detail hero"
         }
       ],
-      "score": 0.975608835,
+      "score": 0.784019053,
       "source_file": "NexaPlay/Presentation/ViewModels/GameDetailViewModel.cs",
-      "status": "tentative",
-      "uses": 1
+      "status": "preferred",
+      "uses": 2
     },
     "nexaplay_presentation_viewmodels_gamesviewmodel_nexaplay_presentation_viewmodels_gamesviewmodel": {
       "code_fingerprint": "6993ed90468d69a68a2cc1c38e3bb176f782865b59d25698a6af70499884ddca",
@@ -309,7 +377,7 @@
           "q": "NEXAPLAY Games Browse artwork eligibility filter"
         }
       ],
-      "score": 0.974522019,
+      "score": 0.386679023,
       "source_file": "NexaPlay/Presentation/ViewModels/GamesViewModel.cs",
       "status": "tentative",
       "uses": 1
@@ -325,7 +393,7 @@
           "q": "Fix new_fix_games missing after Clear Data and prefer LibraryHero for clicked detail hero"
         }
       ],
-      "score": 0.975608835,
+      "score": 0.387110259,
       "source_file": "NexaPlay/Presentation/ViewModels/HomeViewModel.cs",
       "status": "tentative",
       "uses": 1
@@ -351,10 +419,26 @@
           "q": "pas ngunduh data apakah dia mengunduh juga file data ini new_games.json atau file tersebut hanya diunduh saat load game saja yang berada di setting?"
         }
       ],
-      "score": 2.626696969,
+      "score": 1.042242862,
       "source_file": "NexaPlay/Presentation/ViewModels/SettingsViewModel.cs",
       "status": "preferred",
       "uses": 3
+    },
+    "nexaplay_presentation_views_pages_gamedetailpage_xaml_nexaplay_presentation_views_pages_gamedetailpage": {
+      "code_fingerprint": "000601ec58d0dbc042f4483201127d9dadc182aec5b0f5d71f760b55ffa9bad0",
+      "label": "GameDetailPage",
+      "last": "2026-09-16T15:43:02.821015+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-16T15:43:02.821015+00:00",
+          "outcome": "useful",
+          "q": "Analisis pemetaan frontend GamePageDetail dan GET keseluruhan metadata untuk implementasi HTML, JavaScript, dan CSS responsif, tanpa Add Game, Online-Fix, dan Restart Steam."
+        }
+      ],
+      "score": 0.396908793,
+      "source_file": "NexaPlay/Presentation/Views/Pages/GameDetailPage.xaml.cs",
+      "status": "tentative",
+      "uses": 1
     }
   },
   "version": 1
