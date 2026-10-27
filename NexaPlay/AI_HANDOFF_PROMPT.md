@@ -1776,3 +1776,35 @@ Tanggal: 9 Juni 2026
 - SelfCheck lulus. Final bundled-seed median: default 17.870 ms; Premium 98.426 ms; Standard 90.102 ms; Denuvo 87.701 ms; Genre Action 172.891 ms; combined 164.238 ms.
 - Clean Debug x64 build dan self-contained Release publish lulus. Debug/Release process smoke responsif tetapi license gate menampilkan network error; page-level GUI dan live request-count tetap unverified.
 - Audit authority aktual: `../DATA_FLOW_AUDIT.md` bagian `Final Data-Flow Optimization - Actual Result`.
+
+## Online-Fix checkpoint — 2026-10-27
+
+Current Online-Fix authority is only adii83/Nexaplay-Metadata-Override/main/online_fix.json.
+LuaTools and generic Win64 fallback sources are removed from runtime code.
+OnlineFixCatalogService uses GitHub Contents API raw media, ETag, no-cache and a unique query key;
+startup/detail/action share one gate, 10-minute success cooldown, 1-minute ordinary failure cooldown,
+and GitHub rate-limit backoff. Failed refreshes preserve validated cache but reject availability/apply
+until revalidation succeeds. Startup is background and failure-safe.
+OnlineFixService now downloads mapped Drive packages, stages ZIP/RAR/7z, validates paths/checksums,
+backs up original bytes and commits through a durable recovery journal in the game directory.
+Remove restores originals, protects modified files and preserves failed recovery state.
+UI consumes typed results, stays busy through cancellation, and rejects stale progress/navigation updates.
+Debug x64 builds and full NexaPlay.SelfCheck passed; 111 Online-Fix assertions and official RAR/RAR5/
+solid RAR/7z/six-volume RAR fixtures passed. Live startup validated 597 mappings.
+UI smoke covered Home/detail/unavailable dialog/return; physical Escape stopped further UI automation.
+No actual placeholder-mapped package was installed; real public Drive links still require live package QA.
+See ONLINE_FIX.md for the full contract, constraints, and verification.
+
+## Signing checkpoint — 2026-10-27
+
+Investigated SignerSign 0x80093102 on published System.Management.dll. The same published bytes
+and existing PFX signed and verified successfully on a temporary copy, both without timestamp and
+with the configured DigiCert timestamp. The published original then signed and verified successfully.
+The original transient failure is not reproducible; do not assert that the password/certificate is wrong
+or that DLL corruption is confirmed. The former script's password error was a generic message.
+sign-build.ps1 now skips already-valid timestamped signatures, retries sign/verify up to three times,
+checks each signed file, supports -OnlyFiles, -MaxAttempts (1..5), and -ForceResign.
+SigningChecks.ps1 passed five policy scenarios on Windows PowerShell 5.1 and PowerShell 7.
+Debug x64 build passed. Existing signing scope/exclusions and certificate configuration are preserved.
+Full publish signing subsequently completed successfully across 253 eligible files: valid timestamped
+signatures were retained, remaining files signed/verified, and NexaPlay.exe final verification passed.

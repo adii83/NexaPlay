@@ -30,6 +30,7 @@ public sealed partial class MainWindow : Window
     private readonly IMetadataService _metadataService;
     private readonly ICatalogUpdateService _catalogUpdateService;
     private readonly IAppUpdateService _appUpdateService;
+    private readonly IOnlineFixService _onlineFixService;
     private readonly ISteamService _steamService;
     private readonly IAppLogService _appLog;
     private readonly HomeViewModel _homeViewModel;
@@ -57,7 +58,8 @@ public sealed partial class MainWindow : Window
         GamesViewModel gamesViewModel,
         ICatalogRefreshState catalogRefreshState,
         IBypassGamesDataService bypassGamesDataService,
-        BypassGamesViewModel bypassGamesViewModel)
+        BypassGamesViewModel bypassGamesViewModel,
+        IOnlineFixService onlineFixService)
     {
         _vm             = vm;
         _nav            = nav;
@@ -65,6 +67,7 @@ public sealed partial class MainWindow : Window
         _metadataService = metadataService;
         _catalogUpdateService = catalogUpdateService;
         _appUpdateService = appUpdateService;
+        _onlineFixService = onlineFixService;
         _steamService = steamService;
         _appLog = appLog;
         _homeViewModel = homeViewModel;
@@ -328,6 +331,13 @@ public sealed partial class MainWindow : Window
         });
         await hideOverlayTcs.Task;
         _ = CheckCatalogUpdatesInBackgroundAsync();
+        _ = RefreshOnlineFixCatalogInBackgroundAsync();
+    }
+
+    private async Task RefreshOnlineFixCatalogInBackgroundAsync()
+    {
+        try { await _onlineFixService.RefreshCatalogAsync(); }
+        catch (Exception ex) { _appLog.Log("OnlineFixCatalog", $"Startup refresh failed non-fatally: {ex.Message}"); }
     }
 
     private async Task CheckCatalogUpdatesInBackgroundAsync()

@@ -66,6 +66,7 @@ public partial class App : Application
         services.AddSingleton<ICatalogRefreshState, CatalogRefreshState>();
         services.AddSingleton<ICoverImageCacheService, CoverImageCacheService>();
         services.AddSingleton<IBypassGamesDataService, BypassGamesDataService>();
+        services.AddSingleton<IOnlineFixCatalogService, OnlineFixCatalogService>();
         services.AddSingleton<IOnlineFixService, OnlineFixService>();
         services.AddSingleton<IAddGameService, AddGameService>();
         services.AddSingleton<ILicenseService, LicenseService>();

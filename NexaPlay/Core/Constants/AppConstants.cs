@@ -3,7 +3,7 @@ namespace NexaPlay.Core.Constants;
 public static class AppConstants
 {
     public const string AppName = "NexaPlay";
-    public const string AppVersion = "1.0.5";
+    public const string AppVersion = "1.0.6";
     public const string AppDataFolder = "NexaPlay";
     public const string AppUpdateManifestUrl = "https://raw.githubusercontent.com/adii83/NexaPlay/main/NexaPlay/release/update-stable.json";
     public const string AppUpdateInstallerArguments = "";
@@ -19,9 +19,8 @@ public static class AppConstants
     public const string YoutubeTutorialUrl = $"{MetadataRepositoryRawUrl}/youtube.json";
     public const string R2MetadataBaseUrl = "https://meta.nexaplaymetadata.online/Metadata";
 
-    // Online fix base URL
-    public const string OnlineFixBaseUrl = "https://files.luatools.work/OnlineFix1/";
-    public const string OnlineFixFallbackUrl = "https://github.com/madoiscool/lt_api_links/releases/download/unsteam/Win64.zip";
+    // The only authority for Online-Fix availability and package mapping.
+    public const string OnlineFixCatalogUrl = "https://api.github.com/repos/adii83/Nexaplay-Metadata-Override/contents/online_fix.json?ref=main";
 
     // Supabase
     public const string SupabaseUrl     = "https://ghmzmvrjazvqiaufjrjt.supabase.co";

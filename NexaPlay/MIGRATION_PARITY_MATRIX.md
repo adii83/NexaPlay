@@ -80,14 +80,19 @@ Fallback juga berlaku untuk payload rusak/tanpa Lua. Detail dan validasi ada di
 | Area | GameHub (lama) | NexaPlay (baru) | Status |
 |---|---|---|---|
 | Fix catalog load | `FixGamesDataService` | `IBypassGamesDataService` + impl | Done |
-| Apply fix flow | `OnlineFixService` + progress | `IOnlineFixService` + `BypassGamesViewModel` + `GameDetailViewModel` | Done |
+| Apply fix flow | `OnlineFixService` + progress | Single `online_fix.json` mapping, staged archives, backup/journal/rollback, typed completion | Done |
 | Progress state UI | Web progress updates | Native progress bar di `GameDetailPage` | **Done** |
-| Unfix flow | Ada | Ada di `GameDetailViewModel.RemoveFixCommand` | Partial |
-| Cancel flow | Ada | Ada di `GameDetailViewModel.CancelFixCommand` | Partial |
+| Unfix flow | Ada | Original-byte restoration, legacy log compatibility, failed deletions retain recovery state | Done (service checks; live package QA pending) |
+| Cancel flow | Ada | Cooperative cancellation, rollback, busy guard and stale UI progress invalidation | Done (service checks; live package QA pending) |
 | Add-Game action | `AddGameService` | `GameDetailViewModel.AddGameCommand` | **Done** |
 | Online-Fix action | `OnlineFixService` | `GameDetailViewModel.ApplyFixCommand` | Done |
 | Restart Steam action | `SteamService.RestartSteam` | `GameDetailViewModel.RestartSteamCommand` | **Done** |
 | Listing metadata requests | Web listing payload | Local JSON + one SQLite batch; zero `GetDetailAsync`, detail baru saat clicked row | **Done** |
+
+Online-Fix update 2026-10-27: only `online_fix.json` determines availability and package mapping.
+Startup/detail/action checks share one refresh gate, 10-minute success cooldown, conditional GitHub Contents API requests,
+and rate-limit-aware failure backoff. Old package fallback sources are removed. See [ONLINE_FIX.md](ONLINE_FIX.md)
+for installation/recovery behavior, 111 self-check assertions, archive fixture results, and remaining live package QA.
 
 Catatan nomenklatur UI Bypass:
 - Untuk tampilan UI, istilah `Steam Sharing` sudah diganti menjadi `Akun Steam`.

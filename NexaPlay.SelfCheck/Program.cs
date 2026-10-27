@@ -10,6 +10,18 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
+if (args.Length >= 2 && args[0] == "--online-fix-archive")
+{
+    OnlineFixChecks.CheckArchiveFixture(args[1..]);
+    return;
+}
+
+if (args.Contains("--online-fix-only", StringComparer.Ordinal))
+{
+    await OnlineFixChecks.RunAsync();
+    return;
+}
+
 if (args.Contains("--add-game-only", StringComparer.Ordinal))
 {
     await AddGameChecks.RunAsync();
@@ -25,6 +37,7 @@ if (args.Contains("--dynamic-feed-only", StringComparer.Ordinal))
 }
 
 AssertPhysicalAppDataPath();
+await OnlineFixChecks.RunAsync();
 await AddGameChecks.RunAsync();
 AssertImageUris();
 AssertDetailHeroSelection();

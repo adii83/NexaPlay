@@ -2,6 +2,14 @@
 # Script ini HANYA sign file hasil publish NexaPlay
 # Tidak melakukan dotnet publish / build ulang
 
+[CmdletBinding()]
+param (
+    [string[]]$OnlyFiles = @(),
+    [ValidateRange(1, 5)]
+    [int]$MaxAttempts = 3,
+    [switch]$ForceResign
+)
+
 $ErrorActionPreference = "Stop"
 
 # =========================
@@ -54,27 +62,49 @@ if (-not $SignTool) {
 
 Write-Host "SignTool ditemukan: $SignTool" -ForegroundColor Green
 
+function Test-FileSignature {
+    param ([string]$FilePath)
+
+    # /tw also rejects a signature without a timestamp (SignTool warning exit code).
+    & $SignTool verify /pa /tw /q "$FilePath" *> $null
+    return ($LASTEXITCODE -eq 0)
+}
+
 function Invoke-SignFile {
     param (
         [string]$FilePath
     )
 
-    Write-Host "Signing: $FilePath" -ForegroundColor Yellow
-
-    & $SignTool sign `
-        /f $PfxPath `
-        /p $PlainPassword `
-        /fd SHA256 `
-        /tr "http://timestamp.digicert.com" `
-        /td SHA256 `
-        "$FilePath"
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "`nGAGAL SIGN FILE:" -ForegroundColor Red
-        Write-Host $FilePath -ForegroundColor Red
-        Write-Host "Kemungkinan password PFX salah atau certificate tidak valid untuk code signing." -ForegroundColor Yellow
-        exit 1
+    if (-not $ForceResign -and (Test-FileSignature -FilePath $FilePath)) {
+        Write-Host "Skip (signature dan timestamp valid): $FilePath" -ForegroundColor DarkGreen
+        return
     }
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        Write-Host "Signing [$attempt/$MaxAttempts]: $FilePath" -ForegroundColor Yellow
+
+        & $SignTool sign `
+            /f $PfxPath `
+            /p $PlainPassword `
+            /fd SHA256 `
+            /tr "http://timestamp.digicert.com" `
+            /td SHA256 `
+            "$FilePath"
+
+        $signExitCode = $LASTEXITCODE
+        if ($signExitCode -eq 0 -and (Test-FileSignature -FilePath $FilePath)) {
+            Write-Host "Signature dan timestamp terverifikasi: $FilePath" -ForegroundColor Green
+            return
+        }
+
+        Write-Host "Sign/verify belum berhasil (sign exit code: $signExitCode)." -ForegroundColor Yellow
+        if ($attempt -lt $MaxAttempts) {
+            Write-Host "Mencoba ulang dalam 2 detik..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 2
+        }
+    }
+
+    throw "Gagal sign/verify setelah $MaxAttempts percobaan: $FilePath. Lihat error SignTool di atas; kegagalan dapat berasal dari timestamp, file, atau certificate, bukan selalu password PFX."
 }
 
 function Invoke-VerifyFile {
@@ -84,7 +114,7 @@ function Invoke-VerifyFile {
 
     Write-Host "Verifying: $FilePath" -ForegroundColor Cyan
 
-    & $SignTool verify /pa /v "$FilePath"
+    & $SignTool verify /pa /tw /v "$FilePath"
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "`nGAGAL VERIFY FILE:" -ForegroundColor Red
@@ -99,13 +129,24 @@ try {
     # =========================
     Write-Host "`n[1/2] Mencari file EXE dan DLL untuk disign..." -ForegroundColor Cyan
 
-    $FilesToSign = Get-ChildItem $PublishDir -Recurse -Include *.exe, *.dll |
+    $FilesToSign = @(Get-ChildItem -LiteralPath $PublishDir -Recurse -File |
         Where-Object {
+            $_.Extension -in @(".exe", ".dll") -and
             $_.Name -notin @(
                 "createdump.exe",
                 "RestartAgent.exe"
             )
+        })
+
+    if ($OnlyFiles.Count -gt 0) {
+        foreach ($requested in $OnlyFiles) {
+            if ($requested -ne [System.IO.Path]::GetFileName($requested) -or
+                $requested -notin $FilesToSign.Name) {
+                throw "File yang diminta tidak ditemukan dalam daftar signing publish: $requested"
+            }
         }
+        $FilesToSign = @($FilesToSign | Where-Object { $_.Name -in $OnlyFiles })
+    }
 
     if ($FilesToSign.Count -eq 0) {
         Write-Host "Tidak ada file EXE/DLL ditemukan di folder publish." -ForegroundColor Yellow

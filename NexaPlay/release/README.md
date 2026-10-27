@@ -73,7 +73,7 @@ Contoh: Anda ingin rilis publik pertama sebagai `1.0.1`.
 Ubah:
 
 ```csharp
-public const string AppVersion = "1.0.1";
+public const string AppVersion = "1.0.5";
 ```
 
 di:
@@ -85,7 +85,7 @@ di:
 Ubah:
 
 ```iss
-#define MyAppVersion "1.0.1"
+#define MyAppVersion "1.0.5"
 ```
 
 di:
@@ -98,8 +98,8 @@ Sebelum membuat installer baru, salin master catalog terbaru dari Catalog Builde
 
 ```powershell
 Copy-Item `
-  "E:\NexaPlay-Catalog-Builder\NexaPlay-Catalog-Builder-v1\NexaPlay-Catalog-Builder\output\catalog.sqlite" `
-  ".\data\catalog\catalog_seed.sqlite" `
+  -LiteralPath "E:\NexaPlay-Catalog-Builder\NexaPlay-Catalog-Builder-v1\NexaPlay-Catalog-Builder\output\catalog.sqlite" `
+  -Destination ".\NexaPlay\data\catalog\catalog_seed.sqlite" `
   -Force
 ```
 
@@ -224,7 +224,7 @@ Pastikan status signature valid sebelum upload.
 Buat release/tag:
 
 ```text
-v1.0.1
+v1.0.5
 ```
 
 Upload asset:
@@ -245,9 +245,9 @@ Setelah installer final yang sudah ditandatangani di-upload, baru generate manif
 
 ```powershell
 .\release\Generate-UpdateManifest.ps1 `
-  -Version 1.0.5 `
+  -Version 1.0.6 `
   -InstallerPath "output\NexaPlay-Setup.exe" `
-  -InstallerUrl "https://github.com/adii83/NexaPlay/releases/download/v1.0.5/NexaPlay-Setup.exe"
+  -InstallerUrl "https://github.com/adii83/NexaPlay/releases/download/v1.0.6/NexaPlay-Setup.exe"
 ```
 
 Script ini akan:
@@ -452,3 +452,32 @@ Kalau source icon PNG berubah, urutan refresh yang aman:
 - Silent arguments update saat ini:
   kosong, karena updater sekarang membuka installer biasa agar user melanjutkan pemasangan manual
 - File `release\update-stable.generated.json` hanya artefak bantu, tidak perlu disimpan permanen di repo.
+
+## Signing retry dan melanjutkan proses (2026-10-27)
+
+sign-build.ps1 melewati file yang sudah lolos SignTool verify /pa /tw: signature dan timestamp valid.
+File yang belum valid dicoba maksimal tiga kali dengan jeda dua detik; setiap hasil sign wajib diverifikasi.
+Error ASN.1/SignerSign tidak otomatis berarti password PFX salah. Periksa output SignTool dan hasil percobaan ulang.
+
+Dari folder project NexaPlay, lanjutkan seluruh signing hasil publish:
+
+```powershell
+.\release\sign-build.ps1
+```
+
+Untuk satu file atau mengubah jumlah percobaan:
+
+```powershell
+.\release\sign-build.ps1 -OnlyFiles System.Management.dll
+.\release\sign-build.ps1 -MaxAttempts 5
+```
+
+Gunakan -ForceResign hanya ketika sengaja ingin mengganti signature yang sudah valid.
+Script tidak melakukan publish ulang. Setelah signing selesai, lanjut compile installer, sign installer,
+lalu hitung SHA-256 installer final seperti urutan rilis di atas.
+
+Verifikasi policy tanpa private key atau akses jaringan:
+
+```powershell
+powershell -NoProfile -File ..\NexaPlay.SelfCheck\SigningChecks.ps1
+```

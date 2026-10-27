@@ -120,6 +120,7 @@ public sealed partial class GameDetailPage : Page
     {
         base.OnNavigatedFrom(e);
         _isPageActive = false;
+        ViewModel.CancelOnlineFixOnNavigation();
         Interlocked.Increment(ref _navigationSession);
         _loadCts?.Cancel();
         _loadCts?.Dispose();

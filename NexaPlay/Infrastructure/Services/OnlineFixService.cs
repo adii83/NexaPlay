@@ -2,298 +2,177 @@ using NexaPlay.Contracts.Services;
 using NexaPlay.Core.Constants;
 using NexaPlay.Core.Enums;
 using NexaPlay.Core.Models;
-using NexaPlay.Infrastructure.Persistence;
-using System.IO.Compression;
-using System.Net.Http;
-using SharpCompress.Archives;
-using SharpCompress.Common;
-using SharpCompress.Readers;
 
 namespace NexaPlay.Infrastructure.Services;
 
-/// <summary>Applies and reverts online fixes from files.luatools.work.
-/// Migrated from GameHub OnlineFixService with WinUI 3 IProgress pattern.</summary>
+/// <summary>Installs only packages explicitly mapped by online_fix.json.</summary>
 public sealed class OnlineFixService : IOnlineFixService
 {
     private readonly IAppLogService _log;
     private readonly ISteamService _steam;
-    private readonly AppliedStateStore _appliedStore;
-    private readonly HttpClient _http;
+    private readonly IOnlineFixCatalogService _catalog;
+    private readonly OnlineFixArchiveDownloader _downloader;
+    private readonly SemaphoreSlim _operationGate = new(1, 1);
+    private readonly string _downloadsRoot;
 
-    public OnlineFixService(IAppLogService log, ISteamService steam, AppliedStateStore appliedStore)
+    public OnlineFixService(IAppLogService log, ISteamService steam, IOnlineFixCatalogService catalog)
+        : this(log, steam, catalog, new HttpClient(new HttpClientHandler { AllowAutoRedirect = true })
+        { Timeout = TimeSpan.FromSeconds(60) }, Path.Combine(Path.GetTempPath(), "nexaplay-onlinefix")) { }
+
+    internal OnlineFixService(IAppLogService log, ISteamService steam, IOnlineFixCatalogService catalog,
+        HttpClient http, string downloadsRoot)
     {
         _log = log;
         _steam = steam;
-        _appliedStore = appliedStore;
-        _http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = true })
-        {
-            Timeout = AppConstants.HttpDefaultTimeout
-        };
+        _catalog = catalog;
+        _downloader = new OnlineFixArchiveDownloader(http);
+        _downloadsRoot = downloadsRoot;
     }
 
-    public bool IsApplied(int appId) => _appliedStore.IsApplied(appId);
+    public Task RefreshCatalogAsync(CancellationToken ct = default) => _catalog.RefreshAsync(ct);
 
-    public async Task<bool> CheckAvailabilityAsync(int appId, CancellationToken ct = default)
+    public async Task<bool> CheckAvailabilityAsync(int appId, CancellationToken ct = default) =>
+        (await _catalog.GetAsync(appId, ct).ConfigureAwait(false))?.Files.Count > 0;
+
+    public bool IsApplied(int appId)
     {
-        var primaryUrl = $"{AppConstants.OnlineFixBaseUrl}{appId}.zip";
-        var fallbackUrl = AppConstants.OnlineFixFallbackUrl;
-        _log.Log("OnlineFix", $"Checking availability for appId={appId}");
-        for (int i = 0; i < 3; i++)
-        {
-            try
-            {
-                using var req = new HttpRequestMessage(HttpMethod.Head, primaryUrl);
-                req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
-                using var resp = await _http.SendAsync(req, ct);
-                if (resp.IsSuccessStatusCode)
-                {
-                    _log.Log("OnlineFix", $"Fix available for appId={appId} source=primary");
-                    return true;
-                }
-            }
-            catch { }
-            await Task.Delay(300, ct);
-        }
-
         try
         {
-            using var req = new HttpRequestMessage(HttpMethod.Head, fallbackUrl);
-            req.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
-            using var resp = await _http.SendAsync(req, ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                _log.Log("OnlineFix", $"Fix available for appId={appId} source=fallback");
-                return true;
-            }
+            var root = _steam.ResolveGameInstallPath(appId);
+            return root is not null && (OnlineFixFileTransaction.HasTransaction(root, appId) || File.Exists(LegacyLogPath(root, appId)));
         }
-        catch { }
-
-        _log.Log("OnlineFix", $"Fix not available for appId={appId} on all sources");
-        return false;
+        catch (Exception ex)
+        {
+            _log.Log("OnlineFix", $"Cannot inspect installed state appId={appId}: {ex.Message}");
+            return false;
+        }
     }
 
-    public async Task ApplyAsync(int appId, IProgress<BypassProgressState> progress, CancellationToken ct = default)
+    public Task<OnlineFixResult> ApplyAsync(int appId, IProgress<BypassProgressState> progress, CancellationToken ct = default) =>
+        RunAsync(appId, false, progress, ct);
+
+    public Task<OnlineFixResult> UnfixAsync(int appId, CancellationToken ct = default) => RunAsync(appId, true, null, ct);
+
+    private async Task<OnlineFixResult> RunAsync(int appId, bool remove, IProgress<BypassProgressState>? progress, CancellationToken ct)
     {
-        _log.Log("OnlineFix", $"Starting apply for appId={appId}");
-        var primaryUrl = $"{AppConstants.OnlineFixBaseUrl}{appId}.zip";
-        var fallbackUrl = AppConstants.OnlineFixFallbackUrl;
-
-        var installPath = _steam.ResolveGameInstallPath(appId);
-        if (string.IsNullOrEmpty(installPath) || !Directory.Exists(installPath))
-        {
-            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Failed, Error = "Game belum terinstall atau folder game tidak ditemukan." });
-            return;
-        }
-
-        progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Downloading, Phase = "download", Percent = 0 });
-        var tempDir = Path.Combine(Path.GetTempPath(), "nexaplay-onlinefix");
-        Directory.CreateDirectory(tempDir);
-        var zipPath = Path.Combine(tempDir, $"fix_{appId}.zip");
-
+        var entered = false;
         try
         {
-            HttpResponseMessage? resp = null;
-            var sourceLabel = "primary";
-            try
+            entered = await _operationGate.WaitAsync(0, ct).ConfigureAwait(false);
+            if (!entered) return new(OnlineFixOutcome.Failed, "Proses Online-Fix lain masih berjalan. Tunggu hingga selesai.");
+            // Filesystem resolution, decompression, hashing, and rollback stay off the UI thread.
+            return await Task.Run(async () =>
             {
-                var reqPrimary = new HttpRequestMessage(HttpMethod.Get, primaryUrl);
-                reqPrimary.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
-                resp = await _http.SendAsync(reqPrimary, HttpCompletionOption.ResponseHeadersRead, ct);
-                if (!resp.IsSuccessStatusCode)
+                ct.ThrowIfCancellationRequested();
+                if (appId <= 0) throw new InvalidDataException("AppID tidak valid.");
+                var root = _steam.ResolveGameInstallPath(appId);
+                if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
+                    return new OnlineFixResult(OnlineFixOutcome.NotInstalled, "Game belum terinstall atau folder game tidak ditemukan.");
+                if (remove)
                 {
-                    resp.Dispose();
-                    resp = null;
-                }
-            }
-            catch
-            {
-                resp?.Dispose();
-                resp = null;
-            }
-
-            if (resp is null)
-            {
-                sourceLabel = "fallback";
-                var reqFallback = new HttpRequestMessage(HttpMethod.Get, fallbackUrl);
-                reqFallback.Headers.UserAgent.ParseAdd("NexaPlay/1.0");
-                resp = await _http.SendAsync(reqFallback, HttpCompletionOption.ResponseHeadersRead, ct);
-            }
-
-            using (resp)
-            {
-                if (resp is null || !resp.IsSuccessStatusCode)
-                {
-                    progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Failed, Error = "File Online-Fix belum tersedia." });
-                    return;
-                }
-
-                _log.Log("OnlineFix", $"Download source selected appId={appId} source={sourceLabel}");
-
-                var total = resp.Content.Headers.ContentLength ?? 0;
-                long read = 0;
-                var buffer = new byte[81920];
-                var lastSentPct = -1;
-
-                await using var input = await resp.Content.ReadAsStreamAsync(ct);
-                await using var output = File.Create(zipPath);
-                int n;
-                while ((n = await input.ReadAsync(buffer.AsMemory(0, buffer.Length), ct)) > 0)
-                {
-                    await output.WriteAsync(buffer.AsMemory(0, n), ct);
-                    read += n;
-                    var pct = total > 0 ? (int)(read * 100.0 / total) : -1;
-                    if (pct >= lastSentPct + 1)
+                    if (OnlineFixFileTransaction.HasTransaction(root, appId)) OnlineFixFileTransaction.Remove(root, appId, ct);
+                    else if (File.Exists(LegacyLogPath(root, appId)))
                     {
-                        lastSentPct = pct;
-                        progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Downloading, Phase = "download", Percent = pct, BytesRead = read, TotalBytes = total });
+                        OnlineFixFileTransaction.RemoveLegacy(root, LegacyLogPath(root, appId), ct);
+                        return new OnlineFixResult(OnlineFixOutcome.Removed,
+                            "File Online-Fix lama berhasil dihapus. Backup file asli tidak tersedia untuk pemasangan versi lama.");
                     }
+                    return new OnlineFixResult(OnlineFixOutcome.Removed, "Online-Fix dihapus dan file asli dipulihkan.");
                 }
-            }
-
-            // Extract
-            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Extracting, Phase = "extract", Percent = 0 });
-            _log.Log("OnlineFix", "Extracting...");
-            var extracted = await ExtractAsync(zipPath, installPath, appId, ct);
-            await PatchUnsteamIniAsync(installPath, appId, extracted, ct);
-
-            // Write fix log
-            var logPath = Path.Combine(installPath, $"{AppConstants.FixLogPrefix}{appId}.log");
-            await WriteFixLogAsync(logPath, appId, extracted, ct);
-
-            // Update state
-            await _appliedStore.SetAppliedAsync(appId, true);
-            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Applied, Phase = "done", Percent = 100, Message = "Online-Fix berhasil diterapkan." });
-            _log.Log("OnlineFix", $"Apply done for appId={appId}, {extracted.Count} files extracted");
+                if (IsApplied(appId)) throw new IOException("Online-Fix atau data pemulihan masih ada. Jalankan Remove Online-Fix dahulu.");
+                var entry = await _catalog.GetAsync(appId, ct).ConfigureAwait(false);
+                if (entry is null || entry.Files.Count == 0)
+                    return new OnlineFixResult(OnlineFixOutcome.NotAvailable, "Online-Fix pada game ini belum tersedia di online_fix.json.");
+                Directory.CreateDirectory(_downloadsRoot);
+                var work = Path.Combine(_downloadsRoot, $"{appId}-{Guid.NewGuid():N}");
+                Directory.CreateDirectory(work);
+                try
+                {
+                    var packageRoot = Path.Combine(work, "packages");
+                    Directory.CreateDirectory(packageRoot);
+                    var paths = new List<string>();
+                    for (var i = 0; i < entry.Files.Count; i++)
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        var package = entry.Files[i];
+                        var path = OnlineFixFileTransaction.SafePath(packageRoot, package.Filename);
+                        var index = i;
+                        var lastPercent = -1;
+                        var lastReport = DateTime.UtcNow;
+                        Report(BypassStatus.Downloading, "download", i * 65 / entry.Files.Count);
+                        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                        deadline.CancelAfter(TimeSpan.FromMinutes(20));
+                        try
+                        {
+                            await _downloader.DownloadAsync(package, path, (read, total) =>
+                            {
+                                var percent = (int)((index + (total > 0 ? Math.Min(1, (double)read / total) : 0)) * 65 / entry.Files.Count);
+                                if (percent > lastPercent || DateTime.UtcNow - lastReport >= TimeSpan.FromMilliseconds(250))
+                                {
+                                    lastPercent = percent;
+                                    lastReport = DateTime.UtcNow;
+                                    progress?.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Downloading,
+                                        Phase = "download", Percent = percent, BytesRead = read, TotalBytes = total,
+                                        CurrentPart = index + 1, TotalParts = entry.Files.Count,
+                                        Message = $"Mengunduh paket {index + 1}/{entry.Files.Count}..." });
+                                }
+                            }, deadline.Token).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                        { throw new TimeoutException("Waktu unduhan Online-Fix habis. Silakan coba lagi."); }
+                        paths.Add(path);
+                    }
+                    var staging = Path.Combine(work, "staging");
+                    Report(BypassStatus.Extracting, "extract", 65);
+                    var lastExtractReport = DateTime.UtcNow;
+                    OnlineFixFileTransaction.Extract(paths, staging, appId, (_, _) =>
+                    {
+                        if (DateTime.UtcNow - lastExtractReport >= TimeSpan.FromMilliseconds(250))
+                        {
+                            Report(BypassStatus.Extracting, "extract", 70);
+                            lastExtractReport = DateTime.UtcNow;
+                        }
+                    }, ct);
+                    Report(BypassStatus.Applying, "install", 75);
+                    var lastInstallPercent = -1;
+                    OnlineFixFileTransaction.Install(root, staging, appId, pct =>
+                    {
+                        var percent = 75 + pct * 24 / 100;
+                        if (percent <= lastInstallPercent) return;
+                        lastInstallPercent = percent;
+                        Report(BypassStatus.Applying, "install", percent);
+                    }, ct);
+                    _log.Log("OnlineFix", $"Applied appId={appId}; durable transaction and backups retained");
+                    return new OnlineFixResult(OnlineFixOutcome.Applied, "Online-Fix berhasil diterapkan.");
+                }
+                finally
+                {
+                    try
+                    {
+                        var absolute = Path.GetFullPath(work);
+                        if (absolute.StartsWith(Path.GetFullPath(_downloadsRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar,
+                            StringComparison.OrdinalIgnoreCase)) Directory.Delete(absolute, recursive: true);
+                    }
+                    catch (Exception ex) { _log.Log("OnlineFix", $"Temporary cleanup failed: {ex.Message}"); }
+                }
+                void Report(BypassStatus status, string phase, int percent) => progress?.Report(
+                    new BypassProgressState { AppId = appId, Status = status, Phase = phase, Percent = percent });
+            }, CancellationToken.None).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Cancelled });
-            _log.Log("OnlineFix", $"Apply cancelled for appId={appId}");
-        }
-        catch (Exception ex)
-        {
-            progress.Report(new BypassProgressState { AppId = appId, Status = BypassStatus.Failed, Error = ex.Message });
-            _log.Log("OnlineFix", $"Apply failed for appId={appId}: {ex.Message}");
-        }
-        finally
-        {
-            try { if (File.Exists(zipPath)) File.Delete(zipPath); } catch { }
-        }
-    }
-
-    public async Task UnfixAsync(int appId, CancellationToken ct = default)
-    {
-        _log.Log("OnlineFix", $"Unfix appId={appId}");
-        var installPath = _steam.ResolveGameInstallPath(appId);
-        if (string.IsNullOrEmpty(installPath)) return;
-
-        var logPath = Path.Combine(installPath, $"{AppConstants.FixLogPrefix}{appId}.log");
-        if (!File.Exists(logPath)) { _log.Log("OnlineFix", "No fix log found"); return; }
-
-        var lines = await File.ReadAllLinesAsync(logPath, ct);
-        int deleted = 0;
-        foreach (var line in lines.Where(l =>
-                     !l.StartsWith('[') &&
-                     !string.IsNullOrWhiteSpace(l) &&
-                     l != "---" &&
-                     !l.StartsWith("Date:", StringComparison.OrdinalIgnoreCase) &&
-                     !l.StartsWith("AppId:", StringComparison.OrdinalIgnoreCase) &&
-                     !l.StartsWith("Files:", StringComparison.OrdinalIgnoreCase)))
-        {
-            var full = Path.Combine(installPath, line.Replace('/', Path.DirectorySeparatorChar));
-            try { if (File.Exists(full)) { File.Delete(full); deleted++; } } catch { }
-        }
-        try { File.Delete(logPath); } catch { }
-        await _appliedStore.SetAppliedAsync(appId, false);
-        _log.Log("OnlineFix", $"Unfix done: {deleted} files removed");
-    }
-
-    private static async Task<List<string>> ExtractAsync(string zipPath, string installPath, int appId, CancellationToken ct)
-    {
-        var extracted = new List<string>();
-        try
-        {
-            using var za = ZipFile.OpenRead(zipPath);
-            var prefix = appId + "/";
-            var allUnder = za.Entries.All(e => e.FullName.EndsWith("/") || e.FullName.StartsWith(prefix));
-            foreach (var entry in za.Entries)
-            {
-                ct.ThrowIfCancellationRequested();
-                if (entry.FullName.EndsWith("/")) continue;
-                var rel = allUnder && entry.FullName.StartsWith(prefix)
-                    ? entry.FullName[prefix.Length..] : entry.FullName;
-                var target = Path.Combine(installPath, rel.Replace('/', Path.DirectorySeparatorChar));
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                entry.ExtractToFile(target, overwrite: true);
-                extracted.Add(rel.Replace('\\', '/'));
-            }
-        }
-        catch (InvalidDataException)
-        {
-            // Fallback to SharpCompress for LZMA zips
-            using var stream = File.OpenRead(zipPath);
-            var prefix = appId + "/";
-            using var archive = ArchiveFactory.OpenArchive(stream, new ReaderOptions());
-            var entries = archive.Entries
-                .Where(entry => !entry.IsDirectory)
-                .ToList();
-
-            var allUnder = entries.All(entry => (entry.Key ?? string.Empty).Replace('\\', '/').StartsWith(prefix, StringComparison.Ordinal));
-            foreach (var entry in entries)
-            {
-                ct.ThrowIfCancellationRequested();
-                var key = (entry.Key ?? string.Empty).Replace('\\', '/');
-                var rel = allUnder && key.StartsWith(prefix, StringComparison.Ordinal)
-                    ? key[prefix.Length..]
-                    : key;
-
-                var target = Path.Combine(installPath, rel.Replace('/', Path.DirectorySeparatorChar));
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                entry.WriteToFile(target, new ExtractionOptions { Overwrite = true });
-                extracted.Add(rel);
-            }
-        }
-        return extracted;
-    }
-
-    private static async Task WriteFixLogAsync(string logPath, int appId, List<string> files, CancellationToken ct)
-    {
-        var lines = new List<string>
-        {
-            "[FIX]",
-            $"Date: {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
-            $"AppId: {appId}",
-            "Files:"
-        };
-        lines.AddRange(files);
-        lines.Add("[/FIX]");
-        await File.WriteAllLinesAsync(logPath, lines, ct);
-    }
-
-    private async Task PatchUnsteamIniAsync(string installPath, int appId, List<string> extractedFiles, CancellationToken ct)
-    {
-        var relIni = extractedFiles
-            .FirstOrDefault(f => f.EndsWith("unsteam.ini", StringComparison.OrdinalIgnoreCase));
-        if (string.IsNullOrWhiteSpace(relIni))
-            return;
-
-        var iniPath = Path.Combine(installPath, relIni.Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(iniPath))
-            return;
-
-        try
-        {
-            var contents = await File.ReadAllTextAsync(iniPath, ct);
-            var updated = contents.Replace("<appid>", appId.ToString(), StringComparison.OrdinalIgnoreCase);
-            if (!string.Equals(contents, updated, StringComparison.Ordinal))
-            {
-                await File.WriteAllTextAsync(iniPath, updated, ct);
-                _log.Log("OnlineFix", $"Updated unsteam.ini placeholder for appId={appId}");
-            }
+            _log.Log("OnlineFix", $"Operation cancelled appId={appId}");
+            return new(OnlineFixOutcome.Cancelled, remove
+                ? "Penghapusan dibatalkan. Data pemulihan disimpan; jalankan Remove Online-Fix lagi untuk melanjutkan."
+                : "Proses Online-Fix dibatalkan. Perubahan yang belum selesai dipulihkan.");
         }
         catch (Exception ex)
         {
-            _log.Log("OnlineFix", $"Failed to patch unsteam.ini for appId={appId}: {ex.Message}");
+            _log.Log("OnlineFix", $"Operation failed appId={appId}: {ex}");
+            return new(OnlineFixOutcome.Failed, ex.Message);
         }
+        finally { if (entered) _operationGate.Release(); }
     }
+
+    private static string LegacyLogPath(string root, int appId) => Path.Combine(root, $"{AppConstants.FixLogPrefix}{appId}.log");
 }

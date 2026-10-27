@@ -273,54 +273,75 @@ public sealed partial class BypassGamesViewModel : ObservableObject
     public async Task ApplyFixAsync(FixEntry fix)
     {
         if (IsApplying) return;
-        SelectedFix         = fix;
-        IsApplying          = true;
-        FixPercent          = 0;
-        CurrentBypassStatus = BypassStatus.Downloading;
-        BypassStatusMessage = "Checking availability...";
-
-        _fixCts = new CancellationTokenSource();
-        var available = await _onlineFix.CheckAvailabilityAsync(fix.AppId, _fixCts.Token);
-        if (!available)
+        SelectedFix = fix;
+        IsApplying = true;
+        FixPercent = 0;
+        CurrentBypassStatus = BypassStatus.Pending;
+        BypassStatusMessage = "Memeriksa katalog Online-Fix...";
+        using var cts = new CancellationTokenSource();
+        _fixCts = cts;
+        var acceptingProgress = true;
+        try
         {
-            BypassStatusMessage = "Fix not available for this game";
-            CurrentBypassStatus = BypassStatus.NotAvailable;
-            IsApplying          = false;
-            return;
-        }
-
-        var progress = new Progress<BypassProgressState>(state =>
-        {
-            FixPercent          = state.Percent < 0 ? FixPercent : state.Percent;
-            CurrentBypassStatus = state.Status;
-            FixPhase            = state.Phase;
-            BypassStatusMessage = state.Phase switch
+            if (!await _onlineFix.CheckAvailabilityAsync(fix.AppId, cts.Token))
             {
-                "download" => $"Downloading... {state.Percent}%",
-                "extract"  => "Extracting files...",
-                "done"     => state.Status == BypassStatus.Applied ? "Fix applied!" : state.Error ?? "Failed",
-                _          => state.Message ?? state.Status.ToString()
-            };
-        });
-
-        await _onlineFix.ApplyAsync(fix.AppId, progress, _fixCts.Token);
-        IsApplying = false;
+                BypassStatusMessage = "Online-Fix belum tersedia di online_fix.json.";
+                CurrentBypassStatus = BypassStatus.NotAvailable;
+                return;
+            }
+            var progress = new Progress<BypassProgressState>(state =>
+            {
+                if (!acceptingProgress || cts.IsCancellationRequested) return;
+                FixPercent = Math.Clamp(state.Percent, 0, 100);
+                CurrentBypassStatus = state.Status;
+                FixPhase = state.Phase;
+                BypassStatusMessage = state.Message ?? (state.Phase switch
+                {
+                    "download" => "Mengunduh Online-Fix...",
+                    "extract" => "Memeriksa arsip...",
+                    "install" => "Membackup dan memasang file...",
+                    _ => "Memproses Online-Fix..."
+                });
+            });
+            var result = await _onlineFix.ApplyAsync(fix.AppId, progress, cts.Token);
+            acceptingProgress = false;
+            BypassStatusMessage = result.Message;
+            CurrentBypassStatus = ResultStatus(result);
+            if (result.Succeeded) FixPercent = 100;
+        }
+        catch (OperationCanceledException) { CurrentBypassStatus = BypassStatus.Cancelled; BypassStatusMessage = "Proses dibatalkan."; }
+        catch (Exception ex) { CurrentBypassStatus = BypassStatus.Failed; BypassStatusMessage = ex.Message; }
+        finally { acceptingProgress = false; _fixCts = null; IsApplying = false; }
     }
 
     public void CancelFix()
     {
         _fixCts?.Cancel();
-        IsApplying          = false;
-        BypassStatusMessage = "Cancelled";
-        CurrentBypassStatus = BypassStatus.Cancelled;
+        BypassStatusMessage = "Menunggu pembatalan dan pemulihan selesai...";
     }
 
     public async Task UnfixAsync(int appId)
     {
-        await _onlineFix.UnfixAsync(appId);
-        BypassStatusMessage = "Fix removed";
-        CurrentBypassStatus = BypassStatus.Unknown;
+        if (IsApplying) return;
+        IsApplying = true;
+        try
+        {
+            var result = await _onlineFix.UnfixAsync(appId);
+            BypassStatusMessage = result.Message;
+            CurrentBypassStatus = ResultStatus(result);
+        }
+        catch (Exception ex) { BypassStatusMessage = ex.Message; CurrentBypassStatus = BypassStatus.Failed; }
+        finally { IsApplying = false; }
     }
+
+    private static BypassStatus ResultStatus(OnlineFixResult result) => result.Outcome switch
+    {
+        OnlineFixOutcome.Applied => BypassStatus.Applied,
+        OnlineFixOutcome.Removed => BypassStatus.Unknown,
+        OnlineFixOutcome.Cancelled => BypassStatus.Cancelled,
+        OnlineFixOutcome.NotAvailable => BypassStatus.NotAvailable,
+        _ => BypassStatus.Failed
+    };
 
     public bool IsFixApplied(int appId) => _onlineFix.IsApplied(appId);
 }

@@ -7,8 +7,16 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.20" />
+    <PackageReference Include="SharpCompress" Version="0.48.1" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\NexaPlay\Core\Models\OnlineFixModels.cs" Link="OnlineFixModels.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\IOnlineFixService.cs" Link="IOnlineFixService.cs" />
+    <Compile Include="..\NexaPlay\Contracts\Services\IOnlineFixCatalogService.cs" Link="IOnlineFixCatalogService.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\OnlineFixCatalogService.cs" Link="OnlineFixCatalogService.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\OnlineFixArchiveDownloader.cs" Link="OnlineFixArchiveDownloader.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\OnlineFixFileTransaction.cs" Link="OnlineFixFileTransaction.cs" />
+    <Compile Include="..\NexaPlay\Infrastructure\Services\OnlineFixService.cs" Link="OnlineFixService.cs" />
     <Compile Include="..\NexaPlay\Infrastructure\Services\AddGameService.cs" Link="AddGameService.cs" />
     <Compile Include="..\NexaPlay\Infrastructure\Services\AddGamePayloadBuilder.cs" Link="AddGamePayloadBuilder.cs" />
     <Compile Include="..\NexaPlay\Contracts\Services\IAddGameService.cs" Link="IAddGameService.cs" />

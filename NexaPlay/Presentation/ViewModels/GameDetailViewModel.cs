@@ -167,8 +167,8 @@ public sealed partial class GameDetailViewModel : ObservableObject
     public string PlanLabel => IsPremiumGame ? "PREMIUM" : "STANDARD";
     public string AddGameButtonText => IsGameInstalled ? "Remove Game" : IsAddingGame ? "Adding..." : "Add Game";
     public string OnlineFixButtonText => IsFixApplied ? "Remove Online-Fix" : (IsApplyingFix ? "Memproses..." : "Online-Fix");
-    public bool CanAddGame => Game is not null && !IsAddingGame;
-    public bool CanApplyOnlineFix => Game is not null && !IsApplyingFix;
+    public bool CanAddGame => Game is not null && !IsAddingGame && !IsApplyingFix;
+    public bool CanApplyOnlineFix => Game is not null && !IsApplyingFix && !IsAddingGame;
     public bool CanRestartSteam => !IsAddingGame && !IsApplyingFix;
     public string AddGameDialogPercentText => $"{Math.Max(0, AddGameDialogPercent)}%";
     public string AddGameDialogActionText => CanCloseAddGameDialog ? "Mengerti" : "Batal";
@@ -176,6 +176,8 @@ public sealed partial class GameDetailViewModel : ObservableObject
     public Func<string, Task>? ShowLicenseGateDialogAsync { get; set; }
 
     private CancellationTokenSource? _fixCts;
+    private bool _fixRequestRunning;
+    private int _fixUiVersion;
     private CancellationTokenSource? _addGameCts;
     private OnlineFixDialogMode _onlineFixDialogMode = OnlineFixDialogMode.Idle;
     private int _loadVersion;
@@ -253,6 +255,8 @@ public sealed partial class GameDetailViewModel : ObservableObject
     /// </summary>
     public async Task LoadAsync(int appId, CancellationToken ct = default)
     {
+        if (Game?.AppId != appId) CancelOnlineFixOnNavigation();
+        _ = RefreshOnlineFixCatalogSafelyAsync(ct);
         var loadVersion = Interlocked.Increment(ref _loadVersion);
         ct.ThrowIfCancellationRequested();
 
@@ -331,122 +335,145 @@ public sealed partial class GameDetailViewModel : ObservableObject
     [RelayCommand]
     private async Task ApplyFixAsync()
     {
-        if (Game is null || IsApplyingFix) return;
-        if (IsFixApplied)
-        {
-            await RemoveFixAsync();
-            return;
-        }
+        if (Game is null || IsApplyingFix || IsAddingGame) return;
+        IsFixApplied = _onlineFix.IsApplied(Game.AppId);
+        if (IsFixApplied) { await RemoveFixAsync(); return; }
         var targetAppId = Game.AppId;
+        var version = ++_fixUiVersion;
+        var cts = new CancellationTokenSource();
+        _fixCts?.Dispose();
+        _fixCts = cts;
+        _fixRequestRunning = true;
         IsApplyingFix = true;
         ActionPercent = 0;
         ActionStatus = "Memeriksa ketersediaan Online-Fix...";
         CurrentBypassStatus = BypassStatus.Pending;
-        _fixCts?.Dispose();
-        _fixCts = new CancellationTokenSource();
-
+        var awaitingConfirmation = false;
         try
         {
             SetOnlineFixDialogChecking(targetAppId);
-            var available = await _onlineFix.CheckAvailabilityAsync(targetAppId, _fixCts.Token);
-
-            if (_fixCts.IsCancellationRequested)
-            {
-                SetOnlineFixDialogCancelled();
-                IsApplyingFix = false;
-                return;
-            }
-
+            var available = await _onlineFix.CheckAvailabilityAsync(targetAppId, cts.Token);
+            cts.Token.ThrowIfCancellationRequested();
+            if (!IsFixUiCurrent(targetAppId, version)) return;
             if (!available)
             {
                 SetOnlineFixDialogUnavailable();
-                ActionStatus = "Online-Fix belum tersedia.";
+                ActionStatus = "Online-Fix belum tersedia di online_fix.json.";
                 CurrentBypassStatus = BypassStatus.NotAvailable;
-                IsApplyingFix = false;
                 return;
             }
-
             SetOnlineFixDialogConfirm(targetAppId);
+            awaitingConfirmation = true;
         }
         catch (OperationCanceledException)
         {
-            SetOnlineFixDialogCancelled();
-            ActionStatus = "Pemeriksaan Online-Fix dibatalkan.";
-            CurrentBypassStatus = BypassStatus.Cancelled;
-            IsApplyingFix = false;
-            return;
+            if (IsFixUiCurrent(targetAppId, version))
+            {
+                SetOnlineFixDialogCancelled();
+                ActionStatus = "Pemeriksaan Online-Fix dibatalkan.";
+                CurrentBypassStatus = BypassStatus.Cancelled;
+            }
         }
         catch (Exception ex)
         {
-            SetOnlineFixDialogFailed("Gagal memeriksa ketersediaan Online-Fix. Silakan coba lagi.");
-            ActionStatus = $"Cek Online-Fix gagal: {ex.Message}";
-            CurrentBypassStatus = BypassStatus.Failed;
-            IsApplyingFix = false;
-            return;
+            if (IsFixUiCurrent(targetAppId, version))
+            {
+                SetOnlineFixDialogFailed(ex.Message);
+                ActionStatus = "Gagal memeriksa katalog Online-Fix.";
+                CurrentBypassStatus = BypassStatus.Failed;
+            }
+            _log.Log("OnlineFix", $"Availability failed appId={targetAppId}: {ex}");
+        }
+        finally
+        {
+            _fixRequestRunning = false;
+            if (!awaitingConfirmation || !IsFixUiCurrent(targetAppId, version)) FinishFixRequest(cts);
         }
     }
 
     [RelayCommand]
-    private void CancelFix()
-    {
-        _fixCts?.Cancel();
-        SetOnlineFixDialogCancelled();
-        IsApplyingFix = false;
-        ActionStatus = "Proses Online-Fix dibatalkan.";
-        CurrentBypassStatus = BypassStatus.Cancelled;
-    }
+    private void CancelFix() => HandleOnlineFixSecondaryAction();
 
     [RelayCommand]
     private async Task RemoveFixAsync()
     {
-        if (Game is null || IsApplyingFix) return;
+        if (Game is null || IsApplyingFix || IsAddingGame) return;
         var targetAppId = Game.AppId;
-
+        var version = ++_fixUiVersion;
+        var cts = new CancellationTokenSource();
+        _fixCts = cts;
+        _fixRequestRunning = true;
         IsApplyingFix = true;
         CurrentBypassStatus = BypassStatus.Applying;
-        ActionStatus = "Memproses penghapusan Online-Fix...";
+        ActionStatus = "Menghapus Online-Fix dan memulihkan file asli...";
         SetOnlineFixDialogUnfixing();
-
         try
         {
-            await _onlineFix.UnfixAsync(targetAppId);
+            var result = await _onlineFix.UnfixAsync(targetAppId, cts.Token);
+            if (!IsFixUiCurrent(targetAppId, version)) return;
             IsFixApplied = _onlineFix.IsApplied(targetAppId);
-
-            if (!IsFixApplied)
+            ActionStatus = result.Message;
+            if (result.Outcome == OnlineFixOutcome.Removed)
             {
                 SetOnlineFixDialogUnfixDone();
-                ActionStatus = "Online-Fix berhasil dihapus.";
+                OnlineFixDialogMessage = result.Message;
                 CurrentBypassStatus = BypassStatus.Unknown;
+            }
+            else if (result.Outcome == OnlineFixOutcome.Cancelled)
+            {
+                SetOnlineFixDialogCancelled();
+                OnlineFixDialogMessage = result.Message;
+                CurrentBypassStatus = BypassStatus.Cancelled;
             }
             else
             {
-                SetOnlineFixDialogUnfixFailed("Online-Fix belum berhasil dihapus. Silakan coba lagi.");
-                ActionStatus = "Online-Fix belum berhasil dihapus.";
+                SetOnlineFixDialogUnfixFailed(result.Message);
                 CurrentBypassStatus = BypassStatus.Failed;
             }
         }
-        catch (OperationCanceledException)
-        {
-            SetOnlineFixDialogCancelled();
-            ActionStatus = "Penghapusan Online-Fix dibatalkan.";
-            CurrentBypassStatus = BypassStatus.Cancelled;
-        }
         catch (Exception ex)
         {
-            SetOnlineFixDialogUnfixFailed("Terjadi kendala saat menghapus Online-Fix. Silakan coba lagi.");
-            ActionStatus = $"Gagal unfix: {ex.Message}";
-            CurrentBypassStatus = BypassStatus.Failed;
+            if (IsFixUiCurrent(targetAppId, version))
+            {
+                SetOnlineFixDialogUnfixFailed(ex.Message);
+                CurrentBypassStatus = BypassStatus.Failed;
+            }
+            _log.Log("OnlineFix", $"Remove failed appId={targetAppId}: {ex}");
         }
-        finally
-        {
-            IsApplyingFix = false;
-        }
+        finally { FinishFixRequest(cts); }
+    }
+
+    private bool IsFixUiCurrent(int appId, int version) => Game?.AppId == appId && version == _fixUiVersion;
+
+    private void FinishFixRequest(CancellationTokenSource cts)
+    {
+        if (!ReferenceEquals(_fixCts, cts)) return;
+        _fixCts = null;
+        _fixRequestRunning = false;
+        cts.Dispose();
+        IsApplyingFix = false;
+    }
+
+    public void CancelOnlineFixOnNavigation()
+    {
+        ++_fixUiVersion;
+        _fixCts?.Cancel();
+        IsOnlineFixDialogOpen = false;
+        _onlineFixDialogMode = OnlineFixDialogMode.Idle;
+        if (!_fixRequestRunning && _fixCts is { } cts) FinishFixRequest(cts);
+    }
+
+    private async Task RefreshOnlineFixCatalogSafelyAsync(CancellationToken ct)
+    {
+        try { await _onlineFix.RefreshCatalogAsync(ct); }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { _log.Log("OnlineFixCatalog", $"Detail refresh failed non-fatally: {ex.Message}"); }
     }
 
     [RelayCommand]
     private async Task AddGameAsync()
     {
-        if (Game is null || IsAddingGame) return;
+        if (Game is null || IsAddingGame || IsApplyingFix) return;
         if (!await EnsurePremiumAccessAsync(Game.IsPremium))
             return;
 
@@ -651,115 +678,104 @@ public sealed partial class GameDetailViewModel : ObservableObject
 
     public async Task HandleOnlineFixPrimaryActionAsync()
     {
-        if (Game is null)
-            return;
-        var targetAppId = Game.AppId;
-
-        if (_onlineFixDialogMode != OnlineFixDialogMode.ConfirmAvailable)
+        if (_fixRequestRunning) return;
+        if (_onlineFixDialogMode != OnlineFixDialogMode.ConfirmAvailable || Game is null || _fixCts is null)
         {
             IsOnlineFixDialogOpen = false;
             return;
         }
-
+        var targetAppId = Game.AppId;
+        var version = _fixUiVersion;
+        var cts = _fixCts;
+        _fixRequestRunning = true;
         SetOnlineFixDialogApplying();
         ActionStatus = "Memulai penerapan Online-Fix...";
         CurrentBypassStatus = BypassStatus.Downloading;
         OnlineFixDialogPercent = 0;
-
+        var acceptingProgress = true;
         var progress = new Progress<BypassProgressState>(state =>
         {
+            if (!acceptingProgress || cts.IsCancellationRequested || !IsFixUiCurrent(targetAppId, version)) return;
             CurrentBypassStatus = state.Status;
-            ActionPercent = state.Percent < 0 ? ActionPercent : state.Percent;
-            OnlineFixDialogPercent = state.Percent < 0 ? OnlineFixDialogPercent : state.Percent;
-
-            if (state.Status == BypassStatus.Failed)
-            {
-                var failedMessage = state.Error ?? state.Message ?? "Online-Fix gagal diterapkan.";
-                ActionStatus = failedMessage;
-                OnlineFixDialogMessage = failedMessage;
-                return;
-            }
-
-            ActionStatus = state.Phase switch
-            {
-                "download" => state.Percent >= 0 ? $"Mengunduh Online-Fix... {state.Percent}%" : "Mengunduh Online-Fix...",
-                "extract" => "Mengekstrak Online-Fix...",
-                "done" => state.Status == BypassStatus.Applied ? "Online-Fix berhasil diterapkan." : (state.Error ?? "Online-Fix gagal diterapkan."),
-                _ => state.Message ?? state.Status.ToString()
-            };
-
+            ActionPercent = Math.Clamp(state.Percent, 0, 100);
+            OnlineFixDialogPercent = ActionPercent;
             OnlineFixDialogMessage = state.Phase switch
             {
-                "download" => state.Percent >= 0 ? $"Sedang mengunduh file Online-Fix... {state.Percent}%" : "Sedang mengunduh file Online-Fix...",
-                "extract" => "Mengekstrak file ke folder game...",
-                "done" => state.Status == BypassStatus.Applied ? "Online-Fix berhasil dipasang." : (state.Error ?? "Online-Fix gagal dipasang."),
-                "cancel" => "Proses Online-Fix dibatalkan.",
+                "download" => state.Message ?? "Mengunduh paket Online-Fix...",
+                "extract" => "Memeriksa dan mengekstrak arsip ke folder sementara...",
+                "install" => "Membackup file asli dan memasang Online-Fix...",
                 _ => state.Message ?? "Memproses Online-Fix..."
             };
+            ActionStatus = OnlineFixDialogMessage;
         });
-
         try
         {
-            await _onlineFix.ApplyAsync(targetAppId, progress, _fixCts?.Token ?? CancellationToken.None);
+            var result = await _onlineFix.ApplyAsync(targetAppId, progress, cts.Token);
+            acceptingProgress = false;
+            if (!IsFixUiCurrent(targetAppId, version)) return;
             IsFixApplied = _onlineFix.IsApplied(targetAppId);
-
-            if (_fixCts?.IsCancellationRequested == true || CurrentBypassStatus == BypassStatus.Cancelled)
+            ActionStatus = result.Message;
+            switch (result.Outcome)
             {
-                SetOnlineFixDialogCancelled();
-            }
-            else if (IsFixApplied)
-            {
-                SetOnlineFixDialogDone();
-                ActionStatus = "Online-Fix berhasil diterapkan.";
-            }
-            else if (CurrentBypassStatus == BypassStatus.Failed)
-            {
-                var errorText = OnlineFixDialogMessage;
-                if (errorText.Contains("not installed", StringComparison.OrdinalIgnoreCase) ||
-                    errorText.Contains("path not found", StringComparison.OrdinalIgnoreCase) ||
-                    errorText.Contains("belum terinstall", StringComparison.OrdinalIgnoreCase) ||
-                    errorText.Contains("tidak ditemukan", StringComparison.OrdinalIgnoreCase))
-                {
+                case OnlineFixOutcome.Applied:
+                    SetOnlineFixDialogDone();
+                    CurrentBypassStatus = BypassStatus.Applied;
+                    ActionPercent = 100;
+                    break;
+                case OnlineFixOutcome.Cancelled:
+                    SetOnlineFixDialogCancelled();
+                    CurrentBypassStatus = BypassStatus.Cancelled;
+                    break;
+                case OnlineFixOutcome.NotInstalled:
                     SetOnlineFixDialogGameNotInstalled();
-                }
-                else if (errorText.Contains("not available", StringComparison.OrdinalIgnoreCase))
-                {
+                    CurrentBypassStatus = BypassStatus.Failed;
+                    break;
+                case OnlineFixOutcome.NotAvailable:
                     SetOnlineFixDialogUnavailable();
-                }
-                else
-                {
-                    SetOnlineFixDialogFailed(errorText);
-                }
+                    CurrentBypassStatus = BypassStatus.NotAvailable;
+                    break;
+                default:
+                    SetOnlineFixDialogFailed(result.Message);
+                    CurrentBypassStatus = BypassStatus.Failed;
+                    break;
             }
-            else
-            {
-                SetOnlineFixDialogFailed("Online-Fix gagal diterapkan.");
-            }
+            OnlineFixDialogMessage = result.Message;
         }
-        finally
+        catch (Exception ex)
         {
-            IsApplyingFix = false;
+            acceptingProgress = false;
+            if (IsFixUiCurrent(targetAppId, version))
+            {
+                IsFixApplied = _onlineFix.IsApplied(targetAppId);
+                SetOnlineFixDialogFailed(ex.Message);
+                CurrentBypassStatus = BypassStatus.Failed;
+                ActionStatus = ex.Message;
+            }
+            _log.Log("OnlineFix", $"Apply failed appId={targetAppId}: {ex}");
         }
+        finally { acceptingProgress = false; FinishFixRequest(cts); }
     }
 
     public void HandleOnlineFixSecondaryAction()
     {
-        if (_onlineFixDialogMode == OnlineFixDialogMode.Applying || _onlineFixDialogMode == OnlineFixDialogMode.Checking)
+        if (_fixRequestRunning)
         {
             _fixCts?.Cancel();
-            SetOnlineFixDialogCancelled();
-            IsApplyingFix = false;
-            CurrentBypassStatus = BypassStatus.Cancelled;
-            ActionStatus = "Proses Online-Fix dibatalkan.";
+            IsOnlineFixDialogPrimaryEnabled = false;
+            IsOnlineFixDialogSecondaryEnabled = false;
+            OnlineFixDialogTitle = "Membatalkan Online-Fix";
+            OnlineFixDialogMessage = "Menunggu proses berhenti dan memulihkan perubahan...";
+            ActionStatus = OnlineFixDialogMessage;
             return;
         }
-
         IsOnlineFixDialogOpen = false;
         if (_onlineFixDialogMode == OnlineFixDialogMode.ConfirmAvailable)
         {
-            IsApplyingFix = false;
+            _fixCts?.Cancel();
+            if (_fixCts is { } cts) FinishFixRequest(cts);
             CurrentBypassStatus = BypassStatus.Unknown;
             ActionStatus = "Penerapan Online-Fix dibatalkan.";
+            _onlineFixDialogMode = OnlineFixDialogMode.Idle;
         }
     }
 
