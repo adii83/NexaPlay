@@ -1,16 +1,16 @@
-# Graph Report - NexaPlay  (2026-10-27)
+# Graph Report - NexaPlay  (2026-10-28)
 
 ## Corpus Check
-- 168 files · ~193,779 words
+- 172 files · ~195,784 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2454 nodes · 4895 edges · 167 communities (146 shown, 21 thin omitted)
-- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 335 edges (avg confidence: 0.77)
+- 2482 nodes · 4951 edges · 185 communities (156 shown, 29 thin omitted)
+- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 348 edges (avg confidence: 0.77)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d76c8415`
+- Built from commit: `02f3d8e7`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -19,11 +19,11 @@
 - BypassGamesViewModel
 - SteamStoreService
 - Add Game Payload
-- NexaPlayOverrideService
+- Task
 - Window
 - SteamPlatformService
 - Audit Phase 2 — Cache, Games, Refresh
-- .CheckCatalogUpdatesInBackgroundAsync
+- MainWindow
 - SqliteCatalogRepository
 - Task Components
 - OnlineFixFileTransaction
@@ -36,7 +36,7 @@
 - GameDetailPage
 - AddGameService
 - DynamicFeedRefreshService
-- NexaPlay.Core.Enums
+- NexaPlay.Infrastructure.Services
 - CatalogUpdateService
 - BypassGameDetailViewModel
 - Page
@@ -65,22 +65,22 @@
 - OnlineFixChecks
 - Load Games Async
 - Audit Alur Data NexaPlay
-- .FindSiblingSkeletonOverlay
-- LicenseInfo
+- NexaPlayOverrideService
+- LicenseStore
 - .TryCreate
 - Graphify Workflow
 - .LoadAsync
 - .QueryDailyBrowseAsync
-- .Log
-- Border
+- WindowsDefenderService
+- .NavigateTo
 - OnlineFixCatalogService
 - WindowsDefenderService
 - NexaPlay.csproj
-- SettingsPage
-- .ScanSteamLibraryAsync
+- INavigationService
+- ISteamService
 - .RunAsync
-- .NavigateTo
-- .ApplyFixAsync
+- .OnActivateClicked
+- GameDetailEntry
 - AccountReportLimitStore
 - Page
 - IWindowsDefenderService
@@ -89,33 +89,33 @@
 - OnlineFixArchiveDownloader
 - Page
 - CatalogManifestRules
-- IAppLogService
-- ISteamService
-- RoutedEventArgs
-- .OnNavigatedTo
-- HomePage
+- AppLogService
 - FakeSteam
+- RoutedEventArgs
+- INexaPlayOverrideService
+- HomePage
+- .SendAsync
 - Catalog Bootstrap Service
 - .SelectManualFolderAsync
 - Catalog Bootstrap Service
-- Grid
+- App.xaml.cs
 - .ExtractDownloadedArchives
 - Task
 - .ExtractWithExternalTool
-- MainWindow
-- .GetAsync
+- .ApplyHwndIcon
+- .TutorialThumbnail_Tapped
 - .ExtractDownloadedArchives
 - Catalog Load Coordinator
 - .ApplyHwndIcon
-- .TutorialThumbnail_Tapped
+- IAddGameService
 - BypassProgressState
-- .GetLibraryPaths
+- CancellationToken
 - 2. Alur Startup
 - graphify reference: query, path, explain
 - ICatalogRefreshState
 - Generate-AppIcon.ps1
 - .TutorialThumbnail_Tapped
-- .ShowUpdateAvailableDialogAsync
+- .CheckArchivePasswordsAsync
 - .Select
 - Add Game: sumber API dan ZIP final
 - StringExtensions.cs
@@ -148,7 +148,7 @@
 - Alur Add Game lama snapshot
 - Binding versi depot melalui set
 - Verifikasi parity Lightning sebelum revisi
-- IAppUpdateService
+- .Log
 - 37. Current vs Proposed Target Gap
 - Verifikasi parity Lightning sebelum revisi
 - ICatalogRefreshState
@@ -156,11 +156,13 @@
 - graphify reference: GitHub clone and cross-repo merge
 - graphify reference: transcribe video and audio
 - 14. Inventaris Model / DTO
+- LicenseInfo
 - 7. Alur Data Library
-- ManagedManifestStore
+- .SelectManualFolderAsync
 - sign-build.ps1
 - extraction-spec.md
 - 18. Arsitektur Target yang Direkomendasikan
+- DeviceIdHelper
 - notifyHost
 - Root Split View
 - hooks json
@@ -169,36 +171,52 @@
 - Small Batch Build Workflow
 - Home Page Decision Archive
 - Layout-Cycle-Safe WebView Height Feedback
-- Online-Fix — current implementation (2026-10-27)
+- .LoadGamesAsync
+- IOnlineFixService
+- Online-Fix — current implementation (2026-10-28)
+- CatalogLoadCoordinator
+- PointerRoutedEventArgs
+- IAppLogService
 - FakeClock
 - Q: tolong analisa alur online fix sekarang
 - .InstallLuaFromZip
-- Journal
+- .OnNavigatedTo
+- ISteamStoreService
+- Q: System.Management.dll signing fails with SignerSign 0x80093102 while other files succeed
+- .HeroCarousel_SelectionChanged
 - int Components
+- .PopularGamesGrid_SizeChanged
+- Grid
+- StringExtensions.cs
+- StartupLoadingLogoRotation
+- NavigationItem.cs
+- .OnNavigatedTo
+- generate.py
+- README.md
 
 ## God Nodes (most connected - your core abstractions)
 1. `GameDetailViewModel` - 91 edges
 2. `GameDetailPage` - 83 edges
-3. `NexaPlay.Core.Models` - 72 edges
+3. `NexaPlay.Core.Models` - 74 edges
 4. `BypassGameDetailViewModel` - 70 edges
 5. `MainWindow` - 64 edges
 6. `GamesViewModel` - 62 edges
 7. `Window` - 60 edges
-8. `NexaPlay.Contracts.Services` - 56 edges
+8. `NexaPlay.Contracts.Services` - 57 edges
 9. `BypassGameDetailPage` - 56 edges
 10. `HomeViewModel` - 51 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `NexaPlay Performance Contract` --semantically_similar_to--> `Lazy Rich Detail Flow`  [INFERRED] [semantically similar]
   NexaPlay/AGENTS.md → CLAUDE.md
+- `FakeSteam` --implements--> `ISteamService`  [EXTRACTED]
+  NexaPlay.SelfCheck/AddGameChecks.cs → NexaPlay/Contracts/Services/ISteamService.cs
 - `FakeCatalog` --implements--> `IOnlineFixCatalogService`  [EXTRACTED]
   NexaPlay.SelfCheck/OnlineFixChecks.cs → NexaPlay/Contracts/Services/IOnlineFixCatalogService.cs
 - `FakeSteam` --implements--> `ISteamService`  [EXTRACTED]
   NexaPlay.SelfCheck/OnlineFixChecks.cs → NexaPlay/Contracts/Services/ISteamService.cs
-- `NullLogService` --implements--> `IAppLogService`  [EXTRACTED]
-  NexaPlay.SelfCheck/Program.cs → NexaPlay/Contracts/Services/IAppLogService.cs
-- `Invoke-SignFile()` --calls--> `Start-Sleep()`  [INFERRED]
-  NexaPlay/release/sign-build.ps1 → NexaPlay.SelfCheck/SigningChecks.ps1
+- `PasswordCheckLog` --implements--> `IAppLogService`  [EXTRACTED]
+  NexaPlay.SelfCheck/OnlineFixPasswordChecks.cs → NexaPlay/Contracts/Services/IAppLogService.cs
 
 ## Import Cycles
 - None detected.
@@ -210,43 +228,43 @@
 - **Fast Catalog Refresh Mechanisms** — docs_superpowers_specs_2026_08_17_fast_catalog_refresh_design_listing_cover_priority, docs_superpowers_specs_2026_08_17_fast_catalog_refresh_design_catalog_generation_invalidation, docs_superpowers_specs_2026_08_17_fast_catalog_refresh_design_tombstone_cache_cleanup [EXTRACTED 1.00]
 - **Native Migration Governance** — nexaplay_agents_feature_parity, nexaplay_agents_small_batch_workflow, nexaplay_agents_ui_design_contract, nexaplay_agents_performance_contract [EXTRACTED 1.00]
 
-## Communities (167 total, 21 thin omitted)
+## Communities (185 total, 29 thin omitted)
 
 ### Community 0 - "HomeViewModel"
-Cohesion: 0.07
-Nodes (27): CancellationToken, Task, ICoverImageCacheService, CancellationToken, IProgress, IReadOnlyList, Task, IMetadataService (+19 more)
+Cohesion: 0.06
+Nodes (35): CancellationToken, IReadOnlyList, Task, IBypassGamesDataService, CancellationToken, Task, ICoverImageCacheService, CancellationToken (+27 more)
 
 ### Community 1 - "BypassGamesViewModel"
-Cohesion: 0.07
-Nodes (28): CancellationToken, IReadOnlyList, Task, IBypassGamesDataService, CancellationToken, IProgress, Task, IOnlineFixService (+20 more)
+Cohesion: 0.13
+Nodes (10): BypassStatus, CancellationTokenSource, int, IReadOnlyList, List, ObservableCollection, string, Task (+2 more)
 
 ### Community 2 - "SteamStoreService"
-Cohesion: 0.08
-Nodes (22): HasTransientError, Json, JsonArray, JsonObject, CancellationToken, Task, ISteamStoreService, DateTime (+14 more)
+Cohesion: 0.17
+Nodes (11): JsonArray, JsonObject, ConcurrentDictionary, DateTime, HttpClient, int, IReadOnlyList, long (+3 more)
 
 ### Community 3 - "Add Game Payload"
 Cohesion: 0.06
 Nodes (53): Add Game Payload, Add Game Self Check, Add Game Staging Cleanup, Atomic Per File Installation, Automatic Lua Processing Mode, Bounded Archive Validation, Byte Preserving Steam Installation, Flat AppID ZIP Payload (+45 more)
 
-### Community 4 - "NexaPlayOverrideService"
-Cohesion: 0.05
-Nodes (43): HttpMessageHandler, CancellationToken, IReadOnlyDictionary, IReadOnlySet, Task, INexaPlayOverrideService, IReadOnlyList, NexaPlayCatalogOverride (+35 more)
+### Community 4 - "Task"
+Cohesion: 0.10
+Nodes (19): HttpMessageHandler, AsyncHandler, CancellationToken, Dictionary, HttpRequestMessage, HttpResponseMessage, IReadOnlyDictionary, IReadOnlyList (+11 more)
 
 ### Community 5 - "Window"
 Cohesion: 0.06
-Nodes (51): AccountHeader, BypassChevron, BypassSubmenuPanel, ContentFrame, ContentTopBarRow, LblBypassGames, LblGames, LblHome (+43 more)
+Nodes (51): AccountHeader, AppTitleBar, BypassChevron, BypassSubmenuPanel, ContentFrame, ContentTopBarRow, LblBypassGames, LblGames (+43 more)
 
 ### Community 6 - "SteamPlatformService"
-Cohesion: 0.15
-Nodes (9): close, found, keyLine, CancellationToken, List, Task, SteamPlatformService, open (+1 more)
+Cohesion: 0.08
+Nodes (19): appId, close, found, installdir, keyLine, name, CancellationToken, IReadOnlyList (+11 more)
 
 ### Community 7 - "Audit Phase 2 — Cache, Games, Refresh"
 Cohesion: 0.05
 Nodes (40): 10. Home Popular Current Flow, 11. Home Recent Current Flow, 12. Games SQLite Current Flow, 13. Games Default Ordering, 14. Daily Rotation, 15. Default Price Floor, 16. Price Distribution/Mix, 17. Games Paging (+32 more)
 
-### Community 8 - ".CheckCatalogUpdatesInBackgroundAsync"
-Cohesion: 0.18
-Nodes (5): ContentDialog, RoutedEventArgs, Task, Type, WindowActivatedEventArgs
+### Community 8 - "MainWindow"
+Cohesion: 0.13
+Nodes (13): bool, ContentDialog, int, NavigationEventArgs, Storyboard, string, Task, TaskCompletionSource (+5 more)
 
 ### Community 9 - "SqliteCatalogRepository"
 Cohesion: 0.15
@@ -257,28 +275,28 @@ Cohesion: 0.07
 Nodes (35): IServiceCollection, IServiceProvider, LaunchActivatedEventArgs, Application, CardScale, Checked, CheckedBorder, CheckStates (+27 more)
 
 ### Community 11 - "OnlineFixFileTransaction"
-Cohesion: 0.16
-Nodes (10): Journal, Action, CancellationToken, int, IReadOnlyList, long, string, uint (+2 more)
+Cohesion: 0.14
+Nodes (13): Journal, JournalFile, Action, CancellationToken, int, IReadOnlyList, List, long (+5 more)
 
 ### Community 12 - "AddGameChecks"
 Cohesion: 0.33
 Nodes (4): AddGameChecks, Action, Task, ZipArchive
 
 ### Community 13 - "SettingsPage"
-Cohesion: 0.19
-Nodes (4): NavigationEventArgs, RoutedEventArgs, Visibility, SettingsPage
+Cohesion: 0.18
+Nodes (5): ContentDialog, RoutedEventArgs, Task, Visibility, SettingsPage
 
 ### Community 14 - "AppUpdateService"
 Cohesion: 0.08
 Nodes (29): string, TimeSpan, AppConstants, DateTimeOffset, IReadOnlyList, AppUpdateCheckResult, DateTimeOffset, List (+21 more)
 
 ### Community 15 - "Page"
-Cohesion: 0.07
-Nodes (32): AboutGameWebView, CompactState, DenuvoBadge, DenuvoBadgeGlowOverlay, DetailLayoutGrid, HeroDescriptionText, HeroRowDefinition, HeroTitleText (+24 more)
+Cohesion: 0.05
+Nodes (35): FrameworkElement, Image, AboutGameWebView, CompactState, DetailLayoutGrid, HeroDescriptionText, HeroImage, HeroRowDefinition (+27 more)
 
 ### Community 16 - "Page"
-Cohesion: 0.12
-Nodes (15): CustomPipsContainer, HeroBypassButtonText, HeroCarousel, HoverTitleLayer, NewBypassHeroContainer, Page, PopularGamesGrid, PopularGamesHeaderGrid (+7 more)
+Cohesion: 0.16
+Nodes (11): CustomPipsContainer, HeroBypassButtonText, HoverTitleLayer, NewBypassHeroContainer, Page, PopularGamesHeaderGrid, RoutedEventArgs, Border (+3 more)
 
 ### Community 17 - "Application"
 Cohesion: 0.10
@@ -286,19 +304,15 @@ Nodes (21): Change, Failed, FeedSpec, CancellationToken, Task, IDynamicFeedRefre
 
 ### Community 18 - "GameDetailPage"
 Cohesion: 0.06
-Nodes (17): double, MediaSource, bool, CancellationTokenSource, Dictionary, int, JsonSerializerOptions, List (+9 more)
+Nodes (20): double, MediaSource, DenuvoBadge, DenuvoBadgeGlowOverlay, bool, CancellationTokenSource, Dictionary, int (+12 more)
 
 ### Community 19 - "AddGameService"
-Cohesion: 0.14
-Nodes (8): ConcurrentDictionary, HttpClient, IProgress, IReadOnlyList, JsonElement, string, Task, AddGameService
+Cohesion: 0.13
+Nodes (9): RemoveGameResult, ConcurrentDictionary, HttpClient, IProgress, IReadOnlyList, JsonElement, string, Task (+1 more)
 
 ### Community 20 - "DynamicFeedRefreshService"
 Cohesion: 0.11
 Nodes (17): CancellationToken, Task, IBypassTutorialVideoService, GameCategory, BypassTutorialVideo, CancellationToken, DateTime, Dictionary (+9 more)
-
-### Community 21 - "NexaPlay.Core.Enums"
-Cohesion: 0.12
-Nodes (5): NexaPlay.Core.Constants, NexaPlay.Infrastructure.Persistence, NexaPlay.Infrastructure.Services, NexaPlay.Core.Enums, NexaPlay.Infrastructure.Platform
 
 ### Community 22 - "CatalogUpdateService"
 Cohesion: 0.09
@@ -310,15 +324,15 @@ Nodes (14): Func, HttpClient, int, IReadOnlyList, RelayCommand, string, BypassGa
 
 ### Community 24 - "Page"
 Cohesion: 0.08
-Nodes (29): BypassBtnGlow, CompactState, CoverArtHoverOverlay, CoverArtSkeleton, HeroDescriptionText, HeroRowDefinition, HeroShimmerSweep, HeroShimmerTranslate (+21 more)
+Nodes (37): BypassBtnGlow, CompactState, CoverArtHoverOverlay, CoverArtSkeleton, DetailLayoutGrid, HeroDescriptionText, HeroRowDefinition, HeroShimmerSweep (+29 more)
 
 ### Community 25 - "NexaPlay.Core.Helpers"
-Cohesion: 0.14
-Nodes (9): NexaPlay.Core.Helpers, NexaPlay.Contracts.Navigation, NexaPlay.Presentation.Navigation, NexaPlay, NexaPlay.Infrastructure.Logging, NexaPlay.Presentation.Helpers, NexaPlay.Presentation.ViewModels, NexaPlay.Presentation.Views.Pages (+1 more)
+Cohesion: 0.20
+Nodes (7): NexaPlay.Core.Helpers, NexaPlay.Contracts.Navigation, NexaPlay.Presentation.Helpers, NexaPlay.Presentation.ViewModels, NexaPlay.Presentation.Views.Pages, CatalogProtectionResolver, SystemRequirementItem
 
 ### Community 26 - "GameDetailViewModel"
 Cohesion: 0.05
-Nodes (25): CancellationToken, IProgress, Task, IAddGameService, bool, CancellationToken, Func, HashSet (+17 more)
+Nodes (22): bool, CancellationToken, CancellationTokenSource, Func, HashSet, int, IReadOnlyList, RelayCommand (+14 more)
 
 ### Community 27 - "GamesViewModel"
 Cohesion: 0.09
@@ -341,24 +355,24 @@ Cohesion: 0.22
 Nodes (6): Dictionary, IReadOnlyDictionary, SemaphoreSlim, string, Task, AppliedStateStore
 
 ### Community 32 - "BypassGamesPage"
-Cohesion: 0.12
-Nodes (9): Brush, DependencyObject, DispatcherTimer, int, NavigationEventArgs, RoutedEventArgs, SizeChangedEventArgs, Visibility (+1 more)
+Cohesion: 0.13
+Nodes (10): GamesGrid, Brush, DependencyObject, DispatcherTimer, int, SizeChangedEventArgs, Visibility, BypassGamesPage (+2 more)
 
 ### Community 33 - "Page"
 Cohesion: 0.15
 Nodes (17): BgGlowLeft, BgGlowRight, BorderGlowLeft, BorderGlowRight, LibraryRemoveConfirmMessageText, LibraryRemoveConfirmOverlay, LibraryRemoveResultMessageText, LibraryRemoveResultOverlay (+9 more)
 
 ### Community 34 - "SettingsViewModel"
-Cohesion: 0.22
-Nodes (6): Message, IReadOnlyList, Success, Task, SettingsViewModel, Get
+Cohesion: 0.20
+Nodes (8): CancellationToken, IProgress, Task, IAppUpdateService, IReadOnlyList, Task, SettingsViewModel, Get
 
 ### Community 35 - "BypassGameDetailPage"
 Cohesion: 0.11
-Nodes (10): ContentDialogButtonClickEventArgs, bool, ContentDialog, CoreWebView2WebMessageReceivedEventArgs, NavigationEventArgs, PropertyChangedEventArgs, Storyboard, Task (+2 more)
+Nodes (8): bool, CoreWebView2WebMessageReceivedEventArgs, PointerRoutedEventArgs, PropertyChangedEventArgs, SizeChangedEventArgs, Storyboard, Visibility, BypassGameDetailPage
 
 ### Community 36 - "GamesPage"
-Cohesion: 0.11
-Nodes (11): bool, Brush, DependencyObject, DispatcherTimer, IEnumerable, int, IReadOnlyList, ItemClickEventArgs (+3 more)
+Cohesion: 0.08
+Nodes (13): bool, Brush, DependencyObject, DispatcherTimer, IEnumerable, int, IReadOnlyList, ItemClickEventArgs (+5 more)
 
 ### Community 37 - "TelegramAccountReportService"
 Cohesion: 0.15
@@ -373,20 +387,20 @@ Cohesion: 0.12
 Nodes (16): CancellationTokenSource, int, IReadOnlyDictionary, IReadOnlyList, List, ObservableCollection, LibraryGameCard, LibraryViewModel (+8 more)
 
 ### Community 40 - "Page"
-Cohesion: 0.13
-Nodes (12): FilterOverlay, FilterOverlayTranslate, GenreItemsControl, HoverTitleLayer, Page, RootPage, PointerRoutedEventArgs, RoutedEventArgs (+4 more)
+Cohesion: 0.12
+Nodes (14): FilterOverlay, FilterOverlayTranslate, GamesGrid, GenreItemsControl, HoverTitleLayer, Page, RootPage, PointerRoutedEventArgs (+6 more)
 
 ### Community 41 - "LibraryPage"
 Cohesion: 0.11
 Nodes (10): Brush, DependencyObject, int, NavigationEventArgs, PropertyChangedEventArgs, RoutedEventArgs, string, Task (+2 more)
 
 ### Community 42 - ".LoadAsync"
-Cohesion: 0.18
-Nodes (4): IReadOnlyList, RemoveGameResult, RelayCommand, Task
+Cohesion: 0.24
+Nodes (3): IReadOnlyList, RelayCommand, Task
 
 ### Community 43 - "NexaPlay.Core.Models"
-Cohesion: 0.19
-Nodes (3): NexaPlay.Core.Models, NexaPlay.Contracts.Services, NavigationItem
+Cohesion: 0.14
+Nodes (3): NexaPlay.Core.Models, NexaPlay.Contracts.Services, NexaPlay.Core.Enums
 
 ### Community 44 - ".ApplyFiltersAndPaginationAsync"
 Cohesion: 0.19
@@ -397,24 +411,24 @@ Cohesion: 0.20
 Nodes (9): CancellationToken, IReadOnlyDictionary, IReadOnlyList, Task, ICatalogRepository, CatalogRuntimeOverride, IReadOnlyList, string (+1 more)
 
 ### Community 46 - "RoutedEventArgs"
-Cohesion: 0.13
-Nodes (6): OfflineActivationCheckbox, ShimmerContainer, TutorialVideoOverlayCloseBtn, RoutedEventArgs, Button, CheckBox
+Cohesion: 0.17
+Nodes (5): OfflineActivationCheckbox, TutorialVideoOverlayCloseBtn, RoutedEventArgs, Button, CheckBox
 
 ### Community 47 - "OnlineFixChecks"
-Cohesion: 0.24
-Nodes (6): Action, Func, int, string, Task, OnlineFixChecks
+Cohesion: 0.23
+Nodes (7): Action, Func, int, string, Task, OnlineFixChecks, string
 
 ### Community 49 - "Audit Alur Data NexaPlay"
 Cohesion: 0.10
 Nodes (19): 11. Inventaris Source Data, 12. Inventaris Request Jaringan, 13. Inventaris Cache, 15. Data Duplikat, 16. Diagram Arsitektur Saat Ini, 18. Arsitektur Target yang Direkomendasikan, 19. Keputusan JSON vs SQLite, 1. Ringkasan Eksekutif (+11 more)
 
-### Community 50 - ".FindSiblingSkeletonOverlay"
-Cohesion: 0.21
-Nodes (6): FrameworkElement, Image, HeroImage, MediaOverlayImage, ExceptionRoutedEventArgs, Image
+### Community 50 - "NexaPlayOverrideService"
+Cohesion: 0.22
+Nodes (9): bool, Dictionary, HttpClient, IReadOnlyList, JsonElement, SemaphoreSlim, string, NexaPlayOverrideService (+1 more)
 
-### Community 51 - "LicenseInfo"
-Cohesion: 0.10
-Nodes (14): CancellationToken, Task, ILicenseService, LicensePlan, LicenseStatus, LicenseInfo, string, Task (+6 more)
+### Community 51 - "LicenseStore"
+Cohesion: 0.21
+Nodes (6): LicensePlan, LicenseStatus, string, Task, LicenseStore, StoredLicense
 
 ### Community 52 - ".TryCreate"
 Cohesion: 0.17
@@ -428,17 +442,17 @@ Nodes (6): Task, LicenseAccessDialogHelper, Task, TappedRoutedEventArgs, UIEleme
 Cohesion: 0.27
 Nodes (9): BrowseBlock, CatalogPage, CatalogQuery, Dictionary, IReadOnlyDictionary, Parameters, Sql, SqliteCommand (+1 more)
 
-### Community 56 - ".Log"
-Cohesion: 0.27
-Nodes (5): AntivirusVendor, AntivirusInfo, IReadOnlyList, Task, WindowsDefenderService
+### Community 56 - "WindowsDefenderService"
+Cohesion: 0.42
+Nodes (3): IReadOnlyList, Task, WindowsDefenderService
 
-### Community 57 - "Border"
-Cohesion: 0.20
-Nodes (9): AppTitleBar, LicenseBadge, LicenseStatusBorder, PageTopBar, SidebarShell, StartupOverlay, ValidationErrorBorder, PointerRoutedEventArgs (+1 more)
+### Community 57 - ".NavigateTo"
+Cohesion: 0.24
+Nodes (4): SidebarShell, PointerRoutedEventArgs, RadioButton, TextBlock
 
 ### Community 58 - "OnlineFixCatalogService"
-Cohesion: 0.13
-Nodes (18): CacheEnvelope, OnlineFixEntry, bool, CancellationToken, DateTimeOffset, Dictionary, HttpClient, HttpResponseMessage (+10 more)
+Cohesion: 0.12
+Nodes (19): CacheEnvelope, string, OnlineFixEntry, bool, CancellationToken, DateTimeOffset, Dictionary, HttpClient (+11 more)
 
 ### Community 59 - "WindowsDefenderService"
 Cohesion: 0.18
@@ -448,17 +462,25 @@ Nodes (12): Lazy Rich Detail Flow, Runtime Catalog Precedence, Fast Catalog Refr
 Cohesion: 0.17
 Nodes (10): net8.0-windows10.0.19041.0, Microsoft.Data.Sqlite (8.0.20), SharpCompress (0.48.1), Microsoft.NET.Sdk, CommunityToolkit.Mvvm (8.4.2), MailKit (4.16.0), Microsoft.Extensions.DependencyInjection (10.0.8), Microsoft.Windows.SDK.BuildTools (10.0.28000.1839) (+2 more)
 
-### Community 61 - "SettingsPage"
-Cohesion: 0.18
+### Community 61 - "INavigationService"
+Cohesion: 0.17
 Nodes (6): Frame, Type, INavigationService, Frame, Type, NavigationService
 
-### Community 63 - ".RunAsync"
-Cohesion: 0.21
-Nodes (9): CancellationToken, Task, IOnlineFixCatalogService, CancellationToken, IProgress, SemaphoreSlim, string, Task (+1 more)
+### Community 62 - "ISteamService"
+Cohesion: 0.27
+Nodes (4): CancellationToken, IReadOnlyList, Task, ISteamService
 
-### Community 64 - ".NavigateTo"
-Cohesion: 0.19
-Nodes (8): ActivateButton, BypassSubmenuSteam, BypassSubmenuThirdParty, ValidationEnterKeyButton, ValidationRetryButton, Button, RadioButton, TextBlock
+### Community 63 - ".RunAsync"
+Cohesion: 0.20
+Nodes (10): CancellationToken, Task, IOnlineFixCatalogService, OnlineFixResult, CancellationToken, IProgress, SemaphoreSlim, string (+2 more)
+
+### Community 64 - ".OnActivateClicked"
+Cohesion: 0.18
+Nodes (8): Color, ActivateButton, BypassSubmenuSteam, BypassSubmenuThirdParty, ValidationEnterKeyButton, ValidationRetryButton, RoutedEventArgs, Button
+
+### Community 65 - "GameDetailEntry"
+Cohesion: 0.17
+Nodes (8): HasTransientError, Json, DateTime, IReadOnlyList, GameDetailEntry, MovieEntry, CancellationToken, Task
 
 ### Community 66 - "AccountReportLimitStore"
 Cohesion: 0.24
@@ -469,8 +491,8 @@ Cohesion: 0.12
 Nodes (15): ActivationMessage, CurrentAppVersion, DownloadProgress, DownloadProgressText, IsUpdateAvailable, LastUpdateCheckedText, LatestAppVersion, UpdateDownloadProgress (+7 more)
 
 ### Community 68 - "IWindowsDefenderService"
-Cohesion: 0.27
-Nodes (4): IReadOnlyList, Task, IWindowsDefenderService, DefenderExclusionResult
+Cohesion: 0.21
+Nodes (6): IReadOnlyList, Task, IWindowsDefenderService, AntivirusVendor, AntivirusInfo, DefenderExclusionResult
 
 ### Community 69 - "Grid"
 Cohesion: 0.24
@@ -485,36 +507,36 @@ Cohesion: 0.15
 Nodes (13): HttpContent, InvalidDataException, OnlineFixOutcome, OnlineFixPackage, Action, CancellationToken, Dictionary, int (+5 more)
 
 ### Community 72 - "Page"
-Cohesion: 0.20
-Nodes (8): GamesGrid, HoverTitleLayer, Page, RootPage, PointerRoutedEventArgs, Border, GridView, Page
+Cohesion: 0.25
+Nodes (6): HoverTitleLayer, Page, RootPage, PointerRoutedEventArgs, Border, Page
 
 ### Community 73 - "CatalogManifestRules"
 Cohesion: 0.20
 Nodes (10): Project Graphify Rules, Graphify Add and Watch, Graphify Export Formats, Graphify Semantic Extraction Spec, Graphify GitHub and Merge Flow, Graphify Hook Integration, Graphify Query Traversal, Graphify Media Transcription (+2 more)
 
-### Community 74 - "IAppLogService"
-Cohesion: 0.12
-Nodes (9): ConcurrentQueue, IReadOnlyList, Task, IAppLogService, int, IReadOnlyList, string, Task (+1 more)
+### Community 74 - "AppLogService"
+Cohesion: 0.20
+Nodes (6): ConcurrentQueue, int, IReadOnlyList, string, Task, AppLogService
 
-### Community 75 - "ISteamService"
-Cohesion: 0.12
-Nodes (8): CancellationToken, Task, ISteamService, DateTime, InstalledGame, SteamFinalizeResult, IReadOnlyList, FakeSteam
+### Community 75 - "FakeSteam"
+Cohesion: 0.10
+Nodes (7): DateTime, InstalledGame, SteamFinalizeResult, IReadOnlyList, FakeSteam, IReadOnlyList, FakeSteam
 
 ### Community 76 - "RoutedEventArgs"
 Cohesion: 0.20
 Nodes (10): Incremental Catalog Patches, Lazy R2 Game Metadata, Local SQLite Catalog, NexaPlay Data Flow Audit, NexaPlay Data Sources Query, New Games Download Timing, Load Games Download Cost, ETag Catalog Refresh (+2 more)
 
-### Community 77 - ".OnNavigatedTo"
-Cohesion: 0.18
-Nodes (4): GamesGrid, NavigationEventArgs, SizeChangedEventArgs, GridView
+### Community 77 - "INexaPlayOverrideService"
+Cohesion: 0.22
+Nodes (11): CancellationToken, IReadOnlyDictionary, IReadOnlySet, Task, INexaPlayOverrideService, IReadOnlyList, NexaPlayCatalogOverride, NexaPlayDetailOverride (+3 more)
 
 ### Community 78 - "HomePage"
-Cohesion: 0.09
-Nodes (13): Border, bool, DependencyObject, DispatcherTimer, ImageSource, int, NavigationEventArgs, PointerRoutedEventArgs (+5 more)
+Cohesion: 0.15
+Nodes (7): bool, DependencyObject, DispatcherTimer, ImageSource, int, Visibility, HomePage
 
-### Community 79 - "FakeSteam"
-Cohesion: 0.13
-Nodes (7): AsyncHandler, CancellationToken, HttpRequestMessage, HttpResponseMessage, IReadOnlyList, FakeCatalog, FakeSteam
+### Community 79 - ".SendAsync"
+Cohesion: 0.29
+Nodes (4): CancellationToken, HttpRequestMessage, HttpResponseMessage, FakeCatalog
 
 ### Community 80 - "Catalog Bootstrap Service"
 Cohesion: 0.36
@@ -528,9 +550,9 @@ Nodes (8): graphify reference: extra exports and benchmark, Step 6b - Wiki (only
 Cohesion: 0.22
 Nodes (9): NexaPlay Gold Lightning Logo (logo.png), NexaPlay Gold Lightning Logo (LockScreenLogo.scale-200.png), NexaPlay Gold Lightning Logo (logo.svg), NexaPlay Gold Lightning Logo (SplashScreen.scale-200.png), NexaPlay Gold Lightning Logo (Square150x150Logo.scale-200.png), NexaPlay Gold Lightning Logo (Square44x44Logo.scale-200.png), NexaPlay Gold Lightning Logo (Square44x44Logo.targetsize-24_altform-unplated.png), NexaPlay Gold Lightning Logo (StoreLogo.png) (+1 more)
 
-### Community 83 - "Grid"
-Cohesion: 0.18
-Nodes (8): DetailLayoutGrid, HeroSkeletonOverlay, RootLayout, TopIconSkeletonOverlay, TutorialVideoContainer, TutorialVideoOverlayRoot, SizeChangedEventArgs, Grid
+### Community 83 - "App.xaml.cs"
+Cohesion: 0.15
+Nodes (5): NexaPlay.Presentation.Navigation, NexaPlay, NexaPlay.Infrastructure.Persistence, NexaPlay.Infrastructure.Logging, NexaPlay.Infrastructure.Platform
 
 ### Community 84 - ".ExtractDownloadedArchives"
 Cohesion: 0.24
@@ -540,13 +562,13 @@ Nodes (5): fileName, meta, FixFile, List, path
 Cohesion: 0.39
 Nodes (3): Action, HttpResponseMessage, Task
 
-### Community 87 - "MainWindow"
-Cohesion: 0.13
-Nodes (13): AppWindow, Color, DllImport, IntPtr, bool, int, NavigationEventArgs, Storyboard (+5 more)
+### Community 87 - ".ApplyHwndIcon"
+Cohesion: 0.48
+Nodes (3): AppWindow, DllImport, IntPtr
 
-### Community 88 - ".GetAsync"
-Cohesion: 0.38
-Nodes (4): CoreWebView2Environment, Lazy, Task, WebView2EnvironmentHelper
+### Community 88 - ".TutorialThumbnail_Tapped"
+Cohesion: 0.22
+Nodes (6): CoreWebView2, CoreWebView2Environment, Lazy, Task, WebView2EnvironmentHelper, TappedRoutedEventArgs
 
 ### Community 89 - ".ExtractDownloadedArchives"
 Cohesion: 0.33
@@ -560,17 +582,17 @@ Nodes (7): 2. Alur Startup, Entry point dan service, Gerbang license, Klasifikas
 Cohesion: 0.29
 Nodes (3): DispatcherQueueTimer, TappedRoutedEventArgs, Uri
 
-### Community 92 - ".TutorialThumbnail_Tapped"
-Cohesion: 0.33
-Nodes (3): CoreWebView2, TutorialThumbnailOverlay, TappedRoutedEventArgs
+### Community 92 - "IAddGameService"
+Cohesion: 0.15
+Nodes (4): CancellationToken, IProgress, Task, IAddGameService
 
 ### Community 93 - "BypassProgressState"
-Cohesion: 0.36
-Nodes (5): IProgress, BypassProgressState, CaptureProgress, List, Capture
+Cohesion: 0.31
+Nodes (6): IProgress, BypassProgressState, CaptureProgress, List, Capture, CancelAtExtraction
 
-### Community 94 - ".GetLibraryPaths"
-Cohesion: 0.27
-Nodes (4): appId, installdir, name, IReadOnlyList
+### Community 94 - "CancellationToken"
+Cohesion: 0.32
+Nodes (4): CancellationToken, IReadOnlyDictionary, IReadOnlySet, Task
 
 ### Community 95 - "2. Alur Startup"
 Cohesion: 0.48
@@ -592,9 +614,9 @@ Nodes (3): ICollection, ISet, JsonElement
 Cohesion: 0.33
 Nodes (5): Add Game: sumber API dan ZIP final, Pemasangan, Persiapan khusus lima sumber GitHub, Urutan sumber, Verifikasi
 
-### Community 101 - ".Select"
-Cohesion: 0.18
-Nodes (3): CatalogProtectionResolver, DetailHeroSelector, StringExtensions
+### Community 100 - ".CheckArchivePasswordsAsync"
+Cohesion: 0.24
+Nodes (4): ConcurrentQueue, IReadOnlyList, Task, PasswordCheckLog
 
 ### Community 102 - "Add Game: sumber API dan ZIP final"
 Cohesion: 0.40
@@ -661,8 +683,8 @@ Cohesion: 0.40
 Nodes (3): string, MainViewModel, ObservableObject
 
 ### Community 119 - ".SendAsync"
-Cohesion: 0.40
-Nodes (3): CancellationToken, HttpRequestMessage, HttpResponseMessage
+Cohesion: 0.33
+Nodes (4): BlockingHandler, CancellationToken, HttpRequestMessage, HttpResponseMessage
 
 ### Community 120 - "AppUpdateManifest"
 Cohesion: 0.50
@@ -716,9 +738,9 @@ Nodes (4): Binding versi depot melalui setManifestid, Analisis historis tujuan s
 Cohesion: 0.83
 Nodes (4): Verifikasi parity Lightning - sebelum revisi footer, Lua numerik wajib untuk pemasangan NexaPlay, 16 payload cocok sebelum revisi footer, Parity filter SPIN0ZAi dengan include_manifests=True
 
-### Community 133 - "IAppUpdateService"
-Cohesion: 0.42
-Nodes (4): CancellationToken, IProgress, Task, IAppUpdateService
+### Community 133 - ".Log"
+Cohesion: 0.55
+Nodes (3): CancellationToken, Task, LicenseService
 
 ### Community 134 - "37. Current vs Proposed Target Gap"
 Cohesion: 0.67
@@ -740,21 +762,37 @@ Nodes (3): 5. Alur Data Pencarian, Pencarian lain, Rantai pemanggilan pencarian 
 Cohesion: 0.67
 Nodes (3): 7. Alur Data Library, Rantai pemuatan, Sumber kebenaran penyimpanan
 
+### Community 141 - "LicenseInfo"
+Cohesion: 0.38
+Nodes (4): CancellationToken, Task, ILicenseService, LicenseInfo
+
 ### Community 142 - "7. Alur Data Library"
 Cohesion: 1.00
 Nodes (3): Minimalist Monochrome Branding, NexaPlay Logo, Stylized N Monogram
 
-### Community 143 - "ManagedManifestStore"
-Cohesion: 0.32
-Nodes (6): CancellationToken, IReadOnlyList, SemaphoreSlim, string, Task, ManagedManifestStore
+### Community 143 - ".SelectManualFolderAsync"
+Cohesion: 0.24
+Nodes (3): ContentDialogButtonClickEventArgs, ContentDialog, Task
 
 ### Community 145 - "sign-build.ps1"
 Cohesion: 0.40
 Nodes (3): Invoke-SignFile(), Test-FileSignature(), Start-Sleep()
 
-### Community 161 - "Online-Fix — current implementation (2026-10-27)"
+### Community 160 - "IOnlineFixService"
+Cohesion: 0.46
+Nodes (4): CancellationToken, IProgress, Task, IOnlineFixService
+
+### Community 161 - "Online-Fix — current implementation (2026-10-28)"
+Cohesion: 0.25
+Nodes (7): Freshness and request policy, Installation, Mapping contract, Online-Fix — current implementation (2026-10-28), Optional archive password, Remove, recovery, and UI lifecycle, Verification
+
+### Community 162 - "CatalogLoadCoordinator"
+Cohesion: 0.25
+Nodes (6): Action, Func, long, SemaphoreSlim, Task, CatalogLoadCoordinator
+
+### Community 164 - "IAppLogService"
 Cohesion: 0.29
-Nodes (6): Freshness and request policy, Installation, Mapping contract, Online-Fix — current implementation (2026-10-27), Remove, recovery, and UI lifecycle, Verification
+Nodes (3): IReadOnlyList, Task, IAppLogService
 
 ### Community 165 - "FakeClock"
 Cohesion: 0.40
@@ -764,14 +802,34 @@ Nodes (4): DateTimeOffset, TimeSpan, FakeClock, TimeProvider
 Cohesion: 0.40
 Nodes (4): Answer, Outcome, Q: tolong analisa alur online fix sekarang, Source Nodes
 
-### Community 172 - "Journal"
+### Community 172 - "ISteamStoreService"
+Cohesion: 0.47
+Nodes (3): CancellationToken, Task, ISteamStoreService
+
+### Community 173 - "Q: System.Management.dll signing fails with SignerSign 0x80093102 while other files succeed"
+Cohesion: 0.40
+Nodes (4): Answer, Outcome, Q: System.Management.dll signing fails with SignerSign 0x80093102 while other files succeed, Source Nodes
+
+### Community 174 - ".HeroCarousel_SelectionChanged"
+Cohesion: 0.40
+Nodes (3): HeroCarousel, SelectionChangedEventArgs, FlipView
+
+### Community 177 - ".PopularGamesGrid_SizeChanged"
+Cohesion: 0.40
+Nodes (3): PopularGamesGrid, SizeChangedEventArgs, GridView
+
+### Community 178 - "Grid"
+Cohesion: 0.50
+Nodes (4): LicenseOverlay, ValidatingLicenseOverlay, VersionGrid, Grid
+
+### Community 180 - "StartupLoadingLogoRotation"
 Cohesion: 0.67
-Nodes (3): JournalFile, List, Journal
+Nodes (3): StartupLoadingLogoRotation, ValidationLoadingLogoRotation, RotateTransform
 
 ## Knowledge Gaps
-- **337 isolated node(s):** `net8.0`, `Microsoft.Data.Sqlite (8.0.20)`, `SharpCompress (0.48.1)`, `Microsoft.NET.Sdk`, `Viewbox` (+332 more)
+- **341 isolated node(s):** `net8.0`, `Microsoft.Data.Sqlite (8.0.20)`, `SharpCompress (0.48.1)`, `Microsoft.NET.Sdk`, `Viewbox` (+336 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **21 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **29 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Work-memory lessons
 
@@ -786,17 +844,17 @@ Nodes (3): JournalFile, List, Journal
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `IAppLogService` connect `IAppLogService` to `HomeViewModel`, `BypassGamesViewModel`, `SteamStoreService`, `NexaPlayOverrideService`, `SteamPlatformService`, `AppUpdateService`, `Application`, `GameDetailPage`, `AddGameService`, `DynamicFeedRefreshService`, `CatalogUpdateService`, `BypassGameDetailViewModel`, `GameDetailViewModel`, `MetadataService`, `SettingsViewModel`, `BypassGameDetailPage`, `TelegramAccountReportService`, `CoverImageCacheService`, `OnlineFixService`, `LicenseInfo`, `.Log`, `OnlineFixCatalogService`, `.RunAsync`, `Catalog Bootstrap Service`, `MainWindow`?**
-  _High betweenness centrality (0.200) - this node is a cross-community bridge._
-- **Why does `MainWindow` connect `MainWindow` to `HomeViewModel`, `BypassGamesViewModel`, `ICatalogRefreshState`, `.NavigateTo`, `Window`, `IAppUpdateService`, `.CheckCatalogUpdatesInBackgroundAsync`, `IAppLogService`, `ISteamService`, `LicenseInfo`, `CatalogUpdateService`, `.GetOrBuildListingCardAsync`, `NexaPlay.Core.Helpers`, `GamesViewModel`, `SettingsPage`, `2. Alur Startup`, `Border`?**
-  _High betweenness centrality (0.134) - this node is a cross-community bridge._
-- **Why does `Window` connect `Window` to `.NavigateTo`, `.CheckCatalogUpdatesInBackgroundAsync`, `Task Components`, `.GetOrBuildListingCardAsync`, `MainWindow`, `Border`, `2. Alur Startup`?**
-  _High betweenness centrality (0.092) - this node is a cross-community bridge._
+- **Why does `IAppLogService` connect `IAppLogService` to `HomeViewModel`, `BypassGamesViewModel`, `SteamStoreService`, `Task`, `.Log`, `SteamPlatformService`, `MainWindow`, `AppUpdateService`, `Application`, `GameDetailPage`, `AddGameService`, `DynamicFeedRefreshService`, `CatalogUpdateService`, `BypassGameDetailViewModel`, `GameDetailViewModel`, `MetadataService`, `SettingsViewModel`, `BypassGameDetailPage`, `TelegramAccountReportService`, `CoverImageCacheService`, `OnlineFixService`, `NexaPlayOverrideService`, `WindowsDefenderService`, `OnlineFixCatalogService`, `.RunAsync`, `AppLogService`, `Catalog Bootstrap Service`, `.CheckArchivePasswordsAsync`?**
+  _High betweenness centrality (0.246) - this node is a cross-community bridge._
+- **Why does `MainWindow` connect `MainWindow` to `HomeViewModel`, `ICatalogRefreshState`, `SettingsViewModel`, `IOnlineFixService`, `IAppLogService`, `Window`, `.OnActivateClicked`, `BypassGamesViewModel`, `LicenseInfo`, `2. Alur Startup`, `CatalogUpdateService`, `.ApplyHwndIcon`, `.GetOrBuildListingCardAsync`, `NexaPlay.Core.Helpers`, `GamesViewModel`, `INavigationService`, `ISteamService`, `.NavigateTo`?**
+  _High betweenness centrality (0.109) - this node is a cross-community bridge._
+- **Why does `GameDetailViewModel` connect `GameDetailViewModel` to `HomeViewModel`, `IOnlineFixService`, `BypassGamesViewModel`, `GameDetailEntry`, `IAppLogService`, `ISteamStoreService`, `LicenseInfo`, `INexaPlayOverrideService`, `GameEntry`, `.ApplyFiltersAndPaginationAsync`, `Page`, `GameDetailPage`, `.GetOrBuildListingCardAsync`, `NexaPlay.Core.Helpers`, `.ApplyHwndIcon`, `IAddGameService`, `INavigationService`, `ISteamService`?**
+  _High betweenness centrality (0.078) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `GameDetailViewModel` (e.g. with `AddGameCommand` and `ApplyFixCommand`) actually correct?**
   _`GameDetailViewModel` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 8 inferred relationships involving `BypassGameDetailViewModel` (e.g. with `CopySteamGuardCodeCommand` and `CopySteamPasswordCommand`) actually correct?**
   _`BypassGameDetailViewModel` has 8 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `net8.0`, `Microsoft.Data.Sqlite (8.0.20)`, `SharpCompress (0.48.1)` to the rest of the system?**
-  _337 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _341 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `HomeViewModel` be split into smaller, more focused modules?**
-  _Cohesion score 0.07055630936227951 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05971173644474949 - nodes in this community are weakly interconnected._

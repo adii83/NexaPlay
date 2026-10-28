@@ -1808,3 +1808,19 @@ SigningChecks.ps1 passed five policy scenarios on Windows PowerShell 5.1 and Pow
 Debug x64 build passed. Existing signing scope/exclusions and certificate configuration are preserved.
 Full publish signing subsequently completed successfully across 253 eligible files: valid timestamped
 signatures were retained, remaining files signed/verified, and NexaPlay.exe final verification passed.
+
+## Online-Fix password checkpoint - 2026-10-28
+
+OnlineFixEntry now carries an optional top-level mapping password. Missing/null/empty selects
+online-fix.me; a nonempty mapping value is passed unchanged to ReaderOptions before archive open.
+Plain archives ignore the supplied password. A wrong explicit password never retries the default.
+Removed the blanket encrypted-entry rejection. Crypto failures become explicit failed results;
+staging/transaction protections remain and passwords are omitted from diagnostics/logs.
+CRC comparisons are format-aware because encrypted RAR5 can carry keyed checksums and AES ZIP
+AE-2 can store zero CRC; password/decode checks remain in SharpCompress.
+Six tiny inert archive fixtures are committed under NexaPlay.SelfCheck/Fixtures/OnlineFix.
+WinRAR/7-Zip are needed only to regenerate fixtures, never for app/runtime or regression execution.
+213 Online-Fix assertions and the full existing regression suite pass; Debug x64 build and startup
+smoke pass. Seed v7 exposed an old hardcoded seed-row count in SelfCheck; it now compares actual
+rows to catalog_meta.game_count and validates SQLite quick_check.
+Source changes require a fresh Release publish and signing before including this feature in an installer.

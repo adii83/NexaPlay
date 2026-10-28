@@ -139,6 +139,15 @@ public sealed class OnlineFixCatalogService : IOnlineFixCatalogService
             if (!row.TryGetProperty("appid", out var id) || !id.TryGetInt32(out var appId) || appId <= 0 ||
                 !row.TryGetProperty("files", out var files) || files.ValueKind != JsonValueKind.Array)
                 throw new JsonException("Mapping Online-Fix tidak valid.");
+            string? password = null;
+            if (row.TryGetProperty("password", out var passwordNode))
+            {
+                if (passwordNode.ValueKind is not (JsonValueKind.String or JsonValueKind.Null))
+                    throw new JsonException("Field password Online-Fix harus berupa teks atau null.");
+                password = passwordNode.ValueKind == JsonValueKind.String ? passwordNode.GetString() : null;
+                if (password is { Length: > 1024 } || password?.Contains('\0') == true)
+                    throw new JsonException("Field password Online-Fix tidak valid.");
+            }
             var packages = new List<OnlineFixPackage>();
             var filenames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var file in files.EnumerateArray())
@@ -160,7 +169,7 @@ public sealed class OnlineFixCatalogService : IOnlineFixCatalogService
                     throw new JsonException("URL Google Drive tidak cocok dengan gdrive_id.");
                 packages.Add(new OnlineFixPackage(filename, driveId, uri.AbsoluteUri));
             }
-            if (!entries.TryAdd(appId, new OnlineFixEntry(appId, packages.AsReadOnly())))
+            if (!entries.TryAdd(appId, new OnlineFixEntry(appId, packages.AsReadOnly(), password)))
                 throw new JsonException($"AppID Online-Fix duplikat: {appId}.");
         }
         return entries;

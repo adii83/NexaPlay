@@ -693,7 +693,14 @@ static void AssertBundledSeed()
     connection.Open();
     using var command = connection.CreateCommand();
     command.CommandText = "SELECT COUNT(*) FROM games;";
-    Assert(Convert.ToInt32(command.ExecuteScalar()) == 163262, "bundled catalog seed row count mismatch");
+    var rows = Convert.ToInt64(command.ExecuteScalar());
+    Assert(rows > 0, "bundled catalog seed is empty");
+    command.CommandText = "SELECT value FROM catalog_meta WHERE key = 'game_count';";
+    Assert(long.TryParse(Convert.ToString(command.ExecuteScalar()), out var expectedRows) && rows == expectedRows,
+        "bundled catalog seed row count does not match its game_count metadata");
+    command.CommandText = "PRAGMA quick_check;";
+    Assert(string.Equals(Convert.ToString(command.ExecuteScalar()), "ok", StringComparison.OrdinalIgnoreCase),
+        "bundled catalog seed integrity check failed");
 }
 
 static async Task BenchmarkBundledCatalogAsync()

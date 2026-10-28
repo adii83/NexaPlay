@@ -132,7 +132,7 @@ public sealed class OnlineFixService : IOnlineFixService
                             Report(BypassStatus.Extracting, "extract", 70);
                             lastExtractReport = DateTime.UtcNow;
                         }
-                    }, ct);
+                    }, ct, entry.ArchivePassword);
                     Report(BypassStatus.Applying, "install", 75);
                     var lastInstallPercent = -1;
                     OnlineFixFileTransaction.Install(root, staging, appId, pct =>
@@ -165,6 +165,12 @@ public sealed class OnlineFixService : IOnlineFixService
             return new(OnlineFixOutcome.Cancelled, remove
                 ? "Penghapusan dibatalkan. Data pemulihan disimpan; jalankan Remove Online-Fix lagi untuk melanjutkan."
                 : "Proses Online-Fix dibatalkan. Perubahan yang belum selesai dipulihkan.");
+        }
+        catch (Exception ex) when (ex is SharpCompress.Common.CryptographicException or System.Security.Cryptography.CryptographicException)
+        {
+            _log.Log("OnlineFix", $"Archive decryption failed appId={appId}; verify mapping password or archive integrity");
+            return new(OnlineFixOutcome.Failed,
+                "Password arsip Online-Fix tidak cocok atau arsip terenkripsi rusak. Periksa field password pada mapping.");
         }
         catch (Exception ex)
         {

@@ -8,7 +8,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
-internal static class OnlineFixChecks
+internal static partial class OnlineFixChecks
 {
     private const string Id = "fixture_drive_id_42";
     private static int _checks;
@@ -25,12 +25,13 @@ internal static class OnlineFixChecks
             await CheckRefreshCancellationAsync(root);
             await CheckRateLimitAsync(root);
             await CheckDriveAsync(root);
+            await CheckArchivePasswordsAsync(root);
             CheckTransactions(root);
             CheckUnsafeArchives(root);
             CheckRecoveryAndLocks(root);
             CheckLegacy(root);
             await CheckServiceAsync(root);
-            Console.WriteLine($"Online-Fix self-check passed ({_checks} assertions): catalog freshness, Drive, staging, rollback, recovery, file locks, and operation results.");
+            Console.WriteLine($"Online-Fix self-check passed ({_checks} assertions): password defaults/overrides, encrypted archives, catalog freshness, Drive, staging, rollback, recovery, file locks, and operation results.");
         }
         finally
         {

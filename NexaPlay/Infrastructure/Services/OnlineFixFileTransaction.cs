@@ -1,6 +1,7 @@
 using SharpCompress.Archives;
 using SharpCompress.Common;
 using SharpCompress.Readers;
+using NexaPlay.Core.Models;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -22,7 +23,7 @@ internal static class OnlineFixFileTransaction
     internal static bool HasTransaction(string root, int appId) => Directory.Exists(StateRoot(root, appId));
 
     internal static void Extract(IReadOnlyList<string> packages, string staging, int appId,
-        Action<int, string> progress, CancellationToken ct)
+        Action<int, string> progress, CancellationToken ct, string password = OnlineFixEntry.DefaultArchivePassword)
     {
         Directory.CreateDirectory(staging);
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -31,7 +32,7 @@ internal static class OnlineFixFileTransaction
         {
             ct.ThrowIfCancellationRequested();
             using var archive = ArchiveFactory.OpenArchive(group.OrderBy(VolumeNumber).Select(p => new FileInfo(p)).ToArray(),
-                new ReaderOptions { LeaveStreamOpen = false });
+                new ReaderOptions { LeaveStreamOpen = false, Password = password });
             var entries = archive.Entries.Take(MaxFiles + 1).ToList();
             if (entries.Count > MaxFiles) throw new InvalidDataException("Arsip Online-Fix memiliki terlalu banyak entry.");
             var files = entries.Where(e => !e.IsDirectory).ToList();
@@ -47,7 +48,6 @@ internal static class OnlineFixFileTransaction
                 // Validate directory entries as well, even though no links/directories are extracted directly.
                 SafePath(staging, key);
                 if (entry.IsDirectory) continue;
-                if (entry.IsEncrypted) throw new InvalidDataException("Arsip Online-Fix diproteksi password. Sediakan arsip tanpa password pada mapping.");
                 if (!entry.IsComplete) throw new InvalidDataException("Bagian arsip Online-Fix tidak lengkap.");
                 var relative = stripPrefix ? key[prefix.Length..] : key;
                 var target = SafePath(staging, relative);
@@ -59,6 +59,10 @@ internal static class OnlineFixFileTransaction
                 // Opening a ZIP entry may replace central-header metadata with its local header.
                 var expectedCrc = entry.Crc;
                 var expectedSize = entry.Size;
+                // Encrypted RAR5 may store a keyed checksum rather than plaintext CRC32;
+                // AES ZIP AE-2 stores zero CRC and uses an authentication tag instead.
+                var checkCrc = archive.Type == ArchiveType.Zip && (!entry.IsEncrypted || expectedCrc != 0) ||
+                    archive.Type == ArchiveType.Rar && !entry.IsEncrypted && expectedCrc != 0;
                 using var input = entry.OpenEntryStream();
                 using var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None);
                 var buffer = new byte[81920];
@@ -75,8 +79,10 @@ internal static class OnlineFixFileTransaction
                     output.Write(buffer, 0, count);
                 }
                 if (actual != expectedSize ||
-                    (archive.Type == ArchiveType.Zip || archive.Type == ArchiveType.Rar && expectedCrc != 0) && ~crc != (uint)expectedCrc)
-                    throw new InvalidDataException("Arsip Online-Fix rusak (ukuran/checksum tidak cocok).");
+                    checkCrc && ~crc != (uint)expectedCrc)
+                    throw new InvalidDataException(entry.IsEncrypted
+                        ? "Password arsip Online-Fix tidak cocok atau arsip terenkripsi rusak. Periksa field password pada mapping."
+                        : "Arsip Online-Fix rusak (ukuran/checksum tidak cocok).");
                 progress(names.Count, relative);
             }
         }

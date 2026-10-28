@@ -93,6 +93,8 @@ Online-Fix update 2026-10-27: only `online_fix.json` determines availability and
 Startup/detail/action checks share one refresh gate, 10-minute success cooldown, conditional GitHub Contents API requests,
 and rate-limit-aware failure backoff. Old package fallback sources are removed. See [ONLINE_FIX.md](ONLINE_FIX.md)
 for installation/recovery behavior, 111 self-check assertions, archive fixture results, and remaining live package QA.
+Password update 2026-10-28: optional top-level `password` overrides `online-fix.me`; unencrypted archives remain supported.
+Encrypted RAR/ZIP/7z regression coverage increases the Online-Fix suite to 213 assertions; see [ONLINE_FIX.md](ONLINE_FIX.md).
 
 Catatan nomenklatur UI Bypass:
 - Untuk tampilan UI, istilah `Steam Sharing` sudah diganti menjadi `Akun Steam`.

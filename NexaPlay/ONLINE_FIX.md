@@ -1,4 +1,4 @@
-# Online-Fix — current implementation (2026-10-27)
+# Online-Fix — current implementation (2026-10-28)
 
 Online-Fix has one mapping authority: `adii83/Nexaplay-Metadata-Override/main/online_fix.json`.
 There is no LuaTools, generic Win64, alternate package, or alternate metadata endpoint fallback.
@@ -28,6 +28,36 @@ Malformed updates are rejected as a whole and never replace the last valid disk 
 AppID membership and a nonempty file list establish catalog availability; they do not prove
 that the mapped archive exists, that a custom ID is real, or that its binaries support the game.
 
+### Optional archive password
+
+`password` belongs to the AppID object, alongside `appid` and `files`, and applies to every package/volume for that game:
+
+```json
+{
+  "appid": 70,
+  "password": "adi83geel",
+  "files": [
+    {
+      "filename": "70.rar",
+      "gdrive_id": "REPLACE_WITH_ACTUAL_GOOGLE_DRIVE_ID",
+      "gdrive_url": "https://drive.google.com/uc?export=download&id=REPLACE_WITH_ACTUAL_GOOGLE_DRIVE_ID"
+    }
+  ]
+}
+```
+
+| Mapping/archive condition | Behavior |
+| --- | --- |
+| No password field; archive is unencrypted | Extract normally. |
+| No password field; archive is encrypted | Use `online-fix.me`. |
+| Nonempty password field | Use that exact value; never retry with the default after a wrong explicit password. |
+
+`null` or an empty string also select the default. Nonempty password whitespace is preserved.
+Numbers/objects/arrays/booleans, NUL characters and passwords over 1024 characters are rejected as invalid mapping.
+The password is supplied before opening the archive, so encrypted RAR/7z headers are supported.
+Unencrypted archives ignore the supplied password, including a custom value. Passwords are not written to operation logs
+or entry diagnostic strings. A wrong password returns a failed result and staging is cleaned before any game file is changed.
+
 ## Freshness and request policy
 
 - Startup schedules a background refresh after the initial content becomes usable. It does not block startup on this catalog.
@@ -54,7 +84,7 @@ that the mapped archive exists, that a custom ID is real, or that its binaries s
 6. Extract all packages into staging, never directly into the game. ZIP, RAR/RAR5, 7z, solid archives,
    and standard numbered multipart inputs use SharpCompress. No archive contents are executed.
 7. Reject traversal, absolute paths, ADS, Windows device names, reparse points/symlinks, duplicate target paths,
-   reserved recovery/log paths, empty archives, encrypted/incomplete archives, size inconsistencies, and ZIP/RAR CRC mismatch.
+   reserved recovery/log paths, empty/incomplete archives, incorrect passwords, size inconsistencies, and applicable CRC mismatch.
    Limits: 2 GiB per package, 4 GiB total expanded payload, 20,000 output files, 60-second idle reads, 20-minute download deadline.
 8. Strip an AppID root folder only when all payload files share it. Patch `<appid>` in staged `unsteam.ini` before installation.
 9. Copy existing originals to `.nexaplay-onlinefix/{appid}/backup/` inside the game folder and verify SHA-256.
@@ -65,6 +95,10 @@ Filesystem work, decompression, hashing, installation and rollback run on a work
 Progress is throttled and carries overall operation progress; the returned `OnlineFixResult`, not a posted progress callback,
 determines completion. Cancellation during commit restores originals and removes newly added files.
 If rollback is blocked (for example by a locked file), the operation fails and keeps its journal/backups for retry.
+
+Checksums are format-aware: CRC32 is checked for unencrypted RAR and standard ZIP payloads. Encrypted RAR5 can store
+keyed checksums, while AES ZIP AE-2 can use a zero CRC field. Those values are not compared as plaintext CRC32;
+password/decryption checks use the archive library, and size/path/staging bounds still apply to all formats.
 
 ## Remove, recovery, and UI lifecycle
 
@@ -87,10 +121,17 @@ No automatic Steam restart or game launch is added.
 
 - Debug x64 MSBuild: successful, 0 errors.
 - `dotnet run --project NexaPlay.SelfCheck`: full existing regression suite passed.
-- Online-Fix: 111 assertions covering mapping validation, concurrent refresh, 304, cooldown/retry,
+- Online-Fix: 213 assertions covering mapping validation, concurrent refresh, 304, cooldown/retry,
   offline/corrupt data, source changes/removal, rate-limit backoff, Drive confirmation/denial,
   unsafe archives, corrupted CRC, staged install, cancellation rollback, locked files,
   interrupted recovery, modified-file protection, legacy logs, busy guards, and explicit results.
+- Password coverage uses six bundled inert fixtures: unencrypted RAR, default-password RAR (file/header encryption),
+  custom-password RAR with encrypted headers, default-password AES ZIP and custom-password 7z with encrypted headers.
+  Tests cover all three mapping cases, null/empty defaults, wrong explicit/default passwords, original-file preservation,
+  restore after encrypted installation, cancellation, staging cleanup, password cache/304 and log redaction.
+  WinRAR/7-Zip are used only to regenerate these fixtures; neither is required by the application or the tests.
+- Full regression passes with seed version 7. The bundled seed test validates row count against `game_count` metadata
+  and runs SQLite `quick_check`, instead of hardcoding the old seed's row count.
 - Official SharpCompress 0.48.1 sample archives tested from temporary files: RAR, RAR5,
   solid RAR, LZMA 7z, solid 7z, and a six-volume RAR archive. Each extracted successfully.
 - Debug app startup successfully validated 597 mappings from the live GitHub Contents API.
